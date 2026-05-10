@@ -58,7 +58,7 @@ export const CreatorCard = ({ creator }: { creator: Creator }) => {
         <div className="absolute top-4 left-4 z-20 flex flex-col gap-2">
           <div className="glass px-3 py-1.5 rounded-full border-neon-blue/30 flex items-center gap-2 shadow-[0_0_15px_rgba(59,130,246,0.2)]">
             <Zap size={12} className="text-neon-blue fill-neon-blue" />
-            <span className="text-[10px] font-black text-white uppercase tracking-widest">{creator.aiScore}% Match</span>
+            <span className="text-[10px] font-black text-white uppercase tracking-widest">{(creator as any).aiScore || 85}% Match</span>
           </div>
           {isUnlocked && <UnlockBadge />}
         </div>
@@ -111,7 +111,7 @@ export const CreatorCard = ({ creator }: { creator: Creator }) => {
             </span>
             <span className="flex items-center gap-1 text-[10px] font-bold text-gray-500 uppercase tracking-widest">
               <MapPin size={12} />
-              {creator.location.area}, {creator.location.city}
+              {creator.area || (creator.location as any)?.area || 'Global'}, {creator.city || (creator.location as any)?.city || 'Node'}
             </span>
           </div>
 

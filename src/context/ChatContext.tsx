@@ -1,97 +1,229 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "./AuthContext";
 
 export interface Message {
   id: string;
-  senderId: string;
-  text: string;
-  timestamp: string;
-  status: "sent" | "delivered" | "read";
-  type: "text" | "image" | "video" | "project_update";
-  mediaUrl?: string;
-  reactions?: string[];
+  conversation_id: string;
+  sender_id: string;
+  receiver_id: string;
+  content: string;
+  media_url?: string;
+  media_type?: string;
+  read: boolean;
+  created_at: string;
 }
 
 export interface Conversation {
   id: string;
-  creatorId: string;
-  lastMessage?: string;
-  unreadCount: number;
-  updatedAt: string;
+  client_id: string;
+  creator_id: string;
+  last_message?: string;
+  last_message_at: string;
+  created_at: string;
+  unreadCount?: number;
+  other_user?: {
+    full_name: string;
+    avatar_url: string;
+  };
 }
 
 interface ChatContextType {
-  messages: Record<string, Message[]>;
   conversations: Conversation[];
-  sendMessage: (chatId: string, text: string, type?: Message["type"], mediaUrl?: string) => void;
-  markAsRead: (chatId: string) => void;
+  activeChatMessages: Message[];
+  setActiveConversation: (id: string | null) => void;
+  sendMessage: (receiverId: string, content: string, type?: string, mediaUrl?: string) => Promise<void>;
+  markAsRead: (conversationId: string) => Promise<void>;
   typingStates: Record<string, boolean>;
   setTyping: (chatId: string, isTyping: boolean) => void;
   totalUnreadCount: number;
+  loading: boolean;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
 export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
-  const [messages, setMessages] = useState<Record<string, Message[]>>({});
+  const { user } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [activeChatMessages, setActiveChatMessages] = useState<Message[]>([]);
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [typingStates, setTypingStates] = useState<Record<string, boolean>>({});
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const savedMessages = localStorage.getItem("clipshift_messages");
-    const savedConvs = localStorage.getItem("clipshift_conversations");
-    if (savedMessages) setMessages(JSON.parse(savedMessages));
-    if (savedConvs) setConversations(JSON.parse(savedConvs));
-  }, []);
+    if (!user) return;
 
-  const sendMessage = (chatId: string, text: string, type: Message["type"] = "text", mediaUrl?: string) => {
-    const newMessage: Message = {
-      id: Math.random().toString(36).substr(2, 9),
-      senderId: "me",
-      text,
-      timestamp: new Date().toISOString(),
-      status: "sent",
-      type,
-      mediaUrl
+    fetchConversations();
+
+    // Subscribe to new messages for unread counts and conversation updates
+    const messageSub = supabase
+      .channel('public:messages')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
+        const newMessage = payload.new as Message;
+        if (newMessage.receiver_id === user.id || newMessage.sender_id === user.id) {
+          // Update conversation list
+          fetchConversations();
+          
+          // If active chat, add to messages
+          if (activeConversationId && newMessage.conversation_id === activeConversationId) {
+            setActiveChatMessages(prev => {
+              if (prev.some(m => m.id === newMessage.id)) return prev;
+              return [...prev, newMessage];
+            });
+          }
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(messageSub);
     };
+  }, [user, activeConversationId]);
 
-    setMessages((prev) => {
-      const chatMessages = prev[chatId] || [];
-      const updated = { ...prev, [chatId]: [...chatMessages, newMessage] };
-      localStorage.setItem("clipshift_messages", JSON.stringify(updated));
-      return updated;
-    });
+  useEffect(() => {
+    if (activeConversationId) {
+      fetchMessages(activeConversationId);
+    } else {
+      setActiveChatMessages([]);
+    }
+  }, [activeConversationId]);
 
-    setConversations((prev) => {
-      const existing = prev.find(c => c.id === chatId);
-      let updated;
-      if (existing) {
-        updated = prev.map(c => c.id === chatId ? { ...c, lastMessage: text, updatedAt: new Date().toISOString() } : c);
-      } else {
-        updated = [{ id: chatId, creatorId: chatId, lastMessage: text, unreadCount: 0, updatedAt: new Date().toISOString() }, ...prev];
-      }
-      localStorage.setItem("clipshift_conversations", JSON.stringify(updated));
-      return updated;
-    });
+  const fetchConversations = async () => {
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from('conversations')
+      .select(`
+        *,
+        client:client_id (full_name, avatar_url),
+        creator:creator_id (full_name, avatar_url)
+      `)
+      .or(`client_id.eq.${user.id},creator_id.eq.${user.id}`)
+      .order('last_message_at', { ascending: false });
+
+    if (!error && data) {
+      // Map to include other user info
+      const mapped = await Promise.all(data.map(async (c) => {
+        const isClient = c.client_id === user.id;
+        const otherUser = isClient ? c.creator : c.client;
+        
+        // Fetch unread count
+        const { count } = await supabase
+          .from('messages')
+          .select('*', { count: 'exact', head: true })
+          .eq('conversation_id', c.id)
+          .eq('receiver_id', user.id)
+          .eq('read', false);
+
+        return {
+          ...c,
+          other_user: otherUser,
+          unreadCount: count || 0
+        };
+      }));
+      setConversations(mapped);
+    }
+    setLoading(false);
   };
 
-  const markAsRead = (chatId: string) => {
-    setConversations(prev => {
-      const updated = prev.map(c => c.id === chatId ? { ...c, unreadCount: 0 } : c);
-      localStorage.setItem("clipshift_conversations", JSON.stringify(updated));
-      return updated;
-    });
+  const fetchMessages = async (convId: string) => {
+    const { data, error } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('conversation_id', convId)
+      .order('created_at', { ascending: true });
+
+    if (!error && data) {
+      setActiveChatMessages(data);
+    }
+  };
+
+  const sendMessage = async (receiverId: string, content: string, type: string = "text", mediaUrl?: string) => {
+    if (!user) return;
+
+    // 1. Get or create conversation
+    let convId: string;
+    const { data: existingConv } = await supabase
+      .from('conversations')
+      .select('id')
+      .or(`and(client_id.eq.${user.id},creator_id.eq.${receiverId}),and(client_id.eq.${receiverId},creator_id.eq.${user.id})`)
+      .single();
+
+    if (existingConv) {
+      convId = existingConv.id;
+    } else {
+      const isUserClient = user.role === 'client';
+      const { data: newConv, error: convError } = await supabase
+        .from('conversations')
+        .insert({
+          client_id: isUserClient ? user.id : receiverId,
+          creator_id: isUserClient ? receiverId : user.id,
+          last_message: content,
+          last_message_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+      
+      if (convError) throw convError;
+      convId = newConv.id;
+    }
+
+    // 2. Insert message
+    const { error: msgError } = await supabase
+      .from('messages')
+      .insert({
+        conversation_id: convId,
+        sender_id: user.id,
+        receiver_id: receiverId,
+        content,
+        media_url: mediaUrl,
+        media_type: type
+      });
+
+    if (msgError) throw msgError;
+
+    // 3. Update conversation last message
+    await supabase
+      .from('conversations')
+      .update({
+        last_message: content,
+        last_message_at: new Date().toISOString()
+      })
+      .eq('id', convId);
+  };
+
+  const markAsRead = async (convId: string) => {
+    if (!user) return;
+    await supabase
+      .from('messages')
+      .update({ read: true })
+      .eq('conversation_id', convId)
+      .eq('receiver_id', user.id)
+      .eq('read', false);
+    
+    setConversations(prev => prev.map(c => c.id === convId ? { ...c, unreadCount: 0 } : c));
   };
 
   const setTyping = (chatId: string, isTyping: boolean) => {
     setTypingStates(prev => ({ ...prev, [chatId]: isTyping }));
   };
 
-  const totalUnreadCount = conversations.reduce((acc, curr) => acc + curr.unreadCount, 0);
+  const totalUnreadCount = conversations.reduce((acc, curr) => acc + (curr.unreadCount || 0), 0);
 
   return (
-    <ChatContext.Provider value={{ messages, conversations, sendMessage, markAsRead, typingStates, setTyping, totalUnreadCount }}>
+    <ChatContext.Provider value={{ 
+      conversations, 
+      activeChatMessages, 
+      setActiveConversation: setActiveConversationId,
+      sendMessage, 
+      markAsRead, 
+      typingStates, 
+      setTyping, 
+      totalUnreadCount,
+      loading
+    }}>
       {children}
     </ChatContext.Provider>
   );

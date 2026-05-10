@@ -4,23 +4,36 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, BrainCircuit, ShieldCheck, Sparkles, AlertCircle, CheckCircle2 } from "lucide-react";
 import { ScoreCircle } from "./ScoreCircle";
+import { analyzeVideoQuality } from "@/lib/gemini";
 
 export const VideoAnalyzer = () => {
   const [status, setStatus] = useState<"idle" | "scanning" | "done">("idle");
   const [scores, setScores] = useState<any>(null);
+  const [videoDescription, setVideoDescription] = useState("");
 
-  const startAnalysis = () => {
+  const startAnalysis = async () => {
+    if (!videoDescription) return;
     setStatus("scanning");
-    setTimeout(() => {
-      setScores({
-        cinematography: 92,
-        colorGrade: 88,
-        pacing: 75,
-        audio: 94,
-        overall: 88
-      });
-      setStatus("done");
-    }, 4000);
+    
+    try {
+      const result = await analyzeVideoQuality({ description: videoDescription }, {});
+      if (result) {
+        setScores({
+          cinematography: result.Cinematography || result.cinematography || 0,
+          colorGrade: result.Color || result.colorGrade || result.color || 0,
+          pacing: result.Pacing || result.pacing || 0,
+          audio: result.Audio || result.audio || 0,
+          overall: result.Overall || result.overall || 0,
+          feedback: result.feedback || result.tips || []
+        });
+        setStatus("done");
+      } else {
+        setStatus("idle");
+      }
+    } catch (error) {
+      console.error("Analysis failed:", error);
+      setStatus("idle");
+    }
   };
 
   return (
@@ -40,13 +53,26 @@ export const VideoAnalyzer = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="h-64 border-2 border-dashed border-white/5 rounded-[32px] flex flex-col items-center justify-center cursor-pointer hover:border-neon-purple/50 transition-all group"
-            onClick={startAnalysis}
+            className="space-y-6"
           >
-            <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-              <Sparkles size={24} className="text-gray-500 group-hover:text-neon-purple" />
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Video Metadata / Description</label>
+              <textarea 
+                value={videoDescription}
+                onChange={(e) => setVideoDescription(e.target.value)}
+                placeholder="Describe your video, gear used, and stylistic choices..." 
+                className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white outline-none focus:border-neon-purple transition-all h-32 resize-none" 
+              />
             </div>
-            <p className="text-xs font-black text-gray-500 uppercase tracking-widest">Drop cinematic node or click to scan</p>
+            <div
+              className="h-32 border-2 border-dashed border-white/5 rounded-[32px] flex flex-col items-center justify-center cursor-pointer hover:border-neon-purple/50 transition-all group"
+              onClick={startAnalysis}
+            >
+              <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                <Sparkles size={20} className="text-gray-500 group-hover:text-neon-purple" />
+              </div>
+              <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Run Neural Audit</p>
+            </div>
           </motion.div>
         )}
 
@@ -94,21 +120,25 @@ export const VideoAnalyzer = () => {
                 Improvement Directives
               </h4>
               <ul className="space-y-3">
-                {[
-                  "Dynamic range in highlights is slightly clipped in frame 420-560.",
-                  "Pacing in the second act could be tightened by 12 frames.",
-                  "Audio levels peak at -1dB during transient heavy segments."
-                ].map((tip, i) => (
+                {Array.isArray(scores.feedback) ? scores.feedback.map((tip: string, i: number) => (
                   <li key={i} className="flex gap-3 text-xs text-gray-400 leading-relaxed">
                     <CheckCircle2 size={14} className="text-neon-purple shrink-0" />
                     {tip}
                   </li>
-                ))}
+                )) : (
+                  <li className="flex gap-3 text-xs text-gray-400 leading-relaxed">
+                    <CheckCircle2 size={14} className="text-neon-purple shrink-0" />
+                    {scores.feedback}
+                  </li>
+                )}
               </ul>
             </div>
             
             <button 
-              onClick={() => setStatus("idle")}
+              onClick={() => {
+                setStatus("idle");
+                setVideoDescription("");
+              }}
               className="w-full py-4 rounded-2xl glass border border-white/10 text-gray-500 text-[10px] font-black uppercase tracking-widest hover:text-white transition-all"
             >
               Analyze New Stream

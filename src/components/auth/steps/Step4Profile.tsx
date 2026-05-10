@@ -4,7 +4,8 @@ import React, { useState, useRef } from "react";
 import { FloatingInput } from "../../ui/FloatingInput";
 import { useAuth } from "@/context/AuthContext";
 import { motion } from "framer-motion";
-import { Camera, Link2, Languages, User } from "lucide-react";
+import { Camera, Link2, Languages, User, Loader2 } from "lucide-react";
+import { UploadProgress } from "../../storage/UploadProgress";
 
 export const Step4Profile = ({ onNext, onBack }: { onNext: () => void, onBack: () => void }) => {
   const { signupData, updateSignupData } = useAuth();
@@ -18,25 +19,43 @@ export const Step4Profile = ({ onNext, onBack }: { onNext: () => void, onBack: (
   });
   
   const [imagePreview, setImagePreview] = useState<string | null>(signupData.profileImage || null);
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setLocalData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    if (file.size > 50 * 1024 * 1024) {
+      alert("File size exceeds 50MB node limit.");
+      return;
+    }
+
+    setUploading(true);
+    setProgress(0);
+
+    try {
+      const { uploadFile } = await import("@/lib/storage");
+      const publicUrl = await uploadFile(file, 'avatars', (p) => setProgress(p));
+      setImagePreview(publicUrl);
+    } catch (error: any) {
+      alert("Transmission failed: " + error.message);
+    } finally {
+      setUploading(false);
     }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (uploading) {
+      alert("Transmission in progress. Please wait for node sync.");
+      return;
+    }
     updateSignupData({ ...localData, profileImage: imagePreview || undefined });
     onNext();
   };
@@ -74,6 +93,11 @@ export const Step4Profile = ({ onNext, onBack }: { onNext: () => void, onBack: (
             onChange={handleImageChange} 
           />
           <p className="text-xs text-gray-500 mt-4 uppercase tracking-widest">Profile Image (Circular Preview)</p>
+          {uploading && (
+            <div className="w-full max-w-[200px]">
+              <UploadProgress progress={progress} />
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

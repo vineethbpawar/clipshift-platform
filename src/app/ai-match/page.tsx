@@ -7,26 +7,40 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, Search, ShieldCheck, ChevronDown, Zap, ArrowRight, BrainCircuit } from "lucide-react";
 import Link from "next/link";
 
+import { matchCreators } from "@/lib/gemini";
+
 export default function AIMatchPage() {
   const [isSearching, setIsSearching] = useState(false);
   const [results, setResults] = useState<any[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [formData, setFormData] = useState({
+    type: "Cinematic Reel",
+    budget: "",
+    style: "",
+    location: ""
+  });
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSearching(true);
     setResults([]);
 
-    // Simulate AI Processing
-    setTimeout(() => {
-      setIsSearching(false);
-      const matches = creators.slice(0, 5).map(c => ({
-        ...c,
-        matchScore: Math.floor(Math.random() * 30) + 70, // 70-100%
-        aiReason: "High synergy with cinematic lighting requests and proven delivery speed for similar high-budget streams."
-      })).sort((a, b) => b.matchScore - a.matchScore);
+    try {
+      const matchedData = await matchCreators(formData, creators);
+      const matches = matchedData.map((match: any) => {
+        const creator = creators.find(c => c.id === match.id) || creators[0]; // Fallback to first creator if ID mismatch
+        return {
+          ...creator,
+          matchScore: match.score,
+          aiReason: match.reason
+        };
+      }).sort((a: any, b: any) => b.matchScore - a.matchScore);
       setResults(matches);
-    }, 2500);
+    } catch (error) {
+      console.error("Matching failed:", error);
+    } finally {
+      setIsSearching(false);
+    }
   };
 
   return (
@@ -54,7 +68,11 @@ export default function AIMatchPage() {
           <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="space-y-2">
               <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Project Architecture</label>
-              <select className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white outline-none focus:border-neon-purple transition-all appearance-none">
+              <select 
+                value={formData.type}
+                onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white outline-none focus:border-neon-purple transition-all appearance-none"
+              >
                 <option>Cinematic Reel</option>
                 <option>Music Video Production</option>
                 <option>Corporate Narrative</option>
@@ -63,11 +81,33 @@ export default function AIMatchPage() {
             </div>
             <div className="space-y-2">
               <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Capital Allocation (Budget)</label>
-              <input type="text" placeholder="e.g. ₹50,000 - ₹1,00,000" className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white outline-none focus:border-neon-purple transition-all" />
+              <input 
+                type="text" 
+                value={formData.budget}
+                onChange={(e) => setFormData({ ...formData, budget: e.target.value })}
+                placeholder="e.g. ₹50,000 - ₹1,00,000" 
+                className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white outline-none focus:border-neon-purple transition-all" 
+              />
             </div>
-            <div className="space-y-2 md:col-span-2">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Deployment Zone (Location)</label>
+              <input 
+                type="text" 
+                value={formData.location}
+                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                placeholder="e.g. Mumbai, Virtual" 
+                className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white outline-none focus:border-neon-purple transition-all" 
+              />
+            </div>
+            <div className="space-y-2 md:col-span-1">
               <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Stylistic Directives</label>
-              <textarea placeholder="Describe the mood, lighting, and narrative flow..." className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white outline-none focus:border-neon-purple transition-all h-32 resize-none" />
+              <input 
+                type="text"
+                value={formData.style}
+                onChange={(e) => setFormData({ ...formData, style: e.target.value })}
+                placeholder="e.g. Dark, Moody, High-Key" 
+                className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white outline-none focus:border-neon-purple transition-all" 
+              />
             </div>
             <div className="md:col-span-2">
               <button 

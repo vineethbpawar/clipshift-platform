@@ -4,16 +4,76 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FloatingInput } from "../ui/FloatingInput";
 import { NeonButton } from "../ui/NeonButton";
-import { MapPin, Upload, Calendar, DollarSign, Users, Info } from "lucide-react";
+import { MapPin, Upload, Calendar, DollarSign, Users, Info, Loader2, Sparkles } from "lucide-react";
+import { UploadProgress } from "../storage/UploadProgress";
+import { FilePreview } from "../storage/FilePreview";
+import { uploadFile } from "@/lib/storage";
 import dynamic from "next/dynamic";
+import { estimatePrice } from "@/lib/gemini";
 
 const ProjectLocationMap = dynamic(() => import("../map/projects/ProjectLocationMap"), { ssr: false });
 
 export const ProjectPostForm = () => {
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [category, setCategory] = useState("Wedding");
   const [radius, setRadius] = useState(20);
   const [locations, setLocations] = useState<any[]>([]);
   const [rateType, setRateType] = useState("Per Project");
+  const [offeredRate, setOfferedRate] = useState("");
+  
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [currentFileName, setCurrentFileName] = useState("");
+  const [uploadedFiles, setUploadedFiles] = useState<{url: string, type: 'image' | 'video'}[]>([]);
+
+  const [aiEstimate, setAiEstimate] = useState<any>(null);
+  const [isEstimating, setIsEstimating] = useState(false);
+
+  const getEstimate = async () => {
+    if (!title || !description) return;
+    setIsEstimating(true);
+    try {
+      const result = await estimatePrice({ title, description, category });
+      setAiEstimate(result);
+    } catch (error) {
+      console.error("Estimation failed:", error);
+    } finally {
+      setIsEstimating(false);
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    setUploading(true);
+    
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (file.size > 50 * 1024 * 1024) {
+        alert(`${file.name} exceeds 50MB node limit.`);
+        continue;
+      }
+
+      setCurrentFileName(file.name);
+      setProgress(0);
+
+      try {
+        const url = await uploadFile(file, 'project-files', (p) => setProgress(p));
+        setUploadedFiles(prev => [...prev, { 
+          url, 
+          type: file.type.startsWith('video') ? 'video' : 'image' 
+        }]);
+      } catch (error: any) {
+        alert(`Transmission failed for ${file.name}: ` + error.message);
+      }
+    }
+
+    setUploading(false);
+    setProgress(0);
+    setCurrentFileName("");
+  };
 
   const categories = ["Wedding", "YouTube", "Reels", "Drone", "Corporate", "Events", "Fashion", "Gaming", "Podcast", "Shoot"];
   const isShoot = category === "Drone" || category === "Events" || category === "Shoot";
@@ -32,7 +92,12 @@ export const ProjectPostForm = () => {
             <div className="glass p-6 rounded-3xl border-white/5">
               <h4 className="text-[10px] text-gray-500 uppercase font-black tracking-widest mb-4">Project Identity</h4>
               <div className="space-y-4">
-                <FloatingInput label="Project Title" placeholder="e.g. Urban Night Life Music Video" />
+                <FloatingInput 
+                  label="Project Title" 
+                  placeholder="e.g. Urban Night Life Music Video" 
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                />
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label className="text-[10px] text-gray-500 uppercase font-bold tracking-widest ml-4">Category</label>
@@ -64,9 +129,24 @@ export const ProjectPostForm = () => {
                   exit={{ opacity: 0, height: 0 }}
                   className="glass p-6 rounded-3xl border-white/5 overflow-hidden"
                 >
-                  <h4 className="text-[10px] text-neon-blue uppercase font-black tracking-widest mb-4">Rate & Payment Terms</h4>
+                  <div className="flex justify-between items-center mb-4">
+                    <h4 className="text-[10px] text-neon-blue uppercase font-black tracking-widest">Rate & Payment Terms</h4>
+                    <button 
+                      onClick={getEstimate}
+                      disabled={isEstimating || !title || !description}
+                      className="text-[8px] font-black text-neon-purple uppercase tracking-widest flex items-center gap-1 hover:underline disabled:opacity-30"
+                    >
+                      {isEstimating ? <Loader2 size={10} className="animate-spin" /> : <Sparkles size={10} />}
+                      AI Estimate
+                    </button>
+                  </div>
                   <div className="grid grid-cols-2 gap-4 mb-6">
-                    <FloatingInput label="Offered Rate (₹)" type="number" />
+                    <FloatingInput 
+                      label="Offered Rate (₹)" 
+                      type="number" 
+                      value={offeredRate}
+                      onChange={(e) => setOfferedRate(e.target.value)}
+                    />
                     <select 
                       value={rateType}
                       onChange={(e) => setRateType(e.target.value)}
@@ -78,6 +158,28 @@ export const ProjectPostForm = () => {
                       <option className="bg-zinc-900">Per Project</option>
                     </select>
                   </div>
+
+                  {aiEstimate && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="mb-6 p-4 bg-neon-purple/5 border border-neon-purple/20 rounded-2xl"
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="text-[8px] font-black text-gray-500 uppercase tracking-widest">Recommended Range</span>
+                        <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase ${
+                          aiEstimate.badge === "Fair" ? "bg-green-500/20 text-green-500" :
+                          aiEstimate.badge === "Above Market" ? "bg-neon-blue/20 text-neon-blue" :
+                          "bg-neon-purple/20 text-neon-purple"
+                        }`}>
+                          {aiEstimate.badge}
+                        </span>
+                      </div>
+                      <div className="text-sm font-black text-white mb-1">{aiEstimate.recommended_budget}</div>
+                      <p className="text-[9px] text-gray-400 italic">"{aiEstimate.market_comparison}"</p>
+                    </motion.div>
+                  )}
+
                   <div className="flex items-center justify-between px-4 py-3 bg-white/5 rounded-2xl border border-white/10">
                     <span className="text-xs text-gray-300">Negotiable</span>
                     <input type="checkbox" className="accent-neon-purple w-4 h-4" />
@@ -89,12 +191,46 @@ export const ProjectPostForm = () => {
             <div className="glass p-6 rounded-3xl border-white/5">
               <h4 className="text-[10px] text-gray-500 uppercase font-black tracking-widest mb-4">Project Brief</h4>
               <textarea 
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
                 placeholder="Describe your creative requirements..."
                 className="w-full h-32 bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white outline-none focus:border-neon-purple transition-colors resize-none mb-4"
               />
-              <div className="flex items-center gap-4 p-4 border-2 border-dashed border-white/10 rounded-2xl hover:border-neon-purple/50 transition-colors cursor-pointer group">
-                <Upload className="text-gray-500 group-hover:text-neon-purple transition-colors" />
-                <span className="text-xs text-gray-500 group-hover:text-gray-300 transition-colors">Upload Reference Videos / Footage</span>
+              
+              <div className="space-y-4">
+                <input 
+                  type="file" 
+                  id="project-footage"
+                  multiple
+                  className="hidden" 
+                  onChange={handleFileUpload}
+                  accept="video/*,image/*"
+                />
+                <label 
+                  htmlFor="project-footage"
+                  className="flex items-center gap-4 p-4 border-2 border-dashed border-white/10 rounded-2xl hover:border-neon-purple/50 transition-colors cursor-pointer group"
+                >
+                  <Upload className="text-gray-500 group-hover:text-neon-purple transition-colors" />
+                  <span className="text-xs text-gray-500 group-hover:text-gray-300 transition-colors">
+                    {uploading ? "Transmitting Node..." : "Upload Reference Videos / Footage"}
+                  </span>
+                </label>
+
+                {uploading && (
+                  <UploadProgress progress={progress} fileName={currentFileName} />
+                )}
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  {uploadedFiles.map((file, i) => (
+                    <FilePreview 
+                      key={i} 
+                      url={file.url} 
+                      type={file.type} 
+                      className="aspect-square"
+                      onRemove={() => setUploadedFiles(prev => prev.filter((_, idx) => idx !== i))}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
 

@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import { CheckCircle2, Star, Rocket, Shield } from "lucide-react";
 
 export const Step5Onboarding = () => {
-  const { role, login, signupData } = useAuth();
+  const { role, signUp, signupData } = useAuth();
 
   const roleContent = {
     client: {
@@ -47,8 +47,12 @@ export const Step5Onboarding = () => {
   const content = role ? roleContent[role] : roleContent.client;
   const Icon = content.icon;
 
-  const handleFinish = () => {
-    login(signupData.email || "user@example.com", role);
+  const handleFinish = async () => {
+    try {
+      await signUp(signupData.password || "");
+    } catch (error: any) {
+      alert(error.message);
+    }
   };
 
   return (

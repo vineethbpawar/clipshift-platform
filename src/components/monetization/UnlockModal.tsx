@@ -2,33 +2,109 @@
 
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, MessageSquare, ShieldCheck, Sparkles, Loader2, CheckCircle2 } from "lucide-react";
+import { X, MessageSquare, ShieldCheck, Sparkles, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { PricingCard } from "./PricingCard";
 import { type Creator, type CreatorLevel } from "@/data/creators";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
+import { loadRazorpayScript } from "@/lib/razorpay";
 
 export const UnlockModal = ({ creator, isOpen, onClose }: { creator: Creator, isOpen: boolean, onClose: () => void }) => {
-  const [status, setStatus] = useState<"idle" | "processing" | "success">("idle");
-  const { unlockCreator } = useAuth();
+  const [status, setStatus] = useState<"idle" | "processing" | "success" | "error">("idle");
+  const [errorMessage, setErrorMessage] = useState("");
+  const { unlockCreator, user } = useAuth();
   const router = useRouter();
 
   const pricingTiers = {
-    Beginner: { price: "₹29", features: ["Unlimited Chat", "Direct Messaging", "Standard Support"] },
-    Standard: { price: "₹49", features: ["Unlimited Chat", "Project Invites", "Priority Support"] },
-    Professional: { price: "₹59", features: ["Unlimited Chat", "Raw Footage Access", "Commercial Rights"] },
-    Premium: { price: "₹99", features: ["Unlimited Chat", "Exclusive Asset Drops", "24/7 Dedicated Support"] }
+    Beginner: { price: "₹29", amount: 2900, features: ["Unlimited Chat", "Direct Messaging", "Standard Support"] },
+    Standard: { price: "₹49", amount: 4900, features: ["Unlimited Chat", "Project Invites", "Priority Support"] },
+    Professional: { price: "₹59", amount: 5900, features: ["Unlimited Chat", "Raw Footage Access", "Commercial Rights"] },
+    Premium: { price: "₹99", amount: 9900, features: ["Unlimited Chat", "Exclusive Asset Drops", "24/7 Dedicated Support"] }
   };
 
-  const handleUnlock = () => {
+  const handleUnlock = async (level: CreatorLevel) => {
+    if (!user) {
+      router.push('/auth/login');
+      return;
+    }
+
     setStatus("processing");
-    setTimeout(() => {
-      setStatus("success");
-      unlockCreator(creator.id);
-      setTimeout(() => {
-        router.push(`/chat/${creator.id}`);
-      }, 2000);
-    }, 2000);
+    
+    try {
+      // 1. Load Razorpay Script
+      const res = await loadRazorpayScript();
+      if (!res) {
+        throw new Error("Razorpay SDK failed to load. Check your internet connection.");
+      }
+
+      // 2. Create Order via API
+      const orderRes = await fetch("/api/razorpay/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: pricingTiers[level].amount,
+          currency: "INR",
+          receipt: `unlock_${creator.id}_${Date.now()}`
+        })
+      });
+      const orderData = await orderRes.json();
+
+      if (orderData.error) throw new Error(orderData.error);
+
+      // 3. Open Razorpay Checkout
+      const options = {
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: "ClipShift",
+        description: `Unlock chat with ${creator.name}`,
+        order_id: orderData.order_id,
+        handler: async (response: any) => {
+          // 4. Verify Payment via API
+          setStatus("processing");
+          const verifyRes = await fetch("/api/razorpay/verify-payment", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              client_id: user.id,
+              creator_id: creator.id,
+              amount: pricingTiers[level].amount
+            })
+          });
+          const verifyData = await verifyRes.json();
+
+          if (verifyData.success) {
+            setStatus("success");
+            unlockCreator(creator.id);
+            setTimeout(() => {
+              router.push(`/chat/${creator.id}`);
+            }, 2500);
+          } else {
+            throw new Error(verifyData.error || "Payment verification failed");
+          }
+        },
+        prefill: {
+          name: user.name,
+          email: user.email,
+        },
+        theme: {
+          color: "#a855f7",
+        },
+        modal: {
+          ondismiss: () => setStatus("idle")
+        }
+      };
+
+      const paymentObject = new (window as any).Razorpay(options);
+      paymentObject.open();
+    } catch (err: any) {
+      console.error(err);
+      setStatus("error");
+      setErrorMessage(err.message || "An unexpected error occurred during payment.");
+    }
   };
 
   if (!isOpen) return null;
@@ -49,7 +125,7 @@ export const UnlockModal = ({ creator, isOpen, onClose }: { creator: Creator, is
         exit={{ scale: 0.9, opacity: 0, y: 20 }}
         className="relative w-full max-w-4xl glass border-white/10 rounded-[40px] p-8 md:p-12 overflow-hidden"
       >
-        {status === "idle" && (
+        {(status === "idle" || status === "error") && (
           <>
             <button onClick={onClose} className="absolute top-8 right-8 text-gray-500 hover:text-white transition-colors">
               <X size={24} />
@@ -65,6 +141,17 @@ export const UnlockModal = ({ creator, isOpen, onClose }: { creator: Creator, is
               <p className="text-gray-400 max-w-md">
                 Secure a permanent connection with <span className="text-white font-bold">{creator.name}</span>. No subscriptions, just a one-time unlock fee.
               </p>
+              
+              {status === "error" && (
+                <motion.div 
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-6 flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-500 text-sm"
+                >
+                  <AlertCircle size={18} />
+                  {errorMessage}
+                </motion.div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -75,14 +162,14 @@ export const UnlockModal = ({ creator, isOpen, onClose }: { creator: Creator, is
                   price={pricingTiers[level].price}
                   features={pricingTiers[level].features}
                   isTarget={creator.level === level}
-                  onSelect={handleUnlock}
+                  onSelect={() => handleUnlock(level)}
                 />
               ))}
             </div>
 
             <div className="mt-12 flex items-center justify-center gap-2 text-[10px] text-gray-500 uppercase font-bold tracking-widest">
               <ShieldCheck size={14} className="text-neon-blue" />
-              Secure Encrypted Transaction
+              Secure Encrypted Transaction via Razorpay
             </div>
           </>
         )}
@@ -90,8 +177,8 @@ export const UnlockModal = ({ creator, isOpen, onClose }: { creator: Creator, is
         {status === "processing" && (
           <div className="py-20 flex flex-col items-center justify-center text-center">
             <Loader2 size={64} className="text-neon-purple animate-spin mb-8" />
-            <h3 className="text-2xl font-black text-white uppercase tracking-widest mb-2 italic animate-pulse">Syncing Blockchain Payment...</h3>
-            <p className="text-gray-500">Verifying transaction hash on the network</p>
+            <h3 className="text-2xl font-black text-white uppercase tracking-widest mb-2 italic animate-pulse">Initializing Secure Gateway...</h3>
+            <p className="text-gray-500">Connecting to Razorpay network</p>
           </div>
         )}
 
@@ -105,10 +192,9 @@ export const UnlockModal = ({ creator, isOpen, onClose }: { creator: Creator, is
             >
               <CheckCircle2 size={48} />
             </motion.div>
-            <h3 className="text-4xl font-black text-white uppercase tracking-tighter mb-4">Connection <span className="text-neon-blue">Unlocked</span></h3>
-            <p className="text-gray-400">Redirecting to cinematic chat with {creator.name}...</p>
+            <h3 className="text-4xl font-black text-white uppercase tracking-tighter mb-4">Payment <span className="text-neon-blue">Verified</span></h3>
+            <p className="text-gray-400">Successfully unlocked {creator.name}. Redirecting to chat...</p>
             
-            {/* Visual Confetti / Sparkles */}
             <div className="absolute inset-0 pointer-events-none">
               {[...Array(20)].map((_, i) => (
                 <motion.div

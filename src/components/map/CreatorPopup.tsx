@@ -31,11 +31,15 @@ export const CreatorPopup = ({ creator }: { creator: Creator }) => {
         </div>
 
         <div className="flex flex-wrap gap-1 mb-4">
-          {creator.specialty.slice(0, 2).map((s, i) => (
+          {(creator as any).specialty?.slice(0, 2).map((s: string, i: number) => (
             <span key={i} className="text-[8px] px-2 py-0.5 rounded-full bg-white/5 text-gray-400 border border-white/5">
               {s}
             </span>
-          ))}
+          )) || (
+            <span className="text-[8px] px-2 py-0.5 rounded-full bg-white/5 text-gray-400 border border-white/5">
+              {creator.category}
+            </span>
+          )}
         </div>
 
         <NeonButton variant="purple" size="sm" className="w-full text-[10px] py-2 group">

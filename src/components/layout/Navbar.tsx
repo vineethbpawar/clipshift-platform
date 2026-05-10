@@ -9,7 +9,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useChat } from "@/context/ChatContext";
 
 export const Navbar = () => {
-  const { user, logout } = useAuth();
+  const { user, signOut } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const { scrollY } = useScroll();
   const backgroundColor = useTransform(
@@ -84,7 +84,7 @@ export const Navbar = () => {
                   <Link href={`/dashboard/${user.role}`} className="text-white font-bold text-sm uppercase tracking-widest hover:text-neon-purple transition-colors">
                     {user.name}
                   </Link>
-                  <button onClick={logout} className="text-gray-500 hover:text-red-500 transition-colors">
+                  <button onClick={signOut} className="text-gray-500 hover:text-red-500 transition-colors">
                     <LogOut size={18} />
                   </button>
                 </div>

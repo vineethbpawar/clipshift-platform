@@ -2,13 +2,12 @@
 
 import React from "react";
 import { useChat } from "@/context/ChatContext";
-import { creators } from "@/data/creators";
-import { Search, ShieldCheck } from "lucide-react";
+import { Search, ShieldCheck, MessageSquare, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 
 export const ChatList = () => {
-  const { conversations } = useChat();
+  const { conversations, loading } = useChat();
 
   return (
     <div className="flex flex-col h-full bg-black/40 backdrop-blur-md border-r border-white/5">
@@ -25,10 +24,15 @@ export const ChatList = () => {
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 pb-8 space-y-2 custom-scrollbar">
-        {conversations.length > 0 ? (
-          conversations.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()).map((conv) => {
-            const creator = creators.find(c => c.id === conv.creatorId);
-            if (!creator) return null;
+        {loading ? (
+          <div className="py-20 flex flex-col items-center gap-3">
+            <Loader2 className="animate-spin text-neon-purple" size={24} />
+            <span className="text-[10px] text-gray-600 font-black uppercase tracking-widest">Scanning Signal...</span>
+          </div>
+        ) : conversations.length > 0 ? (
+          conversations.map((conv) => {
+            const otherUser = conv.other_user;
+            if (!otherUser) return null;
 
             return (
               <Link key={conv.id} href={`/chat/${conv.id}`}>
@@ -38,7 +42,7 @@ export const ChatList = () => {
                 >
                   <div className="relative shrink-0">
                     <div className="w-12 h-12 rounded-xl overflow-hidden glass border border-white/10">
-                      <img src={creator.image} className="w-full h-full object-cover" alt="" />
+                      <img src={otherUser.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80"} className="w-full h-full object-cover" alt="" />
                     </div>
                     <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-green-500 border-2 border-black rounded-full shadow-[0_0_10px_rgba(34,197,94,0.5)]" />
                   </div>
@@ -46,18 +50,18 @@ export const ChatList = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
                       <h4 className="text-sm font-black text-white uppercase tracking-tighter flex items-center gap-1">
-                        {creator.name}
-                        {creator.verified && <ShieldCheck size={12} className="text-neon-blue" />}
+                        {otherUser.full_name}
+                        <ShieldCheck size={12} className="text-neon-blue" />
                       </h4>
                       <span className="text-[8px] text-gray-600 font-mono">
-                        {new Date(conv.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {new Date(conv.last_message_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <p className="text-[10px] text-gray-500 truncate group-hover:text-gray-300 transition-colors">
-                        {conv.lastMessage || "Start a cinematic conversation..."}
+                      <p className={`text-[10px] truncate transition-colors ${conv.unreadCount && conv.unreadCount > 0 ? "text-white font-black" : "text-gray-500 group-hover:text-gray-300"}`}>
+                        {conv.last_message || "Start a cinematic conversation..."}
                       </p>
-                      {conv.unreadCount > 0 && (
+                      {conv.unreadCount !== undefined && conv.unreadCount > 0 && (
                         <span className="w-4 h-4 bg-neon-purple text-white text-[8px] font-black flex items-center justify-center rounded-full shadow-[0_0_10px_rgba(168,85,247,0.5)]">
                           {conv.unreadCount}
                         </span>
@@ -69,7 +73,8 @@ export const ChatList = () => {
             );
           })
         ) : (
-          <div className="py-20 text-center px-8">
+          <div className="py-20 text-center px-8 flex flex-col items-center">
+            <MessageSquare size={32} className="text-gray-800 mb-4" />
             <p className="text-[10px] text-gray-600 uppercase font-black tracking-widest leading-relaxed">
               No active signals found. Unlock a creator to start collaborating.
             </p>

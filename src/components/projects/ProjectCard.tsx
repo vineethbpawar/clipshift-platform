@@ -85,9 +85,9 @@ export const ProjectCard = ({ project }: { project: Project }) => {
       </div>
 
       {/* Milestones */}
-      {project.milestones.length > 0 && (
+      {project.milestones && project.milestones.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {project.milestones.map((m) => (
+          {project.milestones.map((m: any) => (
             <div key={m.id} className="flex items-center gap-3 p-4 bg-white/5 rounded-2xl border border-white/5">
               {m.completed ? (
                 <CheckCircle2 size={18} className="text-neon-purple" />
@@ -107,7 +107,7 @@ export const ProjectCard = ({ project }: { project: Project }) => {
         <div className="p-6 bg-neon-blue/5 border border-neon-blue/20 rounded-2xl flex items-center gap-4">
           <AlertCircle className="text-neon-blue shrink-0" />
           <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
-            Awaiting creator proposals. {project.proposals.length} bids received so far.
+            Awaiting creator proposals. {project.proposals?.length || 0} bids received so far.
           </p>
         </div>
       )}

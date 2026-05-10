@@ -10,14 +10,18 @@ import Link from "next/link";
 import { User, Edit3, Video } from "lucide-react";
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { signIn } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [selectedRole, setSelectedRole] = useState<Role>("client");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    login(email, selectedRole);
+    try {
+      await signIn(email, password);
+    } catch (error: any) {
+      alert(error.message);
+    }
   };
 
   const roleIcons = [

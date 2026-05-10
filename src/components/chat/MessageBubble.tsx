@@ -12,8 +12,7 @@ interface MessageBubbleProps {
 }
 
 export const MessageBubble = ({ message, isMe, onReact }: MessageBubbleProps) => {
-  const isRead = message.status === "read";
-  const isDelivered = message.status === "delivered" || isRead;
+  const isRead = message.read;
 
   return (
     <motion.div
@@ -26,23 +25,23 @@ export const MessageBubble = ({ message, isMe, onReact }: MessageBubbleProps) =>
           ? "bg-neon-purple text-white rounded-tr-none shadow-[0_10px_20px_rgba(168,85,247,0.2)]" 
           : "glass border-white/5 text-gray-300 rounded-tl-none"
       }`}>
-        {message.type === "image" && message.mediaUrl && (
+        {message.media_type === "image" && message.media_url && (
           <div className="mb-2 rounded-xl overflow-hidden glass">
-            <img src={message.mediaUrl} className="w-full object-cover max-h-60" alt="" />
+            <img src={message.media_url} className="w-full object-cover max-h-60" alt="" />
           </div>
         )}
         
-        {message.type === "video" && message.mediaUrl && (
+        {message.media_type === "video" && message.media_url && (
           <div className="mb-2 rounded-xl overflow-hidden glass relative group/vid">
-            <video src={message.mediaUrl} className="w-full max-h-60" controls />
+            <video src={message.media_url} className="w-full max-h-60" controls />
           </div>
         )}
 
-        <p className="text-xs leading-relaxed">{message.text}</p>
+        <p className="text-xs leading-relaxed">{message.content}</p>
         
         <div className={`mt-2 flex items-center gap-2 ${isMe ? "justify-end text-white/50" : "justify-start text-gray-500"}`}>
           <span className="text-[8px] font-mono tracking-widest uppercase">
-            {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </span>
           {isMe && (
             <div className={isRead ? "text-neon-blue" : "text-white/30"}>
@@ -50,20 +49,9 @@ export const MessageBubble = ({ message, isMe, onReact }: MessageBubbleProps) =>
             </div>
           )}
         </div>
-
-        {/* Reactions */}
-        {message.reactions && message.reactions.length > 0 && (
-          <div className={`absolute -bottom-2 ${isMe ? "right-2" : "left-2"} flex gap-1`}>
-            {message.reactions.map((r, i) => (
-              <div key={i} className="glass px-1.5 py-0.5 rounded-full text-[10px] border-white/10 shadow-lg">
-                {r}
-              </div>
-            ))}
-          </div>
-        )}
       </div>
 
-      {/* Hover Reactions Popup (Simplified) */}
+      {/* Hover Reactions Popup */}
       <div className={`absolute -top-8 ${isMe ? "right-0" : "left-0"} opacity-0 group-hover:opacity-100 transition-opacity flex gap-2 glass px-3 py-1.5 rounded-full border-white/10 z-20`}>
         {["🔥", "🎬", "💎", "👍"].map(emoji => (
           <button 
