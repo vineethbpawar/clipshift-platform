@@ -1,0 +1,150 @@
+"use client";
+
+import React, { useState, useRef } from "react";
+import { FloatingInput } from "../../ui/FloatingInput";
+import { useAuth } from "@/context/AuthContext";
+import { motion } from "framer-motion";
+import { Camera, Link2, Languages, User } from "lucide-react";
+
+export const Step4Profile = ({ onNext, onBack }: { onNext: () => void, onBack: () => void }) => {
+  const { signupData, updateSignupData } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const [localData, setLocalData] = useState({
+    instagram: signupData.instagram || "",
+    portfolio: signupData.portfolio || "",
+    languages: signupData.languages || "",
+    bio: signupData.bio || "",
+  });
+  
+  const [imagePreview, setImagePreview] = useState<string | null>(signupData.profileImage || null);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setLocalData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateSignupData({ ...localData, profileImage: imagePreview || undefined });
+    onNext();
+  };
+
+  return (
+    <div className="max-w-2xl mx-auto">
+      <div className="text-center mb-12">
+        <h2 className="text-3xl font-black text-white mb-2 uppercase tracking-tight">Cinematic Profile</h2>
+        <p className="text-gray-400">Personalize how the world sees your talent</p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-8">
+        <div className="flex flex-col items-center mb-8">
+          <div 
+            onClick={() => fileInputRef.current?.click()}
+            className="relative w-32 h-32 rounded-full glass border-2 border-dashed border-white/20 flex items-center justify-center cursor-pointer group hover:border-neon-purple transition-colors overflow-hidden"
+          >
+            {imagePreview ? (
+              <img src={imagePreview} alt="Profile Preview" className="w-full h-full object-cover" />
+            ) : (
+              <div className="flex flex-col items-center text-gray-500 group-hover:text-neon-purple">
+                <Camera size={32} className="mb-1" />
+                <span className="text-[10px] uppercase font-bold">Upload</span>
+              </div>
+            )}
+            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+              <span className="text-white text-xs font-bold">Change</span>
+            </div>
+          </div>
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            className="hidden" 
+            accept="image/*" 
+            onChange={handleImageChange} 
+          />
+          <p className="text-xs text-gray-500 mt-4 uppercase tracking-widest">Profile Image (Circular Preview)</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <div className="relative">
+              <Link2 className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 z-10" size={18} />
+              <FloatingInput
+                label="Instagram Handle"
+                name="instagram"
+                value={localData.instagram}
+                onChange={handleChange}
+                className="pl-12"
+              />
+            </div>
+            <div className="relative">
+              <Link2 className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 z-10" size={18} />
+              <FloatingInput
+                label="Portfolio Link"
+                name="portfolio"
+                value={localData.portfolio}
+                onChange={handleChange}
+                className="pl-12"
+              />
+            </div>
+            <div className="relative">
+              <Languages className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 z-10" size={18} />
+              <FloatingInput
+                label="Languages (e.g. English, Hindi)"
+                name="languages"
+                value={localData.languages}
+                onChange={handleChange}
+                className="pl-12"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="relative glass border-white/10 rounded-xl p-4 h-[180px]">
+              <label className="text-[12px] text-neon-purple font-bold uppercase tracking-widest mb-2 block">
+                Professional Bio
+              </label>
+              <textarea
+                name="bio"
+                value={localData.bio}
+                onChange={handleChange}
+                placeholder="Tell us about your cinematic vision..."
+                className="w-full bg-transparent text-white outline-none resize-none h-[120px] placeholder:text-gray-600"
+                required
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between mt-12 gap-4">
+          <button
+            type="button"
+            onClick={onBack}
+            className="px-8 py-4 rounded-full border border-white/10 text-gray-400 font-bold uppercase tracking-widest hover:bg-white/5 transition-colors"
+          >
+            Back
+          </button>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            type="submit"
+            className="flex-1 px-12 py-4 rounded-full bg-neon-purple text-white font-bold uppercase tracking-widest shadow-[0_0_20px_rgba(168,85,247,0.3)]"
+          >
+            Finalize Profile
+          </motion.button>
+        </div>
+      </form>
+    </div>
+  );
+};

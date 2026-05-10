@@ -1,0 +1,145 @@
+"use client";
+
+import React, { useState, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Star, ShieldCheck, Zap, MapPin, Play, MessageSquare } from "lucide-react";
+import { type Creator } from "@/data/creators";
+import { useAuth } from "@/context/AuthContext";
+import { UnlockModal } from "../monetization/UnlockModal";
+import { UnlockBadge } from "../monetization/UnlockBadge";
+import { useRouter } from "next/navigation";
+
+export const CreatorCard = ({ creator }: { creator: Creator }) => {
+  const [isHovered, setIsHovered] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const { unlockedCreators } = useAuth();
+  const router = useRouter();
+
+  const isUnlocked = unlockedCreators.includes(creator.id);
+
+  const handleMouseEnter = () => {
+    setIsHovered(true);
+    if (videoRef.current) {
+      videoRef.current.play().catch(() => {});
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setIsHovered(false);
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+    }
+  };
+
+  const handleChat = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isUnlocked) {
+      router.push(`/chat/${creator.id}`);
+    } else {
+      setIsModalOpen(true);
+    }
+  };
+
+  return (
+    <>
+      <motion.div
+        layout
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        whileHover={{ y: -5 }}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        className="group relative glass border-white/5 rounded-3xl overflow-hidden transition-all duration-500 hover:border-neon-purple/50"
+      >
+        {/* AI Match Score Badge */}
+        <div className="absolute top-4 left-4 z-20 flex flex-col gap-2">
+          <div className="glass px-3 py-1.5 rounded-full border-neon-blue/30 flex items-center gap-2 shadow-[0_0_15px_rgba(59,130,246,0.2)]">
+            <Zap size={12} className="text-neon-blue fill-neon-blue" />
+            <span className="text-[10px] font-black text-white uppercase tracking-widest">{creator.aiScore}% Match</span>
+          </div>
+          {isUnlocked && <UnlockBadge />}
+        </div>
+
+        {/* Image / Video Preview Section */}
+        <div className="relative aspect-[4/5] overflow-hidden">
+          <img
+            src={creator.image}
+            alt={creator.name}
+            className={`w-full h-full object-cover transition-transform duration-700 ${isHovered ? "scale-110 blur-sm opacity-30" : "scale-100"}`}
+          />
+          
+          {/* Muted Video Preview */}
+          <video
+            ref={videoRef}
+            src={creator.videoPreview}
+            muted
+            loop
+            playsInline
+            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${isHovered ? "opacity-100" : "opacity-0"}`}
+          />
+
+          {/* Hover Overlay Icon */}
+          {!isHovered && (
+            <div className="absolute bottom-4 right-4 text-white/50">
+              <Play size={20} className="fill-white/20" />
+            </div>
+          )}
+
+          {/* Gradient Overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent opacity-80" />
+        </div>
+
+        {/* Content Section */}
+        <div className="p-6 relative">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <h3 className="text-xl font-black text-white tracking-tighter uppercase">{creator.name}</h3>
+              {creator.verified && <ShieldCheck size={18} className="text-neon-blue" />}
+            </div>
+            <div className="flex items-center gap-1">
+              <Star size={14} className="text-yellow-500 fill-yellow-500" />
+              <span className="text-sm font-bold text-white">{creator.rating}</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 mb-4">
+            <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+              {creator.category}
+            </span>
+            <span className="flex items-center gap-1 text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+              <MapPin size={12} />
+              {creator.location.area}, {creator.location.city}
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between mt-6 pt-6 border-t border-white/5">
+            <div>
+              <div className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-1">Starting from</div>
+              <div className="text-2xl font-black text-white">{creator.price}<span className="text-xs text-gray-500 font-normal">/project</span></div>
+            </div>
+            <button
+              onClick={handleChat}
+              className="px-6 py-3 rounded-xl bg-neon-purple text-white text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-[0_0_20px_rgba(168,85,247,0.3)] hover:scale-105 transition-transform"
+            >
+              <MessageSquare size={14} />
+              {isUnlocked ? "Chat" : "Unlock Chat"}
+            </button>
+          </div>
+        </div>
+      </motion.div>
+
+      <AnimatePresence>
+        {isModalOpen && (
+          <UnlockModal 
+            creator={creator} 
+            isOpen={isModalOpen} 
+            onClose={() => setIsModalOpen(false)} 
+          />
+        )}
+      </AnimatePresence>
+    </>
+  );
+};
