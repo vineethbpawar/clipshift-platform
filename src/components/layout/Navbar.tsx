@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { Menu, X, ShoppingCart, Search, LogOut, MessageSquare } from "lucide-react";
 import { NeonButton } from "../ui/NeonButton";
@@ -44,11 +45,16 @@ export const Navbar = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-20 items-center">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-neon-purple rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(168,85,247,0.5)]">
-              <span className="text-white font-black text-xl italic">C</span>
+          <Link href="/" className="flex items-center">
+            <div className="relative w-[140px] h-[40px] md:w-[160px] md:h-[50px]">
+              <Image 
+                src="/logo.png" 
+                alt="ClipShift" 
+                fill 
+                className="object-contain object-left"
+                priority 
+              />
             </div>
-            <span className="text-2xl font-black text-white tracking-tighter uppercase italic">Clip<span className="text-neon-purple">Shift</span></span>
           </Link>
 
           {/* Desktop Nav */}
