@@ -20,8 +20,12 @@ export const ProjectPostForm = () => {
   const [category, setCategory] = useState("Wedding");
   const [radius, setRadius] = useState(20);
   const [locations, setLocations] = useState<any[]>([]);
-  const [rateType, setRateType] = useState("Per Project");
-  const [offeredRate, setOfferedRate] = useState("");
+  
+  const [budgetType, setBudgetType] = useState<'fixed' | 'hourly' | 'negotiable'>("fixed");
+  const [minBudget, setMinBudget] = useState("");
+  const [maxBudget, setMaxBudget] = useState("");
+  const [hourlyRate, setHourlyRate] = useState("");
+  const [estimatedHours, setEstimatedHours] = useState("");
   
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -96,14 +100,28 @@ export const ProjectPostForm = () => {
     }
 
     setSubmitting(true);
+    
+    let budgetSummary = "Negotiable";
+    let bMin = null;
+    let bMax = null;
+
+    if (budgetType === 'fixed') {
+      budgetSummary = `₹${minBudget} - ₹${maxBudget}`;
+      bMin = parseInt(minBudget) || null;
+      bMax = parseInt(maxBudget) || null;
+    } else if (budgetType === 'hourly') {
+      budgetSummary = `₹${hourlyRate}/hr`;
+      bMin = parseInt(hourlyRate) || null;
+    }
+
     console.log("Submitting project:", { 
       title, 
       description, 
       category, 
       radius, 
       locations, 
-      rateType, 
-      offeredRate,
+      budgetType,
+      budgetSummary,
       uploadedFiles 
     });
 
@@ -127,8 +145,10 @@ export const ProjectPostForm = () => {
           shoot_radius: radius || null,
           locations: locations || [],
           files: uploadedFiles || [],
-          rate_type: rateType || null,
-          budget: offeredRate ? String(offeredRate) : 'Negotiable'
+          budget_type: budgetType,
+          budget_min: bMin,
+          budget_max: bMax,
+          budget: budgetSummary
         })
         .select();
 
@@ -210,81 +230,137 @@ export const ProjectPostForm = () => {
               </div>
             </div>
 
-            <AnimatePresence>
-              {isShoot && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="glass p-6 rounded-3xl border-white/5 overflow-hidden"
-                >
-                  <div className="flex justify-between items-center mb-4">
-                    <h4 className="text-[10px] text-neon-blue uppercase font-black tracking-widest">Rate & Payment Terms</h4>
-                    <button 
-                      onClick={getEstimate}
-                      disabled={isEstimating || !title || !description}
-                      className="text-[8px] font-black text-neon-purple uppercase tracking-widest flex items-center gap-1 hover:underline disabled:opacity-30"
-                    >
-                      {isEstimating ? <Loader2 size={10} className="animate-spin" /> : <Sparkles size={10} />}
-                      AI Estimate
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4 mb-6">
-                    <FloatingInput 
-                      label="Offered Rate (₹)" 
-                      type="number" 
-                      value={offeredRate}
-                      onChange={(e) => setOfferedRate(e.target.value)}
-                    />
-                    <select 
-                      value={rateType}
-                      onChange={(e) => setRateType(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white outline-none focus:border-neon-purple transition-colors appearance-none"
-                    >
-                      <option className="bg-zinc-900">Per Hour</option>
-                      <option className="bg-zinc-900">Half Day</option>
-                      <option className="bg-zinc-900">Full Day</option>
-                      <option className="bg-zinc-900">Per Project</option>
-                    </select>
-                  </div>
-
-                  {aiEstimate && (
-                    <motion.div 
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="mb-6 p-4 bg-neon-purple/5 border border-neon-purple/20 rounded-2xl"
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="text-[8px] font-black text-gray-500 uppercase tracking-widest">Recommended Range</span>
-                        <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase ${
-                          aiEstimate.badge === "Fair" ? "bg-green-500/20 text-green-500" :
-                          aiEstimate.badge === "Above Market" ? "bg-neon-blue/20 text-neon-blue" :
-                          "bg-neon-purple/20 text-neon-purple"
-                        }`}>
-                          {aiEstimate.badge}
-                        </span>
-                      </div>
-                      <div className="text-sm font-black text-white mb-1">{aiEstimate.recommended_budget}</div>
-                      <p className="text-[9px] text-gray-400 italic">"{aiEstimate.market_comparison}"</p>
-                    </motion.div>
-                  )}
-
-                  <div className="flex items-center justify-between px-4 py-3 bg-white/5 rounded-2xl border border-white/10">
-                    <span className="text-xs text-gray-300">Negotiable</span>
-                    <input type="checkbox" className="accent-neon-purple w-4 h-4" />
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
             <div className="glass p-6 rounded-3xl border-white/5">
               <h4 className="text-[10px] text-gray-500 uppercase font-black tracking-widest mb-4">Project Brief</h4>
               <textarea 
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Describe your creative requirements..."
-                className="w-full h-32 bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white outline-none focus:border-neon-purple transition-colors resize-none mb-4"
+                className="w-full h-32 bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white outline-none focus:border-neon-purple transition-colors resize-none mb-6"
               />
+
+              {/* Budget Section */}
+              <div className="mb-8 p-6 bg-white/5 border border-white/10 rounded-2xl">
+                <div className="flex justify-between items-center mb-6">
+                  <h5 className="text-[10px] text-neon-purple uppercase font-black tracking-widest">Budget Configuration</h5>
+                  <button 
+                    onClick={getEstimate}
+                    disabled={isEstimating || !title || !description}
+                    className="text-[8px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1 hover:text-white disabled:opacity-30"
+                  >
+                    {isEstimating ? <Loader2 size={10} className="animate-spin" /> : <Sparkles size={10} />}
+                    AI Market Estimate
+                  </button>
+                </div>
+
+                <div className="flex p-1 bg-black/40 rounded-xl mb-6">
+                  {(['fixed', 'hourly', 'negotiable'] as const).map((type) => (
+                    <button
+                      key={type}
+                      onClick={() => setBudgetType(type)}
+                      className={`relative flex-1 py-2 text-[10px] font-black uppercase tracking-widest transition-colors z-10 ${
+                        budgetType === type ? 'text-white' : 'text-gray-500 hover:text-gray-300'
+                      }`}
+                    >
+                      {budgetType === type && (
+                        <motion.div
+                          layoutId="budget-tab"
+                          className="absolute inset-0 bg-neon-purple/20 border border-neon-purple/50 rounded-lg -z-10"
+                          transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                        />
+                      )}
+                      {type === 'fixed' ? 'Fixed Price' : type === 'hourly' ? 'Hourly Rate' : 'Negotiable'}
+                    </button>
+                  ))}
+                </div>
+
+                <AnimatePresence mode="wait">
+                  {budgetType === 'fixed' && (
+                    <motion.div
+                      key="fixed"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="grid grid-cols-2 gap-4"
+                    >
+                      <FloatingInput 
+                        label="Min Budget (₹)" 
+                        type="number" 
+                        placeholder="e.g. ₹5000"
+                        value={minBudget}
+                        onChange={(e) => setMinBudget(e.target.value)}
+                      />
+                      <FloatingInput 
+                        label="Max Budget (₹)" 
+                        type="number" 
+                        placeholder="e.g. ₹10000"
+                        value={maxBudget}
+                        onChange={(e) => setMaxBudget(e.target.value)}
+                      />
+                    </motion.div>
+                  )}
+
+                  {budgetType === 'hourly' && (
+                    <motion.div
+                      key="hourly"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="grid grid-cols-2 gap-4"
+                    >
+                      <FloatingInput 
+                        label="Rate/hr (₹)" 
+                        type="number" 
+                        placeholder="e.g. ₹500"
+                        value={hourlyRate}
+                        onChange={(e) => setHourlyRate(e.target.value)}
+                      />
+                      <FloatingInput 
+                        label="Est. Hours" 
+                        type="number" 
+                        placeholder="e.g. 10"
+                        value={estimatedHours}
+                        onChange={(e) => setEstimatedHours(e.target.value)}
+                      />
+                    </motion.div>
+                  )}
+
+                  {budgetType === 'negotiable' && (
+                    <motion.div
+                      key="negotiable"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="py-4 text-center border border-dashed border-white/10 rounded-xl"
+                    >
+                      <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">
+                        Budget will be discussed with the creator
+                      </p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {aiEstimate && (
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="mt-6 p-4 bg-neon-purple/5 border border-neon-purple/20 rounded-2xl"
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="text-[8px] font-black text-gray-500 uppercase tracking-widest">AI Market Pulse</span>
+                      <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase ${
+                        aiEstimate.badge === "Fair" ? "bg-green-500/20 text-green-500" :
+                        aiEstimate.badge === "Above Market" ? "bg-neon-blue/20 text-neon-blue" :
+                        "bg-neon-purple/20 text-neon-purple"
+                      }`}>
+                        {aiEstimate.badge}
+                      </span>
+                    </div>
+                    <div className="text-sm font-black text-white mb-1">{aiEstimate.recommended_budget}</div>
+                    <p className="text-[9px] text-gray-400 italic">"{aiEstimate.market_comparison}"</p>
+                  </motion.div>
+                )}
+              </div>
               
               <div className="space-y-4">
                 <input 
