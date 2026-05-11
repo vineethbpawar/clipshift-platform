@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!; // Ideally use service role key if available
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || '';
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() || ''; // Ideally use service role key if available
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 export async function POST(req: Request) {
