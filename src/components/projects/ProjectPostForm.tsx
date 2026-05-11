@@ -119,16 +119,16 @@ export const ProjectPostForm = () => {
       const { data, error: insertError } = await supabase
         .from('projects')
         .insert({
-          title,
-          description,
-          category,
-          shoot_radius: isShoot ? radius : null,
-          locations: locations,
-          rate_type: isShoot ? rateType : null,
-          budget: offeredRate || "Negotiable",
-          files: uploadedFiles,
           client_id: session.user.id,
-          status: 'open'
+          title: title,
+          description: description,
+          category: category,
+          status: 'open',
+          shoot_radius: radius || null,
+          locations: locations || [],
+          files: uploadedFiles || [],
+          rate_type: rateType || null,
+          budget: offeredRate ? String(offeredRate) : 'Negotiable'
         })
         .select();
 
