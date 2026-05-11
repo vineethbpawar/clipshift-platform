@@ -8,6 +8,7 @@ import { MapPin, Upload, Calendar, DollarSign, Users, Info, Loader2, Sparkles } 
 import { UploadProgress } from "../storage/UploadProgress";
 import { FilePreview } from "../storage/FilePreview";
 import { uploadFile } from "@/lib/storage";
+import { supabase } from "@/lib/supabase";
 import dynamic from "next/dynamic";
 import { estimatePrice } from "@/lib/gemini";
 
@@ -75,6 +76,82 @@ export const ProjectPostForm = () => {
     setCurrentFileName("");
   };
 
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  const handleSubmit = async () => {
+    console.log("Submit button clicked");
+    setError(null);
+    setSuccess(false);
+
+    if (!title) {
+      setError("Please provide a project title.");
+      return;
+    }
+
+    if (!description) {
+      setError("Please provide a project description.");
+      return;
+    }
+
+    setSubmitting(true);
+    console.log("Submitting project:", { 
+      title, 
+      description, 
+      category, 
+      radius, 
+      locations, 
+      rateType, 
+      offeredRate,
+      uploadedFiles 
+    });
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        setError("You must be logged in to post a project.");
+        setSubmitting(false);
+        return;
+      }
+
+      const { data, error: insertError } = await supabase
+        .from('projects')
+        .insert({
+          title,
+          description,
+          category,
+          shoot_radius: isShoot ? radius : null,
+          locations: locations,
+          rate_type: isShoot ? rateType : null,
+          budget: offeredRate || "Negotiable",
+          files: uploadedFiles,
+          client_id: session.user.id,
+          status: 'open'
+        })
+        .select();
+
+      if (insertError) {
+        console.error("Supabase insert error:", insertError);
+        throw insertError;
+      }
+
+      console.log("Project submitted successfully:", data);
+      setSuccess(true);
+      // Reset form
+      setTitle("");
+      setDescription("");
+      setUploadedFiles([]);
+      setLocations([]);
+    } catch (err: any) {
+      console.error("Submission failed:", err);
+      setError(err.message || "Failed to deploy project request. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const categories = ["Wedding", "YouTube", "Reels", "Drone", "Corporate", "Events", "Fashion", "Gaming", "Podcast", "Shoot"];
   const isShoot = category === "Drone" || category === "Events" || category === "Shoot";
 
@@ -89,6 +166,18 @@ export const ProjectPostForm = () => {
           </div>
 
           <div className="space-y-6">
+            {error && (
+              <div className="bg-red-500/10 border border-red-500/50 text-red-500 p-4 rounded-2xl text-xs font-bold uppercase tracking-widest">
+                {error}
+              </div>
+            )}
+
+            {success && (
+              <div className="bg-green-500/10 border border-green-500/50 text-green-500 p-4 rounded-2xl text-xs font-bold uppercase tracking-widest">
+                Project deployed successfully! Creators will be notified soon.
+              </div>
+            )}
+
             <div className="glass p-6 rounded-3xl border-white/5">
               <h4 className="text-[10px] text-gray-500 uppercase font-black tracking-widest mb-4">Project Identity</h4>
               <div className="space-y-4">
@@ -234,7 +323,19 @@ export const ProjectPostForm = () => {
               </div>
             </div>
 
-            <NeonButton variant="purple" className="w-full py-5 text-sm tracking-[0.2em]">Deploy Project Request</NeonButton>
+            <NeonButton 
+              variant="purple" 
+              className="w-full py-5 text-sm tracking-[0.2em] disabled:opacity-50"
+              onClick={handleSubmit}
+              disabled={submitting}
+            >
+              {submitting ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 size={16} className="animate-spin" />
+                  Deploying...
+                </div>
+              ) : "Deploy Project Request"}
+            </NeonButton>
           </div>
         </div>
 
