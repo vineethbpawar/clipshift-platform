@@ -4,13 +4,14 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
-export type Role = "client" | "editor" | "videographer" | "admin" | null;
+export type Role = "client" | "editor" | "videographer" | "admin" | "creator" | null;
 
 export const getDashboardPath = (role: Role) => {
   switch (role) {
     case "admin": return "/dashboard/admin";
     case "editor": return "/dashboard/editor";
     case "videographer": return "/dashboard/videographer";
+    case "creator": return "/dashboard/creator";
     case "client": return "/dashboard/client";
     default: return "/dashboard/client";
   }
@@ -49,6 +50,8 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   updateSignupData: (data: Partial<User>) => void;
   unlockCreator: (id: string) => void;
+  resetPassword: (email: string) => Promise<void>;
+  updatePassword: (password: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -110,12 +113,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.log("Profile not found, creating default profile");
       const { data: newProfile, error } = await supabase
         .from("profiles")
-        .insert({
+        .upsert({
           id: supabaseUser.id,
           full_name: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split("@")[0] || "User",
           email: supabaseUser.email,
           role: role || "client",
-        })
+        }, { onConflict: 'id' })
         .select()
         .maybeSingle();
       
@@ -127,7 +130,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (profile) {
       const userData: User = {
         id: supabaseUser.id,
-        role: profile.role || "client",
+        role: (profile.role as Role) || "client",
         name: profile.full_name,
         email: profile.email,
         mobile: profile.mobile,
@@ -142,7 +145,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         profileImage: profile.avatar_url
       };
       setUser(userData);
-      setRole(profile.role || "client");
+      setRole((profile.role as Role) || "client");
     }
   };
 
@@ -161,7 +164,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         .eq("id", data.user.id)
         .maybeSingle();
         
-      const userRole = profile?.role || "client";
+      const userRole = (profile?.role as Role) || "client";
       router.push(getDashboardPath(userRole));
     }
   };
@@ -185,7 +188,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       // Save profile details to profiles table
       const { error: profileError } = await supabase
         .from("profiles")
-        .insert({
+        .upsert({
           id: data.user.id,
           full_name: signupData.name,
           email: signupData.email,
@@ -200,7 +203,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           languages: signupData.languages,
           bio: signupData.bio,
           avatar_url: signupData.profileImage
-        });
+        }, { onConflict: 'id' });
 
       if (profileError && profileError.code !== "23505") throw profileError;
       
@@ -227,11 +230,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     localStorage.setItem("clipshift_unlocks", JSON.stringify(newUnlocks));
   };
 
+  const resetPassword = async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/reset-password`,
+    });
+    if (error) throw error;
+  };
+
+  const updatePassword = async (password: string) => {
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) throw error;
+  };
+
   return (
     <AuthContext.Provider
       value={{ 
         user, role, loading, setRole, signupData, unlockedCreators, 
-        signIn, signUp, signOut, updateSignupData, unlockCreator 
+        signIn, signUp, signOut, updateSignupData, unlockCreator,
+        resetPassword, updatePassword
       }}
     >
       {children}

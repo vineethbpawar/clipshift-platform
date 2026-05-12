@@ -7,20 +7,26 @@ import { NeonButton } from "@/components/ui/NeonButton";
 import { PageWrapper } from "@/components/layout/PageWrapper";
 import { useAuth, type Role } from "@/context/AuthContext";
 import Link from "next/link";
-import { User, Edit3, Video } from "lucide-react";
+import { User, Edit3, Video, Loader2 } from "lucide-react";
+import { toast } from "react-hot-toast";
 
 export default function LoginPage() {
   const { signIn } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [selectedRole, setSelectedRole] = useState<Role>("client");
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
     try {
       await signIn(email, password);
+      toast.success("Welcome back!");
     } catch (error: any) {
-      alert(error.message);
+      toast.error(error.message || "Failed to sign in");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -73,16 +79,23 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
               />
-              <FloatingInput
-                label="Password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
+              <div className="relative">
+                <FloatingInput
+                  label="Password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+                <div className="flex justify-end mt-2">
+                  <Link href="/auth/forgot-password" className="text-[10px] text-gray-500 hover:text-neon-purple transition-colors uppercase font-bold tracking-widest">
+                    Forgot Password?
+                  </Link>
+                </div>
+              </div>
 
-              <NeonButton variant="purple" className="w-full py-4" type="submit">
-                Access Dashboard
+              <NeonButton variant="purple" className="w-full py-4" type="submit" disabled={loading}>
+                {loading ? <Loader2 className="animate-spin mx-auto" size={20} /> : "Access Dashboard"}
               </NeonButton>
             </form>
 

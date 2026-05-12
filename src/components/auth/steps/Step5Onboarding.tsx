@@ -1,12 +1,14 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { motion } from "framer-motion";
-import { CheckCircle2, Star, Rocket, Shield } from "lucide-react";
+import { CheckCircle2, Star, Rocket, Shield, Loader2 } from "lucide-react";
+import { toast } from "react-hot-toast";
 
 export const Step5Onboarding = () => {
   const { role, signUp, signupData } = useAuth();
+  const [loading, setLoading] = useState(false);
 
   const roleContent = {
     client: {
@@ -50,10 +52,14 @@ export const Step5Onboarding = () => {
   const Icon = content.icon;
 
   const handleFinish = async () => {
+    setLoading(true);
     try {
       await signUp(signupData.password || "");
+      toast.success("Welcome to the Collective!");
     } catch (error: any) {
-      alert(error.message);
+      toast.error(error.message || "Failed to create account");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -89,9 +95,10 @@ export const Step5Onboarding = () => {
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={handleFinish}
-        className="w-full px-12 py-5 rounded-full bg-gradient-to-r from-neon-purple to-neon-blue text-white font-black uppercase tracking-[0.2em] shadow-[0_0_40px_rgba(168,85,247,0.4)]"
+        disabled={loading}
+        className="w-full px-12 py-5 rounded-full bg-gradient-to-r from-neon-purple to-neon-blue text-white font-black uppercase tracking-[0.2em] shadow-[0_0_40px_rgba(168,85,247,0.4)] disabled:opacity-50"
       >
-        Enter ClipShift
+        {loading ? <Loader2 className="animate-spin mx-auto" size={24} /> : "Enter ClipShift"}
       </motion.button>
     </div>
   );
