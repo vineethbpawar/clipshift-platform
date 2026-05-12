@@ -7,11 +7,20 @@ import { ProposalCard } from "@/components/projects/ProposalCard";
 import { Layers, Zap, Search, Plus, Inbox, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 
 export default function ProjectsPage() {
   const { user } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (user?.role === 'creator') {
+      router.push('/dashboard/creator');
+    }
+  }, [user, router]);
+
   const [projects, setProjects] = useState<any[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -19,11 +28,20 @@ export default function ProjectsPage() {
   useEffect(() => {
     const fetchProjects = async () => {
       setLoading(true);
-      // Fetching from a projects table (placeholder for real data integration)
-      // Since projects table might not exist yet, we'll show empty state correctly
-      const { data, error } = await supabase
-        .from('projects')
-        .select('*');
+      
+      let query = supabase.from('projects').select('*');
+
+      if (user?.role === 'client') {
+        query = query.eq('client_id', user.id);
+      } else if (user?.role === 'creator') {
+        // Creators shouldn't see projects in this view
+        setProjects([]);
+        setLoading(false);
+        return;
+      }
+      // Editors and Videographers see all (no extra filter)
+
+      const { data, error } = await query;
 
       if (!error && data) {
         setProjects(data);
