@@ -8,38 +8,68 @@ import { Loader2, ArrowLeft, X, Check } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "react-hot-toast";
 
+import { sanitizeDescription } from "@/lib/sanitizer";
+
 export default function ProjectDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { user } = useAuth();
   const [project, setProject] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [showProposalModal, setShowProposalModal] = useState(false);
   const [proposalData, setProposalData] = useState({ coverLetter: "", budget: "", days: "" });
-  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     const fetchProject = async () => {
       if (!params.id) return;
-      console.log("Loading project details for ID:", params.id);
       
-      const { data, error } = await supabase
+      const { data: projData, error: projErr } = await supabase
         .from('projects')
         .select('*, profiles(full_name)')
         .eq('id', params.id)
         .maybeSingle();
 
-      if (error) {
-        console.error("Query error:", error);
+      if (projErr || !projData) {
+        console.error("Failed to fetch project:", projErr);
       } else {
-        console.log("Project query result:", data);
-        setProject(data);
+        setProject(projData);
+
+        // Check if unlocked
+        const { data: unlockData } = await supabase
+          .from('project_unlocks')
+          .select('*')
+          .eq('project_id', params.id)
+          .eq('freelancer_id', user?.id)
+          .eq('payment_status', 'paid')
+          .maybeSingle();
+        
+        setIsUnlocked(!!unlockData);
       }
       setLoading(false);
     };
 
-    fetchProject();
-  }, [params.id]);
+    if (user?.id) fetchProject();
+  }, [params.id, user?.id]);
+
+  const handleUnlock = async () => {
+    setSubmitting(true);
+    const { error } = await supabase.from('project_unlocks').insert({
+      project_id: params.id,
+      freelancer_id: user?.id,
+      payment_status: 'paid',
+      unlocked_at: new Date().toISOString()
+    });
+
+    if (error) {
+      toast.error("Failed to unlock.");
+    } else {
+      setIsUnlocked(true);
+      toast.success("Contact unlocked!");
+    }
+    setSubmitting(false);
+  };
 
   const handleProposalSubmit = async () => {
     setSubmitting(true);
@@ -79,7 +109,9 @@ export default function ProjectDetailPage() {
             </span>
           </div>
           
-          <p className="text-gray-400 mb-8 leading-relaxed">{project.description}</p>
+          <p className="text-gray-400 mb-8 leading-relaxed">
+            {isUnlocked ? project.description : sanitizeDescription(project.description)}
+          </p>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-10">
             <div>
@@ -98,12 +130,27 @@ export default function ProjectDetailPage() {
 
           <div className="flex gap-4">
             {(user?.role === 'editor' || user?.role === 'videographer') && (
-              <button 
-                onClick={() => setShowProposalModal(true)}
-                className="px-8 py-3 bg-neon-purple text-white rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 transition-transform"
-              >
-                Submit Proposal
-              </button>
+              <>
+                <button 
+                  onClick={() => setShowProposalModal(true)}
+                  className="px-8 py-3 bg-neon-purple text-white rounded-full font-black text-xs uppercase tracking-widest hover:scale-105"
+                >
+                  Submit Proposal
+                </button>
+                {!isUnlocked ? (
+                  <button 
+                    onClick={handleUnlock}
+                    disabled={submitting}
+                    className="px-8 py-3 bg-neon-blue text-black rounded-full font-black text-xs uppercase tracking-widest hover:scale-105"
+                  >
+                    Unlock Contact ₹99
+                  </button>
+                ) : (
+                  <button className="px-8 py-3 bg-green-500 text-black rounded-full font-black text-xs uppercase tracking-widest">
+                    Message Client
+                  </button>
+                )}
+              </>
             )}
             {user?.id === project.client_id && (
               <button className="px-8 py-3 bg-white text-black rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 transition-transform">

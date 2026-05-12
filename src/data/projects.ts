@@ -10,6 +10,8 @@ export interface Project {
   progress: number;
   proposals?: any[];
   milestones?: any[];
+  service_type?: 'editing_only' | 'editing_and_shoot';
+  locations?: { name: string; lat: number; lng: number }[];
 }
 
 export interface ProjectProposal {
