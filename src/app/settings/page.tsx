@@ -127,7 +127,7 @@ export default function SettingsPage() {
       });
 
       // Fetch creator data if applicable
-      if (user.role === "editor" || user.role === "videographer") {
+      if (user.role === "creator") {
         fetchCreatorData();
       }
     }
@@ -325,7 +325,7 @@ export default function SettingsPage() {
     );
   }
 
-  const isCreator = user?.role === "editor" || user?.role === "videographer";
+  const isCreator = user?.role === "creator";
 
   const tabs = [
     { id: "profile", label: "Profile", icon: User },

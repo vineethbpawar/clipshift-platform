@@ -19,7 +19,7 @@ export const Step1Role = ({ onNext }: { onNext: () => void }) => {
         <p className="text-gray-400">Select the role that best defines your cinematic journey</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <RoleCard
           role="client"
           isSelected={role === "client"}
@@ -28,18 +28,11 @@ export const Step1Role = ({ onNext }: { onNext: () => void }) => {
           description="Looking for premium cinematic assets or to hire top-tier creators for your projects."
         />
         <RoleCard
-          role="editor"
-          isSelected={role === "editor"}
-          onSelect={() => handleSelect("editor")}
-          title="Editor"
-          description="A post-production wizard specializing in VFX, color grading, and narrative cutting."
-        />
-        <RoleCard
-          role="videographer"
-          isSelected={role === "videographer"}
-          onSelect={() => handleSelect("videographer")}
-          title="Videographer"
-          description="A visual storyteller capturing high-fidelity footage and immersive environments."
+          role="creator"
+          isSelected={role === "creator"}
+          onSelect={() => handleSelect("creator")}
+          title="Creator"
+          description="A visual storyteller and post-production expert capturing footage and crafting narratives."
         />
       </div>
 

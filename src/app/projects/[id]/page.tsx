@@ -137,15 +137,30 @@ export default function ProjectDetailPage() {
           </div>
 
           <div className="flex gap-4">
-            {(user?.role === 'editor' || user?.role === 'videographer' || user?.role === 'creator') && (
+            {user?.role === 'creator' && (
               <>
-                <button onClick={() => setShowProposalModal(true)} className="px-8 py-3 bg-neon-purple text-white rounded-full font-black text-xs uppercase tracking-widest hover:scale-105">Submit Proposal</button>
+                <button 
+                  onClick={() => setShowProposalModal(true)}
+                  className="px-8 py-3 bg-neon-purple text-white rounded-full font-black text-xs uppercase tracking-widest hover:scale-105"
+                >
+                  Submit Proposal
+                </button>
                 {!isUnlocked ? (
-                  <button onClick={handleUnlock} disabled={submitting} className="px-8 py-3 bg-neon-blue text-black rounded-full font-black text-xs uppercase tracking-widest hover:scale-105">Unlock Contact ₹99</button>
+                  <button 
+                    onClick={handleUnlock}
+                    disabled={submitting}
+                    className="px-8 py-3 bg-neon-blue text-black rounded-full font-black text-xs uppercase tracking-widest hover:scale-105"
+                  >
+                    Unlock Contact ₹99
+                  </button>
                 ) : (
-                  <button className="px-8 py-3 bg-green-500 text-black rounded-full font-black text-xs uppercase tracking-widest">Message Client</button>
+                  <button className="px-8 py-3 bg-green-500 text-black rounded-full font-black text-xs uppercase tracking-widest">
+                    Message Client
+                  </button>
                 )}
-                <button className="px-8 py-3 bg-white/5 border border-white/10 text-white rounded-full font-black text-xs uppercase tracking-widest hover:bg-white/10">Save Project</button>
+                <button className="px-8 py-3 bg-white/5 border border-white/10 text-white rounded-full font-black text-xs uppercase tracking-widest hover:bg-white/10">
+                  Save Project
+                </button>
               </>
             )}
             {isOwner && (

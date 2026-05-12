@@ -65,7 +65,7 @@ export const DashboardSidebar = () => {
       ];
     }
 
-    if (role === "editor" || role === "videographer") {
+    if (role === "creator") {
       return [
         ...common,
         { href: `${dashboardPath}/earnings`, icon: DollarSign, label: "Earnings" },

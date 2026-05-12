@@ -11,7 +11,7 @@ function cn(...inputs: ClassValue[]) {
 }
 
 interface RoleCardProps {
-  role: "client" | "editor" | "videographer";
+  role: "client" | "creator";
   isSelected: boolean;
   onSelect: () => void;
   title: string;
@@ -20,8 +20,7 @@ interface RoleCardProps {
 
 const icons = {
   client: User,
-  editor: Edit3,
-  videographer: Video,
+  creator: Video,
 };
 
 export const RoleCard = ({ role, isSelected, onSelect, title, description }: RoleCardProps) => {

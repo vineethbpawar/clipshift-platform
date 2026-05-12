@@ -4,13 +4,11 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
-export type Role = "client" | "editor" | "videographer" | "admin" | "creator" | null;
+export type Role = "client" | "creator" | "admin" | null;
 
 export const getDashboardPath = (role: Role) => {
   switch (role) {
     case "admin": return "/dashboard/admin";
-    case "editor": return "/dashboard/editor";
-    case "videographer": return "/dashboard/videographer";
     case "creator": return "/dashboard/creator";
     case "client": return "/dashboard/client";
     default: return "/dashboard/client";
