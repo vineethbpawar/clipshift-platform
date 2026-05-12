@@ -16,6 +16,7 @@ export const metadata: Metadata = {
 };
 
 import { ChatProvider } from "@/context/ChatContext";
+import { Toaster } from "react-hot-toast";
 
 export default function RootLayout({
   children,
@@ -27,6 +28,13 @@ export default function RootLayout({
       <body className={`${inter.variable} font-sans min-h-screen bg-background text-foreground flex flex-col`}>
         <AuthProvider>
           <ChatProvider>
+            <Toaster position="bottom-right" toastOptions={{
+              className: 'glass text-white border border-white/10',
+              style: {
+                background: 'rgba(0, 0, 0, 0.8)',
+                backdropFilter: 'blur(10px)',
+              },
+            }} />
             <Navbar />
             <main className="flex-1 flex flex-col">
               {children}
