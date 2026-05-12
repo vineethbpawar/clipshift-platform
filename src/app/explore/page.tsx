@@ -8,6 +8,7 @@ import { PageWrapper } from "@/components/layout/PageWrapper";
 import { Crosshair, Filter, List, MapPinOff, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase";
+import { toast } from "react-hot-toast";
 
 export default function ExplorePage() {
   const [creators, setCreators] = useState<any[]>([]);
@@ -20,38 +21,46 @@ export default function ExplorePage() {
   useEffect(() => {
     const fetchCreators = async () => {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('creators')
-        .select(`
-          *,
-          profiles (
-            full_name,
-            avatar_url,
-            city,
-            area,
-            pincode
-          )
-        `);
+      try {
+        const { data, error } = await supabase
+          .from('creators')
+          .select(`
+            *,
+            profiles (
+              full_name,
+              avatar_url,
+              city,
+              area,
+              pincode
+            )
+          `);
 
-      if (!error && data) {
-        const mappedCreators = data.map(c => ({
-          id: c.id,
-          name: c.profiles.full_name,
-          category: c.category,
-          image: c.profiles.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80",
-          location: { 
-            lat: c.location_lat, 
-            lng: c.location_lng,
-            city: c.profiles.city,
-            area: c.profiles.area,
-            pincode: c.profiles.pincode
-          },
-          rating: c.rating
-        }));
-        setCreators(mappedCreators);
-        setFilteredCreators(mappedCreators);
+        if (error) throw error;
+        
+        if (data) {
+          const mappedCreators = data.map(c => ({
+            id: c.id,
+            name: c.profiles?.full_name || "Unknown",
+            category: c.category,
+            image: c.profiles?.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80",
+            location: { 
+              lat: c.location_lat || 19.0760, 
+              lng: c.location_lng || 72.8777,
+              city: c.profiles?.city,
+              area: c.profiles?.area,
+              pincode: c.profiles?.pincode
+            },
+            rating: c.rating
+          }));
+          setCreators(mappedCreators);
+          setFilteredCreators(mappedCreators);
+        }
+      } catch (err) {
+        console.error("Error fetching creators:", err);
+        toast.error("Failed to load map data");
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     fetchCreators();
