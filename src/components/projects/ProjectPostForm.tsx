@@ -11,15 +11,37 @@ import { uploadFile } from "@/lib/storage";
 import { supabase } from "@/lib/supabase";
 import dynamic from "next/dynamic";
 import { estimatePrice } from "@/lib/gemini";
+import { Crosshair } from "lucide-react";
+import { detectLocation } from "@/lib/geolocation";
+import { toast } from "react-hot-toast";
 
 const ProjectLocationMap = dynamic(() => import("../map/projects/ProjectLocationMap"), { ssr: false });
 
 export const ProjectPostForm = () => {
+  const [isDetecting, setIsDetecting] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("Wedding");
   const [radius, setRadius] = useState(20);
   const [locations, setLocations] = useState<any[]>([]);
+
+  const handleDetectLocation = async () => {
+    setIsDetecting(true);
+    try {
+      const data = await detectLocation();
+      const newLoc = { 
+        lat: data.lat, 
+        lng: data.lng, 
+        name: data.area || data.city || "Current Location" 
+      };
+      setLocations([...locations, newLoc]);
+      toast.success("Location detected!");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to detect location");
+    } finally {
+      setIsDetecting(false);
+    }
+  };
   
   const [budgetType, setBudgetType] = useState<'fixed' | 'hourly' | 'negotiable'>("fixed");
   const [minBudget, setMinBudget] = useState("");
@@ -426,6 +448,20 @@ export const ProjectPostForm = () => {
             
             {/* Map Controls Overlay */}
             <div className="absolute top-6 left-6 right-6 z-10 pointer-events-none flex flex-col gap-4">
+              <button
+                type="button"
+                onClick={handleDetectLocation}
+                disabled={isDetecting}
+                className="pointer-events-auto flex items-center justify-center space-x-2 px-6 py-4 rounded-xl glass border-white/10 text-neon-purple font-bold uppercase tracking-widest text-[10px] hover:bg-neon-purple/10 hover:border-neon-purple/50 transition-all group shadow-[0_0_20px_rgba(168,85,247,0)] hover:shadow-[0_0_20px_rgba(168,85,247,0.2)] max-w-xs"
+              >
+                {isDetecting ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <Crosshair size={14} className="group-hover:scale-110 transition-transform" />
+                )}
+                <span>{isDetecting ? "Detecting..." : "Detect My Location"}</span>
+              </button>
+
               <div className="glass p-4 rounded-2xl border-white/10 pointer-events-auto max-w-xs">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-[10px] font-black text-white uppercase tracking-widest">Shoot Radius</span>

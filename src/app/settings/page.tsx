@@ -19,12 +19,14 @@ import {
   Lock,
   Loader2,
   CheckCircle2,
-  AtSign
+  AtSign,
+  Crosshair
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { toast } from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import { CreatorCategory } from "@/data/creators";
+import { detectLocation } from "@/lib/geolocation";
 
 const SignupMap = dynamic(() => import("@/components/map/signup/SignupMap"), { 
   ssr: false,
@@ -41,6 +43,7 @@ export default function SettingsPage() {
   const { user, loading: authLoading, signOut } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [isDetecting, setIsDetecting] = useState(false);
   const [activeTab, setActiveTab] = useState<"profile" | "location" | "creator" | "account">("profile");
 
   // Profile State
@@ -61,6 +64,26 @@ export default function SettingsPage() {
     lat: 0,
     lng: 0
   });
+
+  const handleDetectLocation = async () => {
+    setIsDetecting(true);
+    try {
+      const data = await detectLocation();
+      setLocationData({
+        city: data.city || locationData.city,
+        area: data.area || locationData.area,
+        pincode: data.pincode || locationData.pincode,
+        address: data.address || locationData.address,
+        lat: data.lat,
+        lng: data.lng
+      });
+      toast.success("Location detected!");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to detect location");
+    } finally {
+      setIsDetecting(false);
+    }
+  };
 
   // Creator State
   const [creatorData, setCreatorData] = useState({
@@ -444,6 +467,20 @@ export default function SettingsPage() {
 
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
                         <div className="space-y-4">
+                          <button
+                            type="button"
+                            onClick={handleDetectLocation}
+                            disabled={isDetecting}
+                            className="w-full mb-6 flex items-center justify-center space-x-2 px-6 py-4 rounded-xl glass border-white/10 text-neon-purple font-bold uppercase tracking-widest text-xs hover:bg-neon-purple/10 hover:border-neon-purple/50 transition-all group shadow-[0_0_20px_rgba(168,85,247,0)] hover:shadow-[0_0_20px_rgba(168,85,247,0.2)]"
+                          >
+                            {isDetecting ? (
+                              <Loader2 size={18} className="animate-spin" />
+                            ) : (
+                              <Crosshair size={18} className="group-hover:scale-110 transition-transform" />
+                            )}
+                            <span>{isDetecting ? "Detecting..." : "Detect My Location"}</span>
+                          </button>
+
                           <div className="grid grid-cols-2 gap-4">
                             <FloatingInput 
                               label="City" 

@@ -6,6 +6,9 @@ import { useAuth } from "@/context/AuthContext";
 import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
 import "leaflet/dist/leaflet.css";
+import { Crosshair, Loader2 } from "lucide-react";
+import { detectLocation } from "@/lib/geolocation";
+import { toast } from "react-hot-toast";
 
 // Dynamic import for Leaflet components to avoid SSR errors
 const SignupMap = dynamic(() => import("@/components/map/signup/SignupMap"), { 
@@ -15,6 +18,7 @@ const SignupMap = dynamic(() => import("@/components/map/signup/SignupMap"), {
 
 export const Step3Location = ({ onNext, onBack }: { onNext: () => void, onBack: () => void }) => {
   const { signupData, updateSignupData } = useAuth();
+  const [isDetecting, setIsDetecting] = useState(false);
   const [localData, setLocalData] = useState({
     city: signupData.city || "",
     area: signupData.area || "",
@@ -23,8 +27,27 @@ export const Step3Location = ({ onNext, onBack }: { onNext: () => void, onBack: 
   });
   
   const [position, setPosition] = useState<[number, number] | null>(
-    signupData.lat && signupData.lng ? [signupData.lat, signupData.lng] : [51.505, -0.09]
+    signupData.lat && signupData.lng ? [signupData.lat, signupData.lng] : [19.0760, 72.8777]
   );
+
+  const handleDetectLocation = async () => {
+    setIsDetecting(true);
+    try {
+      const data = await detectLocation();
+      setLocalData({
+        city: data.city || localData.city,
+        area: data.area || localData.area,
+        pincode: data.pincode || localData.pincode,
+        address: data.address || localData.address,
+      });
+      setPosition([data.lat, data.lng]);
+      toast.success("Location detected!");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to detect location");
+    } finally {
+      setIsDetecting(false);
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -59,6 +82,20 @@ export const Step3Location = ({ onNext, onBack }: { onNext: () => void, onBack: 
 
       <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <div className="space-y-4">
+          <button
+            type="button"
+            onClick={handleDetectLocation}
+            disabled={isDetecting}
+            className="w-full mb-6 flex items-center justify-center space-x-2 px-6 py-4 rounded-xl glass border-white/10 text-neon-purple font-bold uppercase tracking-widest text-xs hover:bg-neon-purple/10 hover:border-neon-purple/50 transition-all group shadow-[0_0_20px_rgba(168,85,247,0)] hover:shadow-[0_0_20px_rgba(168,85,247,0.2)]"
+          >
+            {isDetecting ? (
+              <Loader2 size={18} className="animate-spin" />
+            ) : (
+              <Crosshair size={18} className="group-hover:scale-110 transition-transform" />
+            )}
+            <span>{isDetecting ? "Detecting..." : "Detect My Location"}</span>
+          </button>
+
           <div className="grid grid-cols-2 gap-4">
             <FloatingInput
               label="City"
