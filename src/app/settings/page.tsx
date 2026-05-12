@@ -139,7 +139,11 @@ export default function SettingsPage() {
         .from("creators")
         .select("*")
         .eq("id", user?.id)
-        .single();
+        .maybeSingle();
+
+      if (!data) {
+        console.log("Profile not found");
+      }
 
       if (data) {
         setCreatorData({
@@ -209,7 +213,11 @@ export default function SettingsPage() {
         .from("creators")
         .select("id")
         .eq("id", user?.id)
-        .single();
+        .maybeSingle();
+
+      if (!existing) {
+        console.log("Profile not found");
+      }
 
       const creatorPayload = {
         availability: creatorData.availability,

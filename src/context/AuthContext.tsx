@@ -94,7 +94,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       .from("profiles")
       .select("*")
       .eq("id", supabaseUser.id)
-      .single();
+      .maybeSingle();
+
+    if (!profile) {
+      console.log("Profile not found");
+    }
 
     if (profile) {
       const userData: User = {
@@ -132,8 +136,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         .from("profiles")
         .select("role")
         .eq("id", data.user.id)
-        .single();
+        .maybeSingle();
         
+      if (!profile) {
+        console.log("Profile not found");
+      }
+
       if (profile) {
         router.push(`/dashboard/${profile.role}`);
       }
