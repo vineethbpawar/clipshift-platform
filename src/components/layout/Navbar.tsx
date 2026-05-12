@@ -46,15 +46,7 @@ export const Navbar = () => {
         <div className="flex justify-between h-20 items-center">
           {/* Logo */}
           <Link href="/" className="flex items-center">
-            <div className="relative w-[140px] h-[40px] md:w-[160px] md:h-[50px]">
-              <Image 
-                src="/logo.png" 
-                alt="ClipShift" 
-                fill 
-                className="object-contain object-left"
-                priority 
-              />
-            </div>
+            <Image src="/logo.png" alt="ClipShift" width={180} height={60} className="h-10 w-auto" />
           </Link>
 
           {/* Desktop Nav */}
