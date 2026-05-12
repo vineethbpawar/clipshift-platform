@@ -13,10 +13,33 @@ export default function ProposalsPage() {
   const { user } = useAuth();
 
   const fetchProposals = async () => {
-    console.log("Fetching proposals for user:", user?.id);
+    if (!user?.id) return;
+    
+    // 1. Fetch project IDs owned by client
+    const { data: clientProjects, error: projErr } = await supabase
+      .from('projects')
+      .select('id')
+      .eq('client_id', user.id);
+
+    if (projErr) {
+      console.error("Error fetching client projects:", projErr);
+      setLoading(false);
+      return;
+    }
+
+    const projectIds = clientProjects?.map(p => p.id) || [];
+    console.log("Client project IDs:", projectIds);
+
+    if (projectIds.length === 0) {
+      setLoading(false);
+      return;
+    }
+
+    // 2. Fetch proposals for those project IDs
     const { data, error } = await supabase
       .from('proposals')
-      .select('*, projects!inner(title, client_id), profiles(full_name)');
+      .select('*, projects!inner(title, client_id), profiles(full_name)')
+      .in('project_id', projectIds);
     
     if (error) {
       console.error("Proposal fetch error:", error);
@@ -29,8 +52,8 @@ export default function ProposalsPage() {
   };
 
   useEffect(() => {
-    fetchProposals();
-  }, []);
+    if (user?.id) fetchProposals();
+  }, [user?.id]);
 
   const handleAction = async (id: string, status: 'accepted' | 'rejected', projectId: string, freelancerId: string) => {
     setLoading(true);
@@ -66,10 +89,16 @@ export default function ProposalsPage() {
                 </div>
                 {(!prop.status || prop.status === 'pending') ? (
                   <div className="flex gap-4">
-                    <button onClick={() => handleAction(prop.id, 'accepted', prop.project_id, prop.freelancer_id)} className="px-4 py-2 bg-green-500 text-white rounded-lg font-bold text-xs uppercase hover:bg-green-600 transition">
+                    <button 
+                      onClick={() => handleAction(prop.id, 'accepted', prop.project_id, prop.freelancer_id)} 
+                      className="px-4 py-2 bg-green-500 text-white rounded-lg font-bold text-xs uppercase hover:bg-green-600 transition"
+                    >
                       Accept Proposal
                     </button>
-                    <button onClick={() => handleAction(prop.id, 'rejected', prop.project_id, prop.freelancer_id)} className="px-4 py-2 bg-red-500 text-white rounded-lg font-bold text-xs uppercase hover:bg-red-600 transition">
+                    <button 
+                      onClick={() => handleAction(prop.id, 'rejected', prop.project_id, prop.freelancer_id)} 
+                      className="px-4 py-2 bg-red-500 text-white rounded-lg font-bold text-xs uppercase hover:bg-red-600 transition"
+                    >
                       Reject Proposal
                     </button>
                   </div>

@@ -4,10 +4,9 @@ import React, { useEffect, useState } from "react";
 import { PageWrapper } from "@/components/layout/PageWrapper";
 import { supabase } from "@/lib/supabase";
 import { useParams, useRouter } from "next/navigation";
-import { Loader2, ArrowLeft, X, Check } from "lucide-react";
+import { Loader2, ArrowLeft, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "react-hot-toast";
-
 import { sanitizeDescription } from "@/lib/sanitizer";
 
 export default function ProjectDetailPage() {
@@ -21,10 +20,22 @@ export default function ProjectDetailPage() {
   const [showProposalModal, setShowProposalModal] = useState(false);
   const [proposalData, setProposalData] = useState({ coverLetter: "", budget: "", days: "" });
 
+  const handleDelete = async () => {
+    if (!confirm("Are you sure you want to delete this project? This cannot be undone.")) return;
+    setSubmitting(true);
+    const { error } = await supabase.from('projects').delete().eq('id', params.id);
+    if (error) {
+      toast.error("Failed to delete project");
+    } else {
+      toast.success("Project deleted");
+      router.push("/dashboard/client");
+    }
+    setSubmitting(false);
+  };
+
   useEffect(() => {
     const fetchProject = async () => {
       if (!params.id) return;
-      
       const { data: projData, error: projErr } = await supabase
         .from('projects')
         .select('*, profiles(full_name)')
@@ -35,8 +46,6 @@ export default function ProjectDetailPage() {
         console.error("Failed to fetch project:", projErr);
       } else {
         setProject(projData);
-
-        // Check if unlocked
         const { data: unlockData } = await supabase
           .from('project_unlocks')
           .select('*')
@@ -44,12 +53,10 @@ export default function ProjectDetailPage() {
           .eq('freelancer_id', user?.id)
           .eq('payment_status', 'paid')
           .maybeSingle();
-        
         setIsUnlocked(!!unlockData);
       }
       setLoading(false);
     };
-
     if (user?.id) fetchProject();
   }, [params.id, user?.id]);
 
@@ -61,7 +68,6 @@ export default function ProjectDetailPage() {
       payment_status: 'paid',
       unlocked_at: new Date().toISOString()
     });
-
     if (error) {
       toast.error("Failed to unlock.");
     } else {
@@ -81,7 +87,6 @@ export default function ProjectDetailPage() {
       proposed_budget: proposalData.budget,
       estimated_delivery_days: proposalData.days
     });
-
     if (error) {
       toast.error(error.message === "duplicate key value violates unique constraint" ? "You have already submitted a proposal." : "Failed to submit proposal.");
     } else {
@@ -131,34 +136,19 @@ export default function ProjectDetailPage() {
           <div className="flex gap-4">
             {(user?.role === 'editor' || user?.role === 'videographer') && (
               <>
-                <button 
-                  onClick={() => setShowProposalModal(true)}
-                  className="px-8 py-3 bg-neon-purple text-white rounded-full font-black text-xs uppercase tracking-widest hover:scale-105"
-                >
-                  Submit Proposal
-                </button>
+                <button onClick={() => setShowProposalModal(true)} className="px-8 py-3 bg-neon-purple text-white rounded-full font-black text-xs uppercase tracking-widest hover:scale-105">Submit Proposal</button>
                 {!isUnlocked ? (
-                  <button 
-                    onClick={handleUnlock}
-                    disabled={submitting}
-                    className="px-8 py-3 bg-neon-blue text-black rounded-full font-black text-xs uppercase tracking-widest hover:scale-105"
-                  >
-                    Unlock Contact ₹99
-                  </button>
+                  <button onClick={handleUnlock} disabled={submitting} className="px-8 py-3 bg-neon-blue text-black rounded-full font-black text-xs uppercase tracking-widest hover:scale-105">Unlock Contact ₹99</button>
                 ) : (
-                  <button className="px-8 py-3 bg-green-500 text-black rounded-full font-black text-xs uppercase tracking-widest">
-                    Message Client
-                  </button>
+                  <button className="px-8 py-3 bg-green-500 text-black rounded-full font-black text-xs uppercase tracking-widest">Message Client</button>
                 )}
               </>
             )}
             {user?.id === project.client_id && (
-              <button 
-                onClick={() => router.push(`/projects/${project.id}/edit`)}
-                className="px-8 py-3 bg-white text-black rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 transition-transform"
-              >
-                Edit Project
-              </button>
+              <>
+                <button onClick={() => router.push(`/projects/${project.id}/edit`)} className="px-8 py-3 bg-white text-black rounded-full font-black text-xs uppercase tracking-widest hover:scale-105">Edit Project</button>
+                <button onClick={handleDelete} className="px-8 py-3 bg-red-500/10 text-red-500 border border-red-500/20 rounded-full font-black text-xs uppercase tracking-widest hover:bg-red-500/20">Delete Project</button>
+              </>
             )}
           </div>
         </div>
@@ -173,9 +163,7 @@ export default function ProjectDetailPage() {
               <textarea placeholder="Cover Letter" className="w-full bg-white/5 p-4 rounded-2xl text-sm text-white mb-4" onChange={e => setProposalData({...proposalData, coverLetter: e.target.value})}/>
               <input type="number" placeholder="Proposed Budget (₹)" className="w-full bg-white/5 p-4 rounded-2xl text-sm text-white mb-4" onChange={e => setProposalData({...proposalData, budget: e.target.value})}/>
               <input type="number" placeholder="Delivery Days" className="w-full bg-white/5 p-4 rounded-2xl text-sm text-white mb-6" onChange={e => setProposalData({...proposalData, days: e.target.value})}/>
-              <button onClick={handleProposalSubmit} disabled={submitting} className="w-full py-4 bg-neon-purple text-white rounded-full font-black uppercase hover:opacity-90">
-                {submitting ? "Submitting..." : "Send Proposal"}
-              </button>
+              <button onClick={handleProposalSubmit} disabled={submitting} className="w-full py-4 bg-neon-purple text-white rounded-full font-black uppercase hover:opacity-90">{submitting ? "Submitting..." : "Send Proposal"}</button>
             </div>
           </div>
         )}
