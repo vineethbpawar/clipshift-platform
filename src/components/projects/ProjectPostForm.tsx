@@ -22,6 +22,7 @@ export const ProjectPostForm = () => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("Wedding");
+  const [serviceType, setServiceType] = useState<"editing_only" | "editing_and_shoot">("editing_only");
   const [radius, setRadius] = useState(20);
   const [locations, setLocations] = useState<any[]>([]);
 
@@ -167,6 +168,7 @@ export const ProjectPostForm = () => {
           shoot_radius: radius || null,
           locations: locations || [],
           files: uploadedFiles || [],
+          service_type: serviceType,
           budget_type: budgetType,
           budget_min: bMin,
           budget_max: bMax,
@@ -241,11 +243,14 @@ export const ProjectPostForm = () => {
                     </select>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] text-gray-500 uppercase font-bold tracking-widest ml-4">Urgency</label>
-                    <select className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white outline-none focus:border-neon-purple transition-colors appearance-none">
-                      <option className="bg-zinc-900">Standard</option>
-                      <option className="bg-zinc-900">Urgent (48h)</option>
-                      <option className="bg-zinc-900">High Priority</option>
+                    <label className="text-[10px] text-gray-500 uppercase font-bold tracking-widest ml-4">Service Type</label>
+                    <select 
+                      value={serviceType}
+                      onChange={(e) => setServiceType(e.target.value as any)}
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white outline-none focus:border-neon-purple transition-colors appearance-none"
+                    >
+                      <option value="editing_only" className="bg-zinc-900">Editing Only</option>
+                      <option value="editing_and_shoot" className="bg-zinc-900">Editing & Shoot</option>
                     </select>
                   </div>
                 </div>

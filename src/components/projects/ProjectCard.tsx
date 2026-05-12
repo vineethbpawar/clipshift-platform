@@ -3,10 +3,21 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Clock, CheckCircle2, Circle, AlertCircle, ChevronRight, DollarSign } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { type Project } from "@/data/projects";
 
 export const ProjectCard = ({ project }: { project: Project }) => {
   const [timeLeft, setTimeLeft] = useState("");
+  const router = useRouter();
+
+  const handleOpenProject = () => {
+    console.log("Opening project:", project.id);
+    if (!project?.id) {
+      console.error("Missing project id");
+      return;
+    }
+    router.push(`/projects/${project.id}`);
+  };
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -28,11 +39,20 @@ export const ProjectCard = ({ project }: { project: Project }) => {
   }, [project.deadline]);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="glass border-white/5 rounded-[32px] p-8 overflow-hidden group hover:border-neon-purple/50 transition-all duration-500"
+    <div
+      onClick={handleOpenProject}
+      className="cursor-pointer glass border-white/5 rounded-[32px] p-8 overflow-hidden group hover:border-purple-500 transition-all duration-500"
     >
+      <button
+        onClick={() => {
+          console.log("TEST BUTTON WORKS");
+          router.push(`/projects/${project.id}`);
+        }}
+        className="mb-4 px-4 py-2 bg-purple-600 text-white rounded-lg text-xs font-bold uppercase"
+      >
+        Test Open
+      </button>
+
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10">
         <div>
           <div className="flex items-center gap-3 mb-2">
@@ -55,9 +75,6 @@ export const ProjectCard = ({ project }: { project: Project }) => {
             <div className="text-[10px] text-gray-500 uppercase font-black tracking-widest mb-1">Budget</div>
             <div className="text-xl font-black text-white">{project.budget}</div>
           </div>
-          <button className="p-4 rounded-2xl bg-white/5 border border-white/10 text-white hover:bg-neon-purple transition-all group-hover:shadow-[0_0_20px_rgba(168,85,247,0.3)]">
-            <ChevronRight size={20} />
-          </button>
         </div>
       </div>
 
@@ -111,6 +128,6 @@ export const ProjectCard = ({ project }: { project: Project }) => {
           </p>
         </div>
       )}
-    </motion.div>
+    </div>
   );
 };

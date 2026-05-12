@@ -28,6 +28,7 @@ export default function ProjectsPage() {
   useEffect(() => {
     const fetchProjects = async () => {
       setLoading(true);
+      console.log("DEBUG: Fetching projects for user role:", user?.role, "ID:", user?.id);
       
       let query = supabase.from('projects').select('*');
 
@@ -42,6 +43,11 @@ export default function ProjectsPage() {
       // Editors and Videographers see all (no extra filter)
 
       const { data, error } = await query;
+      console.log("DEBUG: Query result:", { data, error });
+
+      if (error) {
+        console.error("DEBUG: Query error:", error);
+      }
 
       if (!error && data) {
         setProjects(data);
