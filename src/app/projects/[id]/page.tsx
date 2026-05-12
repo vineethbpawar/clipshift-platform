@@ -153,7 +153,10 @@ export default function ProjectDetailPage() {
               </>
             )}
             {user?.id === project.client_id && (
-              <button className="px-8 py-3 bg-white text-black rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 transition-transform">
+              <button 
+                onClick={() => router.push(`/projects/${project.id}/edit`)}
+                className="px-8 py-3 bg-white text-black rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 transition-transform"
+              >
                 Edit Project
               </button>
             )}
