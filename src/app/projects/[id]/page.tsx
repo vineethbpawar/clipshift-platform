@@ -99,6 +99,9 @@ export default function ProjectDetailPage() {
   if (loading) return <div className="flex justify-center pt-32"><Loader2 className="animate-spin text-neon-purple" /></div>;
   if (!project) return <div className="text-center pt-32 text-white">Project not found</div>;
 
+  const isOwner = user?.id === project.client_id && user?.role === "client";
+  console.log("Debug Auth:", { userId: user?.id, client: project.client_id, role: user?.role, isOwner });
+
   return (
     <PageWrapper>
       <div className="max-w-4xl mx-auto pt-32 pb-20 px-4">
@@ -134,7 +137,7 @@ export default function ProjectDetailPage() {
           </div>
 
           <div className="flex gap-4">
-            {(user?.role === 'editor' || user?.role === 'videographer') && (
+            {(user?.role === 'editor' || user?.role === 'videographer' || user?.role === 'creator') && (
               <>
                 <button onClick={() => setShowProposalModal(true)} className="px-8 py-3 bg-neon-purple text-white rounded-full font-black text-xs uppercase tracking-widest hover:scale-105">Submit Proposal</button>
                 {!isUnlocked ? (
@@ -142,11 +145,13 @@ export default function ProjectDetailPage() {
                 ) : (
                   <button className="px-8 py-3 bg-green-500 text-black rounded-full font-black text-xs uppercase tracking-widest">Message Client</button>
                 )}
+                <button className="px-8 py-3 bg-white/5 border border-white/10 text-white rounded-full font-black text-xs uppercase tracking-widest hover:bg-white/10">Save Project</button>
               </>
             )}
-            {user?.id === project.client_id && (
+            {isOwner && (
               <>
                 <button onClick={() => router.push(`/projects/${project.id}/edit`)} className="px-8 py-3 bg-white text-black rounded-full font-black text-xs uppercase tracking-widest hover:scale-105">Edit Project</button>
+                <button onClick={() => router.push(`/dashboard/client/proposals`)} className="px-8 py-3 bg-neon-purple/10 text-neon-purple border border-neon-purple/20 rounded-full font-black text-xs uppercase tracking-widest">View Proposals</button>
                 <button onClick={handleDelete} className="px-8 py-3 bg-red-500/10 text-red-500 border border-red-500/20 rounded-full font-black text-xs uppercase tracking-widest hover:bg-red-500/20">Delete Project</button>
               </>
             )}
