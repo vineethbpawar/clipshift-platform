@@ -44,7 +44,9 @@ export const Step5Onboarding = () => {
     }
   };
 
-  const content = role ? roleContent[role] : roleContent.client;
+  const content = (role && role in roleContent) 
+    ? roleContent[role as keyof typeof roleContent] 
+    : roleContent.client;
   const Icon = content.icon;
 
   const handleFinish = async () => {

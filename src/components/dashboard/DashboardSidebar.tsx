@@ -17,7 +17,7 @@ import {
   TrendingUp,
   Briefcase
 } from "lucide-react";
-import { useAuth, type Role } from "@/context/AuthContext";
+import { useAuth, type Role, getDashboardPath } from "@/context/AuthContext";
 
 const SidebarLink = ({ href, icon: Icon, label, isActive }: { href: string, icon: any, label: string, isActive: boolean }) => (
   <Link href={href}>
@@ -47,11 +47,14 @@ export const DashboardSidebar = () => {
   const { role } = useAuth();
 
   const getLinks = (role: Role) => {
+    const dashboardPath = getDashboardPath(role);
     const common = [
-      { href: `/dashboard/${role}`, icon: LayoutDashboard, label: "Overview" },
+      { href: dashboardPath, icon: LayoutDashboard, label: "Overview" },
       { href: "/projects", icon: Layers, label: "Projects" },
       { href: "/chat", icon: MessageSquare, label: "Messages" },
     ];
+
+    if (!role) return common;
 
     if (role === "client") {
       return [
@@ -65,13 +68,13 @@ export const DashboardSidebar = () => {
     if (role === "editor" || role === "videographer") {
       return [
         ...common,
-        { href: `/dashboard/${role}/earnings`, icon: DollarSign, label: "Earnings" },
-        { href: `/dashboard/${role}/portfolio`, icon: Briefcase, label: "My Portfolio" },
+        { href: `${dashboardPath}/earnings`, icon: DollarSign, label: "Earnings" },
+        { href: `${dashboardPath}/portfolio`, icon: Briefcase, label: "My Portfolio" },
         { href: "/explore", icon: MapIcon, label: "Live Map" },
       ];
     }
 
-    if (role === "client" && pathname.includes("admin")) { // Simplified logic for admin
+    if (role === "admin") {
       return [
         { href: "/dashboard/admin", icon: ShieldCheck, label: "Control Center" },
         { href: "/dashboard/admin/users", icon: Users, label: "User Audit" },

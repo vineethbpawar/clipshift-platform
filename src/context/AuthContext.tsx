@@ -4,7 +4,17 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
-export type Role = "client" | "editor" | "videographer" | null;
+export type Role = "client" | "editor" | "videographer" | "admin" | null;
+
+export const getDashboardPath = (role: Role) => {
+  switch (role) {
+    case "admin": return "/dashboard/admin";
+    case "editor": return "/dashboard/editor";
+    case "videographer": return "/dashboard/videographer";
+    case "client": return "/dashboard/client";
+    default: return "/dashboard/client";
+  }
+};
 
 interface User {
   id: string;
@@ -90,20 +100,34 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const handleUserSession = async (supabaseUser: any) => {
-    const { data: profile } = await supabase
+    let { data: profile } = await supabase
       .from("profiles")
       .select("*")
       .eq("id", supabaseUser.id)
       .maybeSingle();
 
     if (!profile) {
-      console.log("Profile not found");
+      console.log("Profile not found, creating default profile");
+      const { data: newProfile, error } = await supabase
+        .from("profiles")
+        .insert({
+          id: supabaseUser.id,
+          full_name: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split("@")[0] || "User",
+          email: supabaseUser.email,
+          role: role || "client",
+        })
+        .select()
+        .maybeSingle();
+      
+      if (!error && newProfile) {
+        profile = newProfile;
+      }
     }
 
     if (profile) {
       const userData: User = {
         id: supabaseUser.id,
-        role: profile.role,
+        role: profile.role || "client",
         name: profile.full_name,
         email: profile.email,
         mobile: profile.mobile,
@@ -118,7 +142,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         profileImage: profile.avatar_url
       };
       setUser(userData);
-      setRole(profile.role);
+      setRole(profile.role || "client");
     }
   };
 
@@ -130,7 +154,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     if (error) throw error;
     
-    // Role fetching is handled by onAuthStateChange
     if (data.user) {
       const { data: profile } = await supabase
         .from("profiles")
@@ -138,24 +161,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         .eq("id", data.user.id)
         .maybeSingle();
         
-      if (!profile) {
-        console.log("Profile not found");
-      }
-
-      if (profile) {
-        router.push(`/dashboard/${profile.role}`);
-      }
+      const userRole = profile?.role || "client";
+      router.push(getDashboardPath(userRole));
     }
   };
 
   const signUp = async (password: string) => {
+    const targetRole = role || "client";
     const { data, error } = await supabase.auth.signUp({
       email: signupData.email,
       password,
       options: {
         data: {
           full_name: signupData.name,
-          role: role,
+          role: targetRole,
         }
       }
     });
@@ -170,7 +189,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           id: data.user.id,
           full_name: signupData.name,
           email: signupData.email,
-          role: role,
+          role: targetRole,
           mobile: signupData.mobile,
           city: signupData.city,
           area: signupData.area,
@@ -183,9 +202,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           avatar_url: signupData.profileImage
         });
 
-      if (profileError) throw profileError;
+      if (profileError && profileError.code !== "23505") throw profileError;
       
-      router.push(`/dashboard/${role}`);
+      router.push(getDashboardPath(targetRole));
     }
   };
 

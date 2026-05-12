@@ -6,7 +6,7 @@ import Image from "next/image";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { Menu, X, ShoppingCart, Search, LogOut, MessageSquare } from "lucide-react";
 import { NeonButton } from "../ui/NeonButton";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth, getDashboardPath } from "@/context/AuthContext";
 import { useChat } from "@/context/ChatContext";
 
 export const Navbar = () => {
@@ -34,7 +34,7 @@ export const Navbar = () => {
   ];
 
   if (user) {
-    navLinks.unshift({ name: "Dashboard", href: `/dashboard/${user.role}` });
+    navLinks.unshift({ name: "Dashboard", href: getDashboardPath(user.role) });
   }
 
   return (
@@ -79,7 +79,7 @@ export const Navbar = () => {
             <div className="flex items-center space-x-2 border-l border-white/10 ml-4 pl-4">
               {user ? (
                 <div className="flex items-center space-x-4">
-                  <Link href={`/dashboard/${user.role}`} className="text-white font-bold text-sm uppercase tracking-widest hover:text-neon-purple transition-colors">
+                  <Link href={getDashboardPath(user.role)} className="text-white font-bold text-sm uppercase tracking-widest hover:text-neon-purple transition-colors">
                     {user.name}
                   </Link>
                   <button onClick={signOut} className="text-gray-500 hover:text-red-500 transition-colors">
