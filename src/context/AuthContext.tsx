@@ -168,44 +168,55 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signUp = async (password: string) => {
-    const targetRole = role || "client";
-    const { data, error } = await supabase.auth.signUp({
-      email: signupData.email,
-      password,
-      options: {
-        data: {
-          full_name: signupData.name,
-          role: targetRole,
+    try {
+      const targetRole = role || "client";
+      const { data, error } = await supabase.auth.signUp({
+        email: signupData.email,
+        password,
+        options: {
+          data: {
+            full_name: signupData.name,
+            role: targetRole,
+          }
         }
+      });
+
+      if (error) {
+        console.error("Supabase signup error:", error);
+        throw error;
       }
-    });
 
-    if (error) throw error;
+      if (data.user) {
+        // Save profile details to profiles table
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .upsert({
+            id: data.user.id,
+            full_name: signupData.name,
+            email: signupData.email,
+            role: targetRole,
+            mobile: signupData.mobile,
+            city: signupData.city,
+            area: signupData.area,
+            pincode: signupData.pincode,
+            address: signupData.address,
+            instagram: signupData.instagram,
+            portfolio_link: signupData.portfolio,
+            languages: signupData.languages,
+            bio: signupData.bio,
+            avatar_url: signupData.profileImage
+          }, { onConflict: 'id' });
 
-    if (data.user) {
-      // Save profile details to profiles table
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .upsert({
-          id: data.user.id,
-          full_name: signupData.name,
-          email: signupData.email,
-          role: targetRole,
-          mobile: signupData.mobile,
-          city: signupData.city,
-          area: signupData.area,
-          pincode: signupData.pincode,
-          address: signupData.address,
-          instagram: signupData.instagram,
-          portfolio_link: signupData.portfolio,
-          languages: signupData.languages,
-          bio: signupData.bio,
-          avatar_url: signupData.profileImage
-        }, { onConflict: 'id' });
-
-      if (profileError && profileError.code !== "23505") throw profileError;
-      
-      router.push(getDashboardPath(targetRole));
+        if (profileError && profileError.code !== "23505") {
+          console.error("Profile creation error:", profileError);
+          throw profileError;
+        }
+        
+        router.push(getDashboardPath(targetRole));
+      }
+    } catch (error) {
+      console.error("Signup process failed:", error);
+      throw error;
     }
   };
 

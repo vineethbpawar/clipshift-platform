@@ -9,6 +9,7 @@ import { toast } from "react-hot-toast";
 export const Step5Onboarding = () => {
   const { role, signUp, signupData } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const roleContent = {
     client: {
@@ -53,11 +54,20 @@ export const Step5Onboarding = () => {
 
   const handleFinish = async () => {
     setLoading(true);
+    setError(null);
     try {
       await signUp(signupData.password || "");
       toast.success("Welcome to the Collective!");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to create account");
+    } catch (err: any) {
+      console.error("Signup error in component:", err);
+      let errorMessage = err.message || "Failed to create account";
+      
+      if (errorMessage.includes("Failed to fetch")) {
+        errorMessage = "Cannot connect to Supabase. Check internet/network and try again.";
+      }
+      
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -90,6 +100,16 @@ export const Step5Onboarding = () => {
           </motion.div>
         ))}
       </div>
+
+      {error && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6 p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm"
+        >
+          {error}
+        </motion.div>
+      )}
 
       <motion.button
         whileHover={{ scale: 1.05 }}
