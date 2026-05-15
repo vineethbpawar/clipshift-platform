@@ -5,64 +5,94 @@ import { motion } from "framer-motion";
 import { FloatingInput } from "@/components/ui/FloatingInput";
 import { NeonButton } from "@/components/ui/NeonButton";
 import { PageWrapper } from "@/components/layout/PageWrapper";
-import { useAuth, type Role, getDashboardPath } from "@/context/AuthContext";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { User, Video, Loader2 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { supabase } from "@/lib/supabase";
+import { type Role } from "@/context/AuthContext";
 
 export default function LoginPage() {
-  const { signIn } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [selectedRole, setSelectedRole] = useState<Role>("client");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<React.ReactNode>(null);
+  const [error, setError] = useState<string>("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("LOGIN START");
     setLoading(true);
-    setError(null);
+    setError("");
 
     try {
-      const result = (await Promise.race([
-        signIn(email.trim(), password),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("LOGIN_TIMEOUT")), 15000)
-        ),
-      ])) as { role: Role };
+      console.log("LOGIN START DIRECT", email);
 
-      console.log("LOGIN RESULT", result);
-      console.log("LOGIN REDIRECT", result.role);
-      
-      const dashboardPath = getDashboardPath(result.role);
-      router.replace(dashboardPath);
-      toast.success("Welcome back!");
-      console.log("LOGIN FINALLY");
+      const cleanEmail = email.trim().toLowerCase();
 
-    } catch (err: any) {
-      console.error("LOGIN ERROR", err);
-      let errorMessage = "Login failed. Please try again.";
-      
-      if (err.message === "LOGIN_TIMEOUT") {
-        errorMessage = "Login timed out. Please check your internet or Supabase connection.";
-      } else if (err.message.includes("Invalid login credentials")) {
-        errorMessage = "Invalid email or password.";
-      } else if (err.message.includes("Failed to fetch")) {
-        errorMessage = "Cannot connect to Supabase. Check your internet/network and try again.";
-      } else if (err.message.includes("Profile not found")) {
-        errorMessage = "Profile not found. Please signup again.";
-      } else if (err.message) {
-        errorMessage = err.message;
+      const { data: authData, error: authError } =
+        await supabase.auth.signInWithPassword({
+          email: cleanEmail,
+          password,
+        });
+
+      console.log("AUTH RESPONSE", { authData, authError });
+
+      if (authError) {
+        throw authError;
       }
-      
-      setError(errorMessage);
-      toast.error(errorMessage);
-      console.log("LOGIN FINALLY");
+
+      const authUser = authData.user;
+
+      if (!authUser) {
+        throw new Error("No user returned from Supabase.");
+      }
+
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("id, email, role")
+        .eq("id", authUser.id)
+        .maybeSingle();
+
+      console.log("PROFILE RESPONSE", { profile, profileError });
+
+      if (profileError) {
+        throw profileError;
+      }
+
+      if (!profile) {
+        throw new Error("Profile not found. Please signup again.");
+      }
+
+      let dashboardPath = "/dashboard/client";
+
+      if (profile.role === "creator") {
+        dashboardPath = "/dashboard/creator";
+      }
+
+      if (profile.role === "admin") {
+        dashboardPath = "/dashboard/admin";
+      }
+
+      console.log("LOGIN REDIRECT TO", dashboardPath);
+
+      router.replace(dashboardPath);
+    } catch (err: any) {
+      console.error("LOGIN DIRECT ERROR", err);
+
+      const message = err?.message || "";
+
+      if (message.includes("Invalid login credentials")) {
+        setError("Invalid email or password.");
+      } else if (message.includes("Failed to fetch")) {
+        setError("Cannot connect to Supabase. Check your internet/network and try again.");
+      } else if (message.includes("Profile not found")) {
+        setError("Profile not found. Please signup again.");
+      } else {
+        setError(message || "Login failed. Please try again.");
+      }
     } finally {
+      console.log("LOGIN DIRECT FINALLY");
       setLoading(false);
     }
   };
