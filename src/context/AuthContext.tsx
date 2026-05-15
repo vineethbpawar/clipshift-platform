@@ -265,12 +265,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    setRole(null);
-    setUnlockedCreators([]);
-    localStorage.removeItem("clipshift_unlocks");
-    router.push("/");
+    try {
+      await supabase.auth.signOut();
+      setUser(null);
+      setRole(null);
+      setUnlockedCreators([]);
+      localStorage.removeItem("clipshift_unlocks");
+      router.push("/auth/login");
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
   };
 
   const updateSignupData = (data: any) => {
