@@ -5,11 +5,13 @@ import { useAuth } from "@/context/AuthContext";
 import { motion } from "framer-motion";
 import { CheckCircle2, Star, Rocket, Loader2 } from "lucide-react";
 import { toast } from "react-hot-toast";
+import { supabase } from "@/lib/supabase";
+import Link from "next/link";
 
 export const Step5Onboarding = () => {
   const { role, signUp, signupData } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<React.ReactNode>(null);
 
   const roleContent = {
     client: {
@@ -45,6 +47,39 @@ export const Step5Onboarding = () => {
     setLoading(true);
     setError(null);
     try {
+      // 1. Check for existing profile role
+      const { data: existingRole, error: rpcError } = await supabase.rpc("get_existing_profile_role", { 
+        input_email: signupData.email 
+      });
+
+      if (rpcError) {
+        console.error("RPC Error checking role:", rpcError);
+      }
+
+      if (existingRole) {
+        if (role === "creator" && existingRole === "client") {
+          setError("This email is already registered as a Client profile. Please change category to Client or use another email.");
+          setLoading(false);
+          return;
+        }
+        if (role === "client" && existingRole === "creator") {
+          setError("This email is already registered as a Creator profile. Please change category to Creator or use another email.");
+          setLoading(false);
+          return;
+        }
+        if (role === existingRole) {
+          setError(
+            <div className="flex flex-col gap-2">
+              <span>This email is already registered. Please login instead.</span>
+              <Link href="/auth/login" className="underline font-black">Login Now</Link>
+            </div> as any
+          );
+          setLoading(false);
+          return;
+        }
+      }
+
+      // 2. Proceed with signup
       await signUp(signupData.password || "");
       toast.success("Welcome to the Collective!");
     } catch (err: any) {

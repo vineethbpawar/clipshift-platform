@@ -9,6 +9,7 @@ import { useAuth, type Role } from "@/context/AuthContext";
 import Link from "next/link";
 import { User, Video, Loader2 } from "lucide-react";
 import { toast } from "react-hot-toast";
+import { supabase } from "@/lib/supabase";
 
 export default function LoginPage() {
   const { signIn } = useAuth();
@@ -16,17 +17,39 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [selectedRole, setSelectedRole] = useState<Role>("client");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<React.ReactNode>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
     try {
+      // Check for role conflict
+      const { data: existingRole, error: rpcError } = await supabase.rpc("get_existing_profile_role", { 
+        input_email: email 
+      });
+
+      if (rpcError) {
+        console.error("RPC Error checking role:", rpcError);
+      }
+
+      if (existingRole) {
+        if (selectedRole === "client" && existingRole === "creator") {
+          setError("This email is registered as a Creator profile. Please change category to Creator.");
+          setLoading(false);
+          return;
+        }
+        if (selectedRole === "creator" && existingRole === "client") {
+          setError("This email is registered as a Client profile. Please change category to Client.");
+          setLoading(false);
+          return;
+        }
+      }
+
       await signIn(email, password);
       toast.success("Welcome back!");
     } catch (err: any) {
-      console.error("Login error in component:", err);
+// ...
       let errorMessage = err.message || "Failed to sign in";
       
       if (errorMessage.includes("Invalid login credentials")) {
