@@ -25,40 +25,61 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
 
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    
+    const cleanEmail = email.trim().toLowerCase();
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+
     try {
-      console.log("LOGIN START DIRECT", email);
+      console.log("LOGIN REST START", cleanEmail);
 
-      const cleanEmail = email.trim().toLowerCase();
-
-      const { data: authData, error: authError } =
-        await supabase.auth.signInWithPassword({
+      const tokenResponse = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": supabaseAnonKey!,
+          "Authorization": `Bearer ${supabaseAnonKey!}`
+        },
+        body: JSON.stringify({
           email: cleanEmail,
-          password,
-        });
+          password: password
+        }),
+        signal: controller.signal
+      });
 
-      console.log("AUTH RESPONSE", { authData, authError });
+      const authData = await tokenResponse.json();
 
-      if (authError) {
-        throw authError;
+      console.log("DIRECT AUTH RESPONSE", { status: tokenResponse.status, authData });
+
+      if (!tokenResponse.ok) {
+        throw new Error(authData.error_description || authData.msg || "Invalid login credentials");
       }
 
-      const authUser = authData.user;
+      await supabase.auth.setSession({
+        access_token: authData.access_token,
+        refresh_token: authData.refresh_token,
+      });
 
-      if (!authUser) {
-        throw new Error("No user returned from Supabase.");
+      const profileResponse = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${authData.user.id}&select=id,email,role`, {
+        method: "GET",
+        headers: {
+          "apikey": supabaseAnonKey!,
+          "Authorization": `Bearer ${authData.access_token}`,
+          "Content-Type": "application/json"
+        },
+        signal: controller.signal
+      });
+
+      const profileDataArray = await profileResponse.json();
+      console.log("DIRECT PROFILE RESPONSE", profileDataArray);
+
+      if (!profileResponse.ok) {
+        throw new Error(profileDataArray.message || "Failed to fetch profile");
       }
 
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("id, email, role")
-        .eq("id", authUser.id)
-        .maybeSingle();
-
-      console.log("PROFILE RESPONSE", { profile, profileError });
-
-      if (profileError) {
-        throw profileError;
-      }
+      const profile = profileDataArray[0];
 
       if (!profile) {
         throw new Error("Profile not found. Please signup again.");
@@ -78,13 +99,18 @@ export default function LoginPage() {
 
       router.replace(dashboardPath);
     } catch (err: any) {
-      console.error("LOGIN DIRECT ERROR", err);
+      console.error("LOGIN REST ERROR", err);
+
+      if (err.name === 'AbortError') {
+        setError("Login timed out. Please check your internet or Supabase connection.");
+        return;
+      }
 
       const message = err?.message || "";
 
-      if (message.includes("Invalid login credentials")) {
+      if (message.includes("Invalid login credentials") || message.includes("Invalid email or password")) {
         setError("Invalid email or password.");
-      } else if (message.includes("Failed to fetch")) {
+      } else if (message.includes("Failed to fetch") || message.includes("NetworkError") || err.name === 'TypeError') {
         setError("Cannot connect to Supabase. Check your internet/network and try again.");
       } else if (message.includes("Profile not found")) {
         setError("Profile not found. Please signup again.");
@@ -92,7 +118,8 @@ export default function LoginPage() {
         setError(message || "Login failed. Please try again.");
       }
     } finally {
-      console.log("LOGIN DIRECT FINALLY");
+      clearTimeout(timeoutId);
+      console.log("LOGIN REST FINALLY");
       setLoading(false);
     }
   };
