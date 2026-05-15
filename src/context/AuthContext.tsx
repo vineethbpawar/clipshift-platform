@@ -44,7 +44,7 @@ interface AuthContextType {
   signupData: Partial<User>;
   unlockedCreators: string[];
   setRole: (role: Role) => void;
-  signIn: (email: string, password: string) => Promise<void>;
+  signIn: (email: string, password: string) => Promise<{ user: any; role: Role }>;
   signUp: (password: string) => Promise<void>;
   signOut: () => Promise<void>;
   updateSignupData: (data: Partial<User>) => void;
@@ -181,22 +181,32 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       });
 
       if (error) {
-        console.error("Login error:", error);
+        console.error("Supabase signIn error:", error);
         throw error;
       }
       
       if (data.user) {
-        const { data: profile } = await supabase
+        const { data: profile, error: profileError } = await supabase
           .from("profiles")
-          .select("role")
+          .select("*")
           .eq("id", data.user.id)
           .maybeSingle();
           
-        const userRole = (profile?.role as Role) || "client";
-        router.push(getDashboardPath(userRole));
+        if (profileError) {
+          console.error("Profile fetch error during login:", profileError);
+        }
+
+        if (!profile) {
+          throw new Error("Profile not found. Please signup again.");
+        }
+
+        const userRole = (profile.role as Role) || "client";
+        return { user: data.user, role: userRole };
       }
+      
+      throw new Error("Authentication failed: No user data returned");
     } catch (error) {
-      console.error("Login process failed:", error);
+      console.error("Login process failed in context:", error);
       throw error;
     }
   };

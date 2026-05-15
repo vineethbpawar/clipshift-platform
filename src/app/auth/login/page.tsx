@@ -5,14 +5,16 @@ import { motion } from "framer-motion";
 import { FloatingInput } from "@/components/ui/FloatingInput";
 import { NeonButton } from "@/components/ui/NeonButton";
 import { PageWrapper } from "@/components/layout/PageWrapper";
-import { useAuth, type Role } from "@/context/AuthContext";
+import { useAuth, type Role, getDashboardPath } from "@/context/AuthContext";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { User, Video, Loader2 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { supabase } from "@/lib/supabase";
 
 export default function LoginPage() {
   const { signIn } = useAuth();
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [selectedRole, setSelectedRole] = useState<Role>("client");
@@ -21,35 +23,64 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("LOGIN START", { email, selectedRole });
     setLoading(true);
     setError(null);
-    try {
-      // Check for role conflict
-      const { data: existingRole, error: rpcError } = await supabase.rpc("get_existing_profile_role", { 
-        input_email: email 
-      });
 
-      if (rpcError) {
-        console.error("RPC Error checking role:", rpcError);
+    const loginTimeout = setTimeout(() => {
+      if (loading) {
+        console.warn("LOGIN TIMEOUT TRIGGERED");
+        setLoading(false);
+        setError("Login timed out. Please check Supabase connection and try again.");
+      }
+    }, 10000);
+
+    try {
+      // 1. Optional: Check for role conflict (don't block forever)
+      let existingRole = null;
+      try {
+        const { data, error: rpcError } = await supabase.rpc("get_existing_profile_role", { 
+          input_email: email 
+        });
+        if (rpcError) {
+          console.error("RPC Error checking role:", rpcError);
+        } else {
+          existingRole = data;
+          console.log("ROLE CHECK RESULT", existingRole);
+        }
+      } catch (rpcErr) {
+        console.error("Critical RPC failure:", rpcErr);
       }
 
       if (existingRole) {
         if (selectedRole === "client" && existingRole === "creator") {
           setError("This email is registered as a Creator profile. Please change category to Creator.");
+          console.log("ROLE CONFLICT: expected creator");
           setLoading(false);
+          clearTimeout(loginTimeout);
           return;
         }
         if (selectedRole === "creator" && existingRole === "client") {
           setError("This email is registered as a Client profile. Please change category to Client.");
+          console.log("ROLE CONFLICT: expected client");
           setLoading(false);
+          clearTimeout(loginTimeout);
           return;
         }
       }
 
-      await signIn(email, password);
+      // 2. Auth process
+      const result = await signIn(email, password);
+      console.log("LOGIN SUCCESS", result);
       toast.success("Welcome back!");
+
+      // 3. Redirection based on real role
+      const dashboardPath = getDashboardPath(result.role);
+      console.log("REDIRECTING TO", dashboardPath);
+      router.push(dashboardPath);
+
     } catch (err: any) {
-// ...
+      console.error("LOGIN FAILED:", err);
       let errorMessage = err.message || "Failed to sign in";
       
       if (errorMessage.includes("Invalid login credentials")) {
@@ -61,6 +92,8 @@ export default function LoginPage() {
       setError(errorMessage);
       toast.error(errorMessage);
     } finally {
+      console.log("LOGIN FINALLY - STOP LOADING");
+      clearTimeout(loginTimeout);
       setLoading(false);
     }
   };
