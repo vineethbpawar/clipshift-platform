@@ -27,42 +27,42 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
 
-    // Timeout Promise
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("LOGIN_TIMEOUT")), 12000)
-    );
-
     try {
-      const result = await Promise.race([
-        signIn(email, password),
-        timeoutPromise
-      ]) as { role: Role };
+      const result = (await Promise.race([
+        signIn(email.trim(), password),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("LOGIN_TIMEOUT")), 15000)
+        ),
+      ])) as { role: Role };
 
-      console.log("LOGIN AUTH SUCCESS", result);
-      console.log("LOGIN REDIRECT ROLE", result.role);
+      console.log("LOGIN RESULT", result);
+      console.log("LOGIN REDIRECT", result.role);
       
       const dashboardPath = getDashboardPath(result.role);
-      router.push(dashboardPath);
+      router.replace(dashboardPath);
       toast.success("Welcome back!");
+      console.log("LOGIN FINALLY");
 
     } catch (err: any) {
       console.error("LOGIN ERROR", err);
-      let errorMessage = "Failed to sign in";
+      let errorMessage = "Login failed. Please try again.";
       
       if (err.message === "LOGIN_TIMEOUT") {
         errorMessage = "Login timed out. Please check your internet or Supabase connection.";
       } else if (err.message.includes("Invalid login credentials")) {
         errorMessage = "Invalid email or password.";
       } else if (err.message.includes("Failed to fetch")) {
-        errorMessage = "Cannot connect to Supabase. Check internet/network and try again.";
+        errorMessage = "Cannot connect to Supabase. Check your internet/network and try again.";
       } else if (err.message.includes("Profile not found")) {
         errorMessage = "Profile not found. Please signup again.";
+      } else if (err.message) {
+        errorMessage = err.message;
       }
       
       setError(errorMessage);
       toast.error(errorMessage);
-    } finally {
       console.log("LOGIN FINALLY");
+    } finally {
       setLoading(false);
     }
   };

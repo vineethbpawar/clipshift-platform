@@ -117,7 +117,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const handleUserSession = async (supabaseUser: any) => {
     try {
-      let { data: profile, error: fetchError } = await supabase
+      const { data: profile, error: fetchError } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", supabaseUser.id)
@@ -125,49 +125,35 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (fetchError) {
         console.error("Profile fetch error:", fetchError);
+        return;
       }
 
       if (!profile) {
-        console.log("Profile not found, creating default profile");
-        const { data: newProfile, error } = await supabase
-          .from("profiles")
-          .upsert({
-            id: supabaseUser.id,
-            full_name: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split("@")[0] || "User",
-            email: supabaseUser.email,
-            role: role || "client",
-          }, { onConflict: 'id' })
-          .select()
-          .maybeSingle();
-        
-        if (error) {
-          console.error("Default profile creation failed:", error);
-        } else if (newProfile) {
-          profile = newProfile;
-        }
+        console.warn("Profile not found for user", supabaseUser.id);
+        setUser(null);
+        setRole(null);
+        return;
       }
 
-      if (profile) {
-        const userData: User = {
-          id: supabaseUser.id,
-          role: (profile.role as Role) || "client",
-          name: profile.full_name,
-          email: profile.email,
-          mobile: profile.mobile,
-          city: profile.city,
-          area: profile.area,
-          pincode: profile.pincode,
-          address: profile.address,
-          instagram: profile.instagram,
-          portfolio: profile.portfolio_link,
-          languages: profile.languages,
-          bio: profile.bio,
-          profileImage: profile.avatar_url,
-          specialization: profile.specialization
-        };
-        setUser(userData);
-        setRole((profile.role as Role) || "client");
-      }
+      const userData: User = {
+        id: supabaseUser.id,
+        role: (profile.role as Role) || "client",
+        name: profile.full_name,
+        email: profile.email,
+        mobile: profile.mobile,
+        city: profile.city,
+        area: profile.area,
+        pincode: profile.pincode,
+        address: profile.address,
+        instagram: profile.instagram,
+        portfolio: profile.portfolio_link,
+        languages: profile.languages,
+        bio: profile.bio,
+        profileImage: profile.avatar_url,
+        specialization: profile.specialization
+      };
+      setUser(userData);
+      setRole((profile.role as Role) || "client");
     } catch (err) {
       console.error("Session handling failed:", err);
     }
@@ -179,28 +165,56 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       password,
     });
 
-    if (error) throw error;
+    if (error) {
+      console.error("Supabase login error:", error);
+      throw error;
+    }
 
-    const user = data.user;
-    if (!user) throw new Error("No user returned from Supabase.");
+    const authUser = data.user;
+
+    if (!authUser) {
+      throw new Error("No user returned from Supabase.");
+    }
 
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("role")
-      .eq("id", user.id)
+      .select("*")
+      .eq("id", authUser.id)
       .maybeSingle();
 
-    if (profileError) throw profileError;
+    if (profileError) {
+      console.error("Profile fetch error:", profileError);
+      throw profileError;
+    }
 
     if (!profile) {
       throw new Error("Profile not found. Please signup again.");
     }
 
-    setUser(user as any);
+    const userData: User = {
+      id: authUser.id,
+      role: (profile.role as Role) || "client",
+      name: profile.full_name,
+      email: profile.email,
+      mobile: profile.mobile,
+      city: profile.city,
+      area: profile.area,
+      pincode: profile.pincode,
+      address: profile.address,
+      instagram: profile.instagram,
+      portfolio: profile.portfolio_link,
+      languages: profile.languages,
+      bio: profile.bio,
+      profileImage: profile.avatar_url,
+      specialization: profile.specialization
+    };
+
+    setUser(userData);
     setRole(profile.role as Role);
 
     return {
-      user,
+      user: authUser,
+      profile,
       role: profile.role as Role,
     };
   };
