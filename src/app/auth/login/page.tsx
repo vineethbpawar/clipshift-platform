@@ -23,77 +23,46 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("LOGIN START", { email, selectedRole });
+    console.log("LOGIN START");
     setLoading(true);
     setError(null);
 
-    const loginTimeout = setTimeout(() => {
-      if (loading) {
-        console.warn("LOGIN TIMEOUT TRIGGERED");
-        setLoading(false);
-        setError("Login timed out. Please check Supabase connection and try again.");
-      }
-    }, 10000);
+    // Timeout Promise
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("LOGIN_TIMEOUT")), 12000)
+    );
 
     try {
-      // 1. Optional: Check for role conflict (don't block forever)
-      let existingRole = null;
-      try {
-        const { data, error: rpcError } = await supabase.rpc("get_existing_profile_role", { 
-          input_email: email 
-        });
-        if (rpcError) {
-          console.error("RPC Error checking role:", rpcError);
-        } else {
-          existingRole = data;
-          console.log("ROLE CHECK RESULT", existingRole);
-        }
-      } catch (rpcErr) {
-        console.error("Critical RPC failure:", rpcErr);
-      }
+      const result = await Promise.race([
+        signIn(email, password),
+        timeoutPromise
+      ]) as { role: Role };
 
-      if (existingRole) {
-        if (selectedRole === "client" && existingRole === "creator") {
-          setError("This email is registered as a Creator profile. Please change category to Creator.");
-          console.log("ROLE CONFLICT: expected creator");
-          setLoading(false);
-          clearTimeout(loginTimeout);
-          return;
-        }
-        if (selectedRole === "creator" && existingRole === "client") {
-          setError("This email is registered as a Client profile. Please change category to Client.");
-          console.log("ROLE CONFLICT: expected client");
-          setLoading(false);
-          clearTimeout(loginTimeout);
-          return;
-        }
-      }
-
-      // 2. Auth process
-      const result = await signIn(email, password);
-      console.log("LOGIN SUCCESS", result);
+      console.log("LOGIN AUTH SUCCESS", result);
+      console.log("LOGIN REDIRECT ROLE", result.role);
+      
+      const dashboardPath = getDashboardPath(result.role);
+      router.push(dashboardPath);
       toast.success("Welcome back!");
 
-      // 3. Redirection based on real role
-      const dashboardPath = getDashboardPath(result.role);
-      console.log("REDIRECTING TO", dashboardPath);
-      router.push(dashboardPath);
-
     } catch (err: any) {
-      console.error("LOGIN FAILED:", err);
-      let errorMessage = err.message || "Failed to sign in";
+      console.error("LOGIN ERROR", err);
+      let errorMessage = "Failed to sign in";
       
-      if (errorMessage.includes("Invalid login credentials")) {
+      if (err.message === "LOGIN_TIMEOUT") {
+        errorMessage = "Login timed out. Please check your internet or Supabase connection.";
+      } else if (err.message.includes("Invalid login credentials")) {
         errorMessage = "Invalid email or password.";
-      } else if (errorMessage.includes("Failed to fetch")) {
+      } else if (err.message.includes("Failed to fetch")) {
         errorMessage = "Cannot connect to Supabase. Check internet/network and try again.";
+      } else if (err.message.includes("Profile not found")) {
+        errorMessage = "Profile not found. Please signup again.";
       }
       
       setError(errorMessage);
       toast.error(errorMessage);
     } finally {
-      console.log("LOGIN FINALLY - STOP LOADING");
-      clearTimeout(loginTimeout);
+      console.log("LOGIN FINALLY");
       setLoading(false);
     }
   };

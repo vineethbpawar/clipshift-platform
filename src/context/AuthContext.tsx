@@ -174,41 +174,35 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signIn = async (email: string, password: string) => {
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-      if (error) {
-        console.error("Supabase signIn error:", error);
-        throw error;
-      }
-      
-      if (data.user) {
-        const { data: profile, error: profileError } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", data.user.id)
-          .maybeSingle();
-          
-        if (profileError) {
-          console.error("Profile fetch error during login:", profileError);
-        }
+    if (error) throw error;
 
-        if (!profile) {
-          throw new Error("Profile not found. Please signup again.");
-        }
+    const user = data.user;
+    if (!user) throw new Error("No user returned from Supabase.");
 
-        const userRole = (profile.role as Role) || "client";
-        return { user: data.user, role: userRole };
-      }
-      
-      throw new Error("Authentication failed: No user data returned");
-    } catch (error) {
-      console.error("Login process failed in context:", error);
-      throw error;
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profileError) throw profileError;
+
+    if (!profile) {
+      throw new Error("Profile not found. Please signup again.");
     }
+
+    setUser(user as any);
+    setRole(profile.role as Role);
+
+    return {
+      user,
+      role: profile.role as Role,
+    };
   };
 
   const signUp = async (password: string) => {
