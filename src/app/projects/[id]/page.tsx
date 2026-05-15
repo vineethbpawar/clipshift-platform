@@ -61,6 +61,10 @@ export default function ProjectDetailPage() {
   }, [params.id, user?.id]);
 
   const handleUnlock = async () => {
+    if (user?.role !== "creator") {
+      toast.error("Unauthorized. Only creators can unlock projects.");
+      return;
+    }
     setSubmitting(true);
     const { error } = await supabase.from('project_unlocks').insert({
       project_id: params.id,
@@ -78,6 +82,10 @@ export default function ProjectDetailPage() {
   };
 
   const handleProposalSubmit = async () => {
+    if (user?.role !== "creator") {
+      toast.error("Unauthorized. Only creators can submit proposals.");
+      return;
+    }
     setSubmitting(true);
     const { error } = await supabase.from('proposals').insert({
       project_id: params.id,

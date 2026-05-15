@@ -10,6 +10,7 @@ import dynamic from "next/dynamic";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
+import { RoleGuard } from "@/components/auth/RoleGuard";
 
 const MapView = dynamic(() => import("@/components/map/MapView").then(mod => mod.MapView), { ssr: false });
 
@@ -53,7 +54,8 @@ export default function ClientDashboard() {
   }, []);
 
   return (
-    <DashboardLayout title="Client Command Center">
+    <RoleGuard allowedRoles={["client"]}>
+      <DashboardLayout title="Client Command Center">
       {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <StatCard title="Total Investment" value={0} prefix="₹" icon={Wallet} color="purple" />
@@ -179,5 +181,6 @@ export default function ClientDashboard() {
         </div>
       </div>
     </DashboardLayout>
+    </RoleGuard>
   );
 }

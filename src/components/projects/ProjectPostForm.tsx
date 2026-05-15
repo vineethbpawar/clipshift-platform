@@ -14,10 +14,12 @@ import { estimatePrice } from "@/lib/gemini";
 import { Crosshair } from "lucide-react";
 import { detectLocation } from "@/lib/geolocation";
 import { toast } from "react-hot-toast";
+import { useAuth } from "@/context/AuthContext";
 
 const ProjectLocationMap = dynamic(() => import("../map/projects/ProjectLocationMap"), { ssr: false });
 
 export const ProjectPostForm = () => {
+  const { user } = useAuth();
   const [isDetecting, setIsDetecting] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -111,6 +113,12 @@ export const ProjectPostForm = () => {
     console.log("Submit button clicked");
     setError(null);
     setSuccess(false);
+
+    if (user?.role !== "client") {
+      setError("Unauthorized. Only clients can post projects.");
+      toast.error("Unauthorized access.");
+      return;
+    }
 
     if (!title) {
       setError("Please provide a project title.");

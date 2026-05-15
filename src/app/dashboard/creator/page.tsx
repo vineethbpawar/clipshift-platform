@@ -21,6 +21,7 @@ import { PortfolioInsights } from "@/components/ai/PortfolioInsights";
 import { PortfolioUpload } from "@/components/dashboard/PortfolioUpload";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
+import { RoleGuard } from "@/components/auth/RoleGuard";
 
 export default function CreatorDashboard() {
   const { user } = useAuth();
@@ -80,7 +81,8 @@ export default function CreatorDashboard() {
   }, [user]);
 
   return (
-    <DashboardLayout title="Creator Command">
+    <RoleGuard allowedRoles={["creator"]}>
+      <DashboardLayout title="Creator Command">
       {/* Top Section: Stats & Availability */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 flex-1 w-full">
@@ -196,5 +198,6 @@ export default function CreatorDashboard() {
         <PortfolioInsights />
       </div>
     </DashboardLayout>
+    </RoleGuard>
   );
 }

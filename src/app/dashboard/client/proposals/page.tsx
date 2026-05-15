@@ -6,8 +6,9 @@ import { supabase } from "@/lib/supabase";
 import { Loader2 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useAuth } from "@/context/AuthContext";
+import { RoleGuard } from "@/components/auth/RoleGuard";
 
-export default function ProposalsPage() {
+export default function ClientProposalsPage() {
   const [proposals, setProposals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
@@ -73,7 +74,8 @@ export default function ProposalsPage() {
   if (loading) return <div className="flex justify-center pt-32"><Loader2 className="animate-spin text-neon-purple" /></div>;
 
   return (
-    <PageWrapper>
+    <RoleGuard allowedRoles={["client"]}>
+      <PageWrapper>
       <div className="max-w-6xl mx-auto pt-32 pb-20 px-4">
         <h1 className="text-3xl font-black text-white uppercase mb-8">Received Proposals</h1>
         {proposals.length === 0 ? (
@@ -113,5 +115,6 @@ export default function ProposalsPage() {
         )}
       </div>
     </PageWrapper>
+    </RoleGuard>
   );
 }

@@ -25,6 +25,7 @@ import {
 import dynamic from "next/dynamic";
 import { toast } from "react-hot-toast";
 import { useRouter } from "next/navigation";
+import { RoleGuard } from "@/components/auth/RoleGuard";
 import { CreatorCategory } from "@/data/creators";
 import { detectLocation } from "@/lib/geolocation";
 
@@ -335,7 +336,8 @@ export default function SettingsPage() {
   ];
 
   return (
-    <PageWrapper>
+    <RoleGuard allowedRoles={["client", "creator", "admin"]}>
+      <PageWrapper>
       <div className="min-h-screen pt-32 pb-20 px-4">
         {/* Background Decorative Elements */}
         <div className="fixed top-0 left-0 w-full h-full pointer-events-none -z-10">
@@ -733,5 +735,6 @@ export default function SettingsPage() {
         )}
       </AnimatePresence>
     </PageWrapper>
+    </RoleGuard>
   );
 }

@@ -19,6 +19,7 @@ import {
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { motion } from "framer-motion";
 import { supabase } from "@/lib/supabase";
+import { RoleGuard } from "@/components/auth/RoleGuard";
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({
@@ -80,7 +81,8 @@ export default function AdminDashboard() {
   ];
 
   return (
-    <DashboardLayout title="Platform Control Center">
+    <RoleGuard allowedRoles={["admin"]}>
+      <DashboardLayout title="Platform Control Center">
       {/* Platform Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <StatCard title="Total Users" value={stats.totalUsers} icon={Users} color="blue" />
@@ -200,5 +202,6 @@ export default function AdminDashboard() {
         </div>
       </div>
     </DashboardLayout>
+    </RoleGuard>
   );
 }
