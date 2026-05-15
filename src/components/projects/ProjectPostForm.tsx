@@ -517,7 +517,7 @@ export const ProjectPostForm = () => {
           <div className="glass p-6 rounded-3xl border-white/5 flex gap-4">
             <Info className="text-neon-blue shrink-0" size={20} />
             <p className="text-[10px] text-gray-500 leading-relaxed">
-              For shoot-based projects, only verified videographers within your selected radius will be notified. This ensures rapid response and local expertise.
+              For shoot-based projects, only verified creators within your selected radius will be notified. This ensures rapid response and local expertise.
             </p>
           </div>
         </div>

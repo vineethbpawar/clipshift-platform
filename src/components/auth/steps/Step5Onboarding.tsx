@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { motion } from "framer-motion";
-import { CheckCircle2, Star, Rocket, Shield, Loader2 } from "lucide-react";
+import { CheckCircle2, Star, Rocket, Loader2 } from "lucide-react";
 import { toast } from "react-hot-toast";
 
 export const Step5Onboarding = () => {
@@ -23,27 +23,16 @@ export const Step5Onboarding = () => {
       ],
       icon: Star
     },
-    editor: {
-      title: "Master of Post-Production",
-      subtitle: "Prepare to elevate your narrative cutting.",
-      features: [
-        "Showcase your VFX & Color grading portfolio",
-        "Accept high-value editing commissions",
-        "Integrated feedback loops for seamless reviews",
-        "Exclusive access to raw cinematic stocks"
-      ],
-      icon: Rocket
-    },
-    videographer: {
-      title: "Cinematic Storyteller",
+    creator: {
+      title: "Cinematic Creator",
       subtitle: "The world is your canvas, high-fidelity your ink.",
       features: [
+        "Showcase your VFX, Color grading & Cinematography",
         "Market your raw footage and environments",
-        "Get hired for location-specific productions",
-        "Equipment verification badge system",
-        "Creator-first royalty structures"
+        "Accept high-value cinematic commissions",
+        "Creator-first royalty structures & gear verification"
       ],
-      icon: Shield
+      icon: Rocket
     }
   };
 

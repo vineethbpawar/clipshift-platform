@@ -7,7 +7,7 @@ import { NeonButton } from "@/components/ui/NeonButton";
 import { PageWrapper } from "@/components/layout/PageWrapper";
 import { useAuth, type Role } from "@/context/AuthContext";
 import Link from "next/link";
-import { User, Edit3, Video, Loader2 } from "lucide-react";
+import { User, Video, Loader2 } from "lucide-react";
 import { toast } from "react-hot-toast";
 
 export default function LoginPage() {
@@ -32,8 +32,7 @@ export default function LoginPage() {
 
   const roleIcons = [
     { id: "client", label: "Client", icon: User },
-    { id: "editor", label: "Editor", icon: Edit3 },
-    { id: "videographer", label: "Creator", icon: Video },
+    { id: "creator", label: "Creator", icon: Video },
   ];
 
   return (

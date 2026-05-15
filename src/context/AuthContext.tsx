@@ -34,6 +34,7 @@ interface User {
   dob?: string;
   lat?: number;
   lng?: number;
+  specialization?: string;
 }
 
 interface AuthContextType {
@@ -140,7 +141,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         portfolio: profile.portfolio_link,
         languages: profile.languages,
         bio: profile.bio,
-        profileImage: profile.avatar_url
+        profileImage: profile.avatar_url,
+        specialization: profile.specialization
       };
       setUser(userData);
       setRole((profile.role as Role) || "client");
@@ -204,9 +206,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             portfolio_link: signupData.portfolio,
             languages: signupData.languages,
             bio: signupData.bio,
-            avatar_url: signupData.profileImage
-          }, { onConflict: 'id' });
-
+            avatar_url: signupData.profileImage,
+            specialization: signupData.specialization
+            }, { onConflict: 'id' });
         if (profileError && profileError.code !== "23505") {
           console.error("Profile creation error:", profileError);
           throw profileError;

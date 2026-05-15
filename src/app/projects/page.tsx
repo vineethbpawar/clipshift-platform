@@ -40,7 +40,6 @@ export default function ProjectsPage() {
         setLoading(false);
         return;
       }
-      // Editors and Videographers see all (no extra filter)
 
       const { data, error } = await query;
       console.log("DEBUG: Query result:", { data, error });
