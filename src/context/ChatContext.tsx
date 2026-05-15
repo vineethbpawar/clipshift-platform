@@ -91,41 +91,54 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
   }, [activeConversationId]);
 
   const fetchConversations = async () => {
-    if (!user) return;
-
-    const { data, error } = await supabase
-      .from('conversations')
-      .select(`
-        *,
-        client:client_id (full_name, avatar_url),
-        creator:creator_id (full_name, avatar_url)
-      `)
-      .or(`client_id.eq.${user.id},creator_id.eq.${user.id}`)
-      .order('last_message_at', { ascending: false });
-
-    if (!error && data) {
-      // Map to include other user info
-      const mapped = await Promise.all(data.map(async (c) => {
-        const isClient = c.client_id === user.id;
-        const otherUser = isClient ? c.creator : c.client;
-        
-        // Fetch unread count
-        const { count } = await supabase
-          .from('messages')
-          .select('*', { count: 'exact', head: true })
-          .eq('conversation_id', c.id)
-          .eq('receiver_id', user.id)
-          .eq('read', false);
-
-        return {
-          ...c,
-          other_user: otherUser,
-          unreadCount: count || 0
-        };
-      }));
-      setConversations(mapped);
+    if (!user) {
+      setLoading(false);
+      return;
     }
-    setLoading(false);
+
+    try {
+      const { data, error } = await supabase
+        .from('conversations')
+        .select(`
+          *,
+          client:client_id (full_name, avatar_url),
+          creator:creator_id (full_name, avatar_url)
+        `)
+        .or(`client_id.eq.${user.id},creator_id.eq.${user.id}`)
+        .order('last_message_at', { ascending: false });
+
+      if (error) {
+        console.error("Error fetching conversations:", error);
+        throw error;
+      }
+
+      if (data) {
+        // Map to include other user info
+        const mapped = await Promise.all(data.map(async (c) => {
+          const isClient = c.client_id === user.id;
+          const otherUser = isClient ? c.creator : c.client;
+          
+          // Fetch unread count
+          const { count } = await supabase
+            .from('messages')
+            .select('*', { count: 'exact', head: true })
+            .eq('conversation_id', c.id)
+            .eq('receiver_id', user.id)
+            .eq('read', false);
+
+          return {
+            ...c,
+            other_user: otherUser,
+            unreadCount: count || 0
+          };
+        }));
+        setConversations(mapped);
+      }
+    } catch (err) {
+      console.error("Chat conversations fetch failed:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const fetchMessages = async (convId: string) => {

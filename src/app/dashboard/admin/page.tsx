@@ -34,46 +34,55 @@ export default function AdminDashboard() {
   useEffect(() => {
     const fetchAdminData = async () => {
       setLoading(true);
-      
-      // Fetch Total Users
-      const { count: userCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
-      
-      // Fetch Total Creators
-      const { count: creatorCount } = await supabase.from('creators').select('*', { count: 'exact', head: true });
+      try {
+        // Fetch Total Users
+        const { count: userCount, error: userError } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
+        if (userError) console.error("Error fetching users:", userError);
+        
+        // Fetch Total Creators
+        const { count: creatorCount, error: creatorError } = await supabase.from('creators').select('*', { count: 'exact', head: true });
+        if (creatorError) console.error("Error fetching creators:", creatorError);
 
-      // Fetch Platform Revenue
-      const { data: revenueData } = await supabase
-        .from('payments')
-        .select('amount')
-        .eq('status', 'completed');
-      
-      const totalRevenue = (revenueData?.reduce((acc, curr) => acc + curr.amount, 0) || 0) / 100;
+        // Fetch Platform Revenue
+        const { data: revenueData, error: revenueError } = await supabase
+          .from('payments')
+          .select('amount')
+          .eq('status', 'completed');
+        
+        if (revenueError) console.error("Error fetching revenue:", revenueError);
+        
+        const totalRevenue = (revenueData?.reduce((acc, curr) => acc + curr.amount, 0) || 0) / 100;
 
-      // Fetch Verification Queue
-      const { data: queue } = await supabase
-        .from('creators')
-        .select(`*, profiles(full_name, category)`)
-        .eq('verified', false)
-        .limit(5);
+        // Fetch Verification Queue
+        const { data: queue, error: queueError } = await supabase
+          .from('creators')
+          .select(`*, profiles(full_name, category)`)
+          .eq('verified', false)
+          .limit(5);
 
-      setStats({
-        totalUsers: userCount || 0,
-        totalCreators: creatorCount || 0,
-        platformRevenue: totalRevenue,
-        fraudAlerts: 0
-      });
+        if (queueError) console.error("Error fetching queue:", queueError);
 
-      if (queue) {
-        setVerificationQueue(queue.map(q => ({
-          id: q.id,
-          name: q.profiles.full_name,
-          category: q.category,
-          level: q.level || 'Standard',
-          score: q.ai_score || 0
-        })));
+        setStats({
+          totalUsers: userCount || 0,
+          totalCreators: creatorCount || 0,
+          platformRevenue: totalRevenue,
+          fraudAlerts: 0
+        });
+
+        if (queue) {
+          setVerificationQueue(queue.map(q => ({
+            id: q.id,
+            name: q.profiles?.full_name || "Unknown",
+            category: q.category,
+            level: q.level || 'Standard',
+            score: q.ai_score || 0
+          })));
+        }
+      } catch (err) {
+        console.error("Admin data fetch failed:", err);
+      } finally {
+        setLoading(false);
       }
-
-      setLoading(false);
     };
 
     fetchAdminData();

@@ -17,6 +17,14 @@ export default function ExplorePage() {
   const [mapCenter, setMapCenter] = useState<[number, number]>([19.0760, 72.8777]);
   const [showFilters, setShowFilters] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [timedOut, setTimedOut] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (loading) setTimedOut(true);
+    }, 8000);
+    return () => clearTimeout(timer);
+  }, [loading]);
 
   useEffect(() => {
     const fetchCreators = async () => {
@@ -35,7 +43,10 @@ export default function ExplorePage() {
             )
           `);
 
-        if (error) throw error;
+        if (error) {
+          console.error("Explore fetch error:", error);
+          throw error;
+        }
         
         if (data) {
           const mappedCreators = data.map(c => ({
@@ -57,7 +68,6 @@ export default function ExplorePage() {
         }
       } catch (err) {
         console.error("Error fetching creators:", err);
-        toast.error("Failed to load map data");
       } finally {
         setLoading(false);
       }
@@ -97,11 +107,27 @@ export default function ExplorePage() {
         </div>
 
         {/* Loading Overlay */}
-        {loading && (
+        {loading && !timedOut && (
           <div className="absolute inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center">
             <div className="flex flex-col items-center gap-4">
               <Loader2 className="animate-spin text-neon-purple" size={40} />
               <span className="text-[10px] font-black text-white uppercase tracking-[0.3em]">Scanning Global Nodes...</span>
+            </div>
+          </div>
+        )}
+
+        {/* Timeout Overlay */}
+        {loading && timedOut && (
+          <div className="absolute inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center px-4">
+            <div className="glass p-8 rounded-[40px] border-red-500/20 text-center max-w-sm">
+              <h2 className="text-xl font-black text-white uppercase mb-4 tracking-tighter">Node Synchronized Error</h2>
+              <p className="text-sm text-gray-500 mb-8 leading-relaxed">The global discovery network is taking too long to respond. Please verify your connection.</p>
+              <button 
+                onClick={() => window.location.reload()}
+                className="w-full py-4 bg-neon-purple text-white rounded-full font-black uppercase text-xs tracking-widest shadow-lg"
+              >
+                Reconnect Node
+              </button>
             </div>
           </div>
         )}

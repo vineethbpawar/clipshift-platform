@@ -14,61 +14,75 @@ export default function ClientProposalsPage() {
   const { user } = useAuth();
 
   const fetchProposals = async () => {
-    if (!user?.id) return;
-    
-    // 1. Fetch project IDs owned by client
-    const { data: clientProjects, error: projErr } = await supabase
-      .from('projects')
-      .select('id')
-      .eq('client_id', user.id);
-
-    if (projErr) {
-      console.error("Error fetching client projects:", projErr);
+    if (!user?.id) {
       setLoading(false);
       return;
     }
-
-    const projectIds = clientProjects?.map(p => p.id) || [];
-    console.log("Client project IDs:", projectIds);
-
-    if (projectIds.length === 0) {
-      setLoading(false);
-      return;
-    }
-
-    // 2. Fetch proposals for those project IDs
-    const { data, error } = await supabase
-      .from('proposals')
-      .select('*, projects!inner(title, client_id), profiles(full_name)')
-      .in('project_id', projectIds);
     
-    if (error) {
-      console.error("Proposal fetch error:", error);
-      toast.error("Failed to load proposals");
-    } else {
-      console.log("Fetched proposals:", data);
-      setProposals(data || []);
+    try {
+      // 1. Fetch project IDs owned by client
+      const { data: clientProjects, error: projErr } = await supabase
+        .from('projects')
+        .select('id')
+        .eq('client_id', user.id);
+
+      if (projErr) {
+        console.error("Error fetching client projects:", projErr);
+        throw projErr;
+      }
+
+      const projectIds = clientProjects?.map(p => p.id) || [];
+      console.log("Client project IDs:", projectIds);
+
+      if (projectIds.length === 0) {
+        setProposals([]);
+        return;
+      }
+
+      // 2. Fetch proposals for those project IDs
+      const { data, error } = await supabase
+        .from('proposals')
+        .select('*, projects!inner(title, client_id), profiles(full_name)')
+        .in('project_id', projectIds);
+      
+      if (error) {
+        console.error("Proposal fetch error:", error);
+        throw error;
+      } else {
+        console.log("Fetched proposals:", data);
+        setProposals(data || []);
+      }
+    } catch (err) {
+      console.error("Proposals fetch failed:", err);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
     if (user?.id) fetchProposals();
+    else setLoading(false);
   }, [user?.id]);
 
   const handleAction = async (id: string, status: 'accepted' | 'rejected', projectId: string, freelancerId: string) => {
     setLoading(true);
-    
-    if (status === 'accepted') {
-      await supabase.from('proposals').update({ status: 'accepted' }).eq('id', id);
-      await supabase.from('proposals').update({ status: 'rejected' }).eq('project_id', projectId).neq('id', id);
-      await supabase.from('projects').update({ status: 'in_progress', creator_id: freelancerId }).eq('id', projectId);
-    } else {
-      await supabase.from('proposals').update({ status: 'rejected' }).eq('id', id);
+    try {
+      if (status === 'accepted') {
+        await supabase.from('proposals').update({ status: 'accepted' }).eq('id', id);
+        await supabase.from('proposals').update({ status: 'rejected' }).eq('project_id', projectId).neq('id', id);
+        await supabase.from('projects').update({ status: 'in_progress', creator_id: freelancerId }).eq('id', projectId);
+      } else {
+        await supabase.from('proposals').update({ status: 'rejected' }).eq('id', id);
+      }
+      
+      toast.success(`Proposal ${status}`);
+      await fetchProposals();
+    } catch (err) {
+      console.error("Proposal action failed:", err);
+      toast.error("Action failed");
+    } finally {
+      setLoading(false);
     }
-    
-    toast.success(`Proposal ${status}`);
-    fetchProposals();
   };
 
   if (loading) return <div className="flex justify-center pt-32"><Loader2 className="animate-spin text-neon-purple" /></div>;

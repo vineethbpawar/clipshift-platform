@@ -20,36 +20,46 @@ export default function MarketplacePage() {
   useEffect(() => {
     const fetchCreators = async () => {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('creators')
-        .select(`
-          *,
-          profiles (
-            full_name,
-            avatar_url,
-            city,
-            area
-          )
-        `);
+      try {
+        const { data, error } = await supabase
+          .from('creators')
+          .select(`
+            *,
+            profiles (
+              full_name,
+              avatar_url,
+              city,
+              area
+            )
+          `);
 
-      if (!error && data) {
-        const mappedCreators = data.map(c => ({
-          id: c.id,
-          name: c.profiles.full_name,
-          category: c.category,
-          image: c.profiles.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80",
-          rating: c.rating || 0,
-          price: `₹${c.starting_price}`,
-          verified: c.verified,
-          city: c.profiles.city,
-          area: c.profiles.area,
-          delivery: c.delivery_speed || "3-5 Days",
-          location: { lat: c.location_lat, lng: c.location_lng },
-          aiScore: c.ai_score || 0
-        }));
-        setCreators(mappedCreators);
+        if (error) {
+          console.error("Error fetching creators:", error);
+          throw error;
+        }
+
+        if (data) {
+          const mappedCreators = data.map(c => ({
+            id: c.id,
+            name: c.profiles?.full_name || "Unknown",
+            category: c.category,
+            image: c.profiles?.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80",
+            rating: c.rating || 0,
+            price: `₹${c.starting_price}`,
+            verified: c.verified,
+            city: c.profiles?.city,
+            area: c.profiles?.area,
+            delivery: c.delivery_speed || "3-5 Days",
+            location: { lat: c.location_lat, lng: c.location_lng },
+            aiScore: c.ai_score || 0
+          }));
+          setCreators(mappedCreators);
+        }
+      } catch (err) {
+        console.error("Marketplace fetch failed:", err);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     fetchCreators();

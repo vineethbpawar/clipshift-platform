@@ -27,36 +27,42 @@ export default function ProjectsPage() {
 
   useEffect(() => {
     const fetchProjects = async () => {
+      if (!user) return;
       setLoading(true);
-      console.log("DEBUG: Fetching projects for user role:", user?.role, "ID:", user?.id);
-      
-      let query = supabase.from('projects').select('*');
+      try {
+        console.log("DEBUG: Fetching projects for user role:", user?.role, "ID:", user?.id);
+        
+        let query = supabase.from('projects').select('*');
 
-      if (user?.role === 'client') {
-        query = query.eq('client_id', user.id);
-      } else if (user?.role === 'creator') {
-        // Creators shouldn't see projects in this view
-        setProjects([]);
+        if (user.role === 'client') {
+          query = query.eq('client_id', user.id);
+        } else if (user.role === 'creator') {
+          // Creators shouldn't see projects in this view
+          setProjects([]);
+          return;
+        }
+
+        const { data, error } = await query;
+        console.log("DEBUG: Query result:", { data, error });
+
+        if (error) {
+          console.error("DEBUG: Query error:", error);
+          throw error;
+        }
+
+        if (data) {
+          setProjects(data);
+          if (data.length > 0) setSelectedProjectId(data[0].id);
+        }
+      } catch (err) {
+        console.error("Projects fetch failed:", err);
+      } finally {
         setLoading(false);
-        return;
       }
-
-      const { data, error } = await query;
-      console.log("DEBUG: Query result:", { data, error });
-
-      if (error) {
-        console.error("DEBUG: Query error:", error);
-      }
-
-      if (!error && data) {
-        setProjects(data);
-        if (data.length > 0) setSelectedProjectId(data[0].id);
-      }
-      setLoading(false);
     };
 
     fetchProjects();
-  }, []);
+  }, [user]);
 
   const activeProject = projects.find(p => p.id === selectedProjectId);
 

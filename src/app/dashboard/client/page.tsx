@@ -32,22 +32,30 @@ export default function ClientDashboard() {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
-      // Fetch projects logic would go here (table doesn't exist yet in user prompt, but we'll fetch from creators for nearby map)
-      const { data: nearby } = await supabase
-        .from('creators')
-        .select(`*, profiles(full_name, avatar_url, city, area)`)
-        .limit(5);
-      
-      if (nearby) {
-        setNearbyCreators(nearby.map(n => ({
-          id: n.id,
-          name: n.profiles.full_name,
-          image: n.profiles.avatar_url,
-          location: { lat: n.location_lat, lng: n.location_lng, area: n.profiles.area }
-        })));
-      }
+      try {
+        // Fetch projects logic would go here (table doesn't exist yet in user prompt, but we'll fetch from creators for nearby map)
+        const { data: nearby, error } = await supabase
+          .from('creators')
+          .select(`*, profiles(full_name, avatar_url, city, area)`)
+          .limit(5);
+        
+        if (error) {
+          console.error("Error fetching nearby creators:", error);
+        }
 
-      setLoading(false);
+        if (nearby) {
+          setNearbyCreators(nearby.map(n => ({
+            id: n.id,
+            name: n.profiles?.full_name || "Unknown",
+            image: n.profiles?.avatar_url,
+            location: { lat: n.location_lat, lng: n.location_lng, area: n.profiles?.area }
+          })));
+        }
+      } catch (err) {
+        console.error("Client dashboard fetch failed:", err);
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchData();

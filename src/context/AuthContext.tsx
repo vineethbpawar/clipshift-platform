@@ -65,87 +65,111 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const fetchUnlocks = async (userId: string) => {
-      const { data } = await supabase
-        .from('unlocked_chats')
-        .select('creator_id')
-        .eq('client_id', userId);
-      
-      if (data) {
-        setUnlockedCreators(data.map(u => u.creator_id));
+      try {
+        const { data } = await supabase
+          .from('unlocked_chats')
+          .select('creator_id')
+          .eq('client_id', userId);
+        
+        if (data) {
+          setUnlockedCreators(data.map(u => u.creator_id));
+        }
+      } catch (err) {
+        console.error("Error fetching unlocks:", err);
       }
     };
 
     const fetchSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        await handleUserSession(session.user);
-        await fetchUnlocks(session.user.id);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          await handleUserSession(session.user);
+          await fetchUnlocks(session.user.id);
+        }
+      } catch (err) {
+        console.error("Initial session fetch failed:", err);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     fetchSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session) {
-        await handleUserSession(session.user);
-        await fetchUnlocks(session.user.id);
-      } else {
-        setUser(null);
-        setRole(null);
-        setUnlockedCreators([]);
+      try {
+        if (session) {
+          await handleUserSession(session.user);
+          await fetchUnlocks(session.user.id);
+        } else {
+          setUser(null);
+          setRole(null);
+          setUnlockedCreators([]);
+        }
+      } catch (err) {
+        console.error("Auth state change processing failed:", err);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
   const handleUserSession = async (supabaseUser: any) => {
-    let { data: profile } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", supabaseUser.id)
-      .maybeSingle();
-
-    if (!profile) {
-      console.log("Profile not found, creating default profile");
-      const { data: newProfile, error } = await supabase
+    try {
+      let { data: profile, error: fetchError } = await supabase
         .from("profiles")
-        .upsert({
-          id: supabaseUser.id,
-          full_name: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split("@")[0] || "User",
-          email: supabaseUser.email,
-          role: role || "client",
-        }, { onConflict: 'id' })
-        .select()
+        .select("*")
+        .eq("id", supabaseUser.id)
         .maybeSingle();
-      
-      if (!error && newProfile) {
-        profile = newProfile;
-      }
-    }
 
-    if (profile) {
-      const userData: User = {
-        id: supabaseUser.id,
-        role: (profile.role as Role) || "client",
-        name: profile.full_name,
-        email: profile.email,
-        mobile: profile.mobile,
-        city: profile.city,
-        area: profile.area,
-        pincode: profile.pincode,
-        address: profile.address,
-        instagram: profile.instagram,
-        portfolio: profile.portfolio_link,
-        languages: profile.languages,
-        bio: profile.bio,
-        profileImage: profile.avatar_url,
-        specialization: profile.specialization
-      };
-      setUser(userData);
-      setRole((profile.role as Role) || "client");
+      if (fetchError) {
+        console.error("Profile fetch error:", fetchError);
+      }
+
+      if (!profile) {
+        console.log("Profile not found, creating default profile");
+        const { data: newProfile, error } = await supabase
+          .from("profiles")
+          .upsert({
+            id: supabaseUser.id,
+            full_name: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split("@")[0] || "User",
+            email: supabaseUser.email,
+            role: role || "client",
+          }, { onConflict: 'id' })
+          .select()
+          .maybeSingle();
+        
+        if (error) {
+          console.error("Default profile creation failed:", error);
+        } else if (newProfile) {
+          profile = newProfile;
+        }
+      }
+
+      if (profile) {
+        const userData: User = {
+          id: supabaseUser.id,
+          role: (profile.role as Role) || "client",
+          name: profile.full_name,
+          email: profile.email,
+          mobile: profile.mobile,
+          city: profile.city,
+          area: profile.area,
+          pincode: profile.pincode,
+          address: profile.address,
+          instagram: profile.instagram,
+          portfolio: profile.portfolio_link,
+          languages: profile.languages,
+          bio: profile.bio,
+          profileImage: profile.avatar_url,
+          specialization: profile.specialization
+        };
+        setUser(userData);
+        setRole((profile.role as Role) || "client");
+      }
+    } catch (err) {
+      console.error("Session handling failed:", err);
     }
   };
 
