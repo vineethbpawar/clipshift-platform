@@ -16,9 +16,7 @@ export default function ProjectsPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (user?.role === 'creator') {
-      router.push('/dashboard/creator');
-    }
+    // Creator can stay on projects page now
   }, [user, router]);
 
   const [projects, setProjects] = useState<any[]>([]);
