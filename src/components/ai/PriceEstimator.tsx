@@ -15,9 +15,9 @@ export const PriceEstimator = ({ projectType = "Cinematic Reel", duration = "60s
   const [displayMax, setDisplayMax] = useState("0");
 
   useEffect(() => {
-    // Mock logic based on project type
+    // Logic based on project type
     const base = projectType.includes("Reel") ? 15000 : 45000;
-    const offset = Math.floor(Math.random() * 5000);
+    const offset = 0;
     setRange({ min: base + offset, max: base + offset + 15000 });
     setMarketAvg(base + offset + 2000);
     

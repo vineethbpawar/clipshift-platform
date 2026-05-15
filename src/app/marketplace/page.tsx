@@ -45,7 +45,7 @@ export default function MarketplacePage() {
           area: c.profiles.area,
           delivery: c.delivery_speed || "3-5 Days",
           location: { lat: c.location_lat, lng: c.location_lng },
-          aiScore: Math.floor(Math.random() * 20) + 80 // Mock AI score for now
+          aiScore: c.ai_score || 0
         }));
         setCreators(mappedCreators);
       }

@@ -12,16 +12,18 @@ export const PortfolioInsights = () => {
   const [loading, setLoading] = useState(false);
 
   const fetchInsights = async () => {
+    if (!user) return;
     setLoading(true);
     try {
-      // Mock portfolio data - in real app, fetch from Supabase
-      const mockPortfolioData = {
-        categories: ["Wedding", "Reels"],
-        videoCount: 12,
-        topPerformance: "Wedding Cinematic 2024",
-        recentStyles: ["Slow-mo", "Natural Light"]
+      // Use real profile data
+      const portfolioData = {
+        categories: user.specialization ? [user.specialization] : [],
+        videoCount: 0, // Need portfolio table for this
+        topPerformance: "N/A",
+        recentStyles: []
       };
-      const result = await getPortfolioInsights(mockPortfolioData);
+      
+      const result = await getPortfolioInsights(portfolioData);
       setInsights(result);
     } catch (error) {
       console.error("Failed to fetch insights:", error);

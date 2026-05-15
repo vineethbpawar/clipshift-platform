@@ -27,10 +27,12 @@ export default function CreatorDashboard() {
   const { user } = useAuth();
   const [isAvailable, setIsAvailable] = useState(true);
   const [loading, setLoading] = useState(true);
-  const [earnings, setEarnings] = useState({
-    total: 0,
-    unlocks: 0,
-    reach: 0,
+  const [stats, setStats] = useState({
+    totalEarnings: 0,
+    profileReach: 0,
+    chatUnlocks: 0,
+    activeProjects: 0,
+    proposalsSent: 0,
     dailyData: [] as any[]
   });
 
@@ -40,41 +42,71 @@ export default function CreatorDashboard() {
     const fetchCreatorData = async () => {
       setLoading(true);
       
-      // 1. Fetch Total Earnings
-      const { data: payments } = await supabase
-        .from('payments')
-        .select('amount, created_at')
-        .eq('creator_id', user.id)
-        .eq('status', 'completed');
+      try {
+        // 1. Fetch Total Earnings & Daily Data
+        const { data: payments, error: paymentsError } = await supabase
+          .from('payments')
+          .select('amount, created_at')
+          .eq('creator_id', user.id)
+          .eq('status', 'completed');
 
-      // 2. Fetch Unlock Count
-      const { count: unlockCount } = await supabase
-        .from('unlocked_chats')
-        .select('*', { count: 'exact', head: true })
-        .eq('creator_id', user.id);
+        if (paymentsError) console.error("Error fetching payments:", paymentsError);
 
-      if (payments) {
-        const totalPaise = payments.reduce((acc, curr) => acc + curr.amount, 0);
-        const totalINR = totalPaise / 100;
+        // 2. Fetch Project Unlock Count
+        const { count: unlockCount, error: unlockError } = await supabase
+          .from('project_unlocks')
+          .select('*', { count: 'exact', head: true })
+          .eq('freelancer_id', user.id);
 
-        // Process daily data for chart (last 7 entries for demo, or group by day)
-        const dailyMap: Record<string, number> = {};
-        payments.forEach(p => {
-          const date = new Date(p.created_at).toLocaleDateString('en-US', { weekday: 'short' });
-          dailyMap[date] = (dailyMap[date] || 0) + (p.amount / 100);
-        });
+        if (unlockError) console.error("Error fetching unlocks:", unlockError);
 
-        const dailyData = Object.entries(dailyMap).map(([name, amount]) => ({ name, amount }));
+        // 3. Fetch Proposals Sent
+        const { count: proposalsCount, error: proposalsError } = await supabase
+          .from('proposals')
+          .select('*', { count: 'exact', head: true })
+          .eq('freelancer_id', user.id);
 
-        setEarnings({
-          total: totalINR,
-          unlocks: unlockCount || 0,
-          reach: 2840, // Keep as mock until analytics table
+        if (proposalsError) console.error("Error fetching proposals:", proposalsError);
+
+        // 4. Fetch Active Projects (Accepted Proposals)
+        const { count: activeCount, error: activeError } = await supabase
+          .from('proposals')
+          .select('*', { count: 'exact', head: true })
+          .eq('freelancer_id', user.id)
+          .eq('status', 'accepted');
+
+        if (activeError) console.error("Error fetching active projects:", activeError);
+
+        let totalEarnings = 0;
+        let dailyData: any[] = [];
+
+        if (payments) {
+          const totalPaise = payments.reduce((acc, curr) => acc + curr.amount, 0);
+          totalEarnings = totalPaise / 100;
+
+          const dailyMap: Record<string, number> = {};
+          payments.forEach(p => {
+            const date = new Date(p.created_at).toLocaleDateString('en-US', { weekday: 'short' });
+            dailyMap[date] = (dailyMap[date] || 0) + (p.amount / 100);
+          });
+
+          dailyData = Object.entries(dailyMap).map(([name, amount]) => ({ name, amount }));
+        }
+
+        setStats({
+          totalEarnings,
+          profileReach: 0, // Placeholder for future analytics
+          chatUnlocks: unlockCount || 0,
+          activeProjects: activeCount || 0,
+          proposalsSent: proposalsCount || 0,
           dailyData
         });
-      }
 
-      setLoading(false);
+      } catch (error) {
+        console.error("Dashboard data fetch failed:", error);
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchCreatorData();
@@ -84,29 +116,33 @@ export default function CreatorDashboard() {
     <RoleGuard allowedRoles={["creator"]}>
       <DashboardLayout title="Creator Command">
       {/* Top Section: Stats & Availability */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 flex-1 w-full">
-          <StatCard title="Total Earnings" value={earnings.total} prefix="₹" icon={DollarSign} color="purple" />
-          <StatCard title="Profile Reach" value={earnings.reach} icon={Eye} color="blue" />
-          <StatCard title="Chat Unlocks" value={earnings.unlocks} icon={Users} color="green" />
+      <div className="space-y-8 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 w-full">
+          <StatCard title="Total Earnings" value={stats.totalEarnings} prefix="₹" icon={DollarSign} color="purple" />
+          <StatCard title="Profile Reach" value={stats.profileReach} icon={Eye} color="blue" />
+          <StatCard title="Chat Unlocks" value={stats.chatUnlocks} icon={Users} color="green" />
+          <StatCard title="Active Projects" value={stats.activeProjects} icon={Zap} color="purple" />
+          <StatCard title="Proposals Sent" value={stats.proposalsSent} icon={TrendingUp} color="blue" />
         </div>
         
-        <div className="glass p-6 rounded-3xl border-white/5 flex items-center gap-6 self-stretch">
-          <div>
-            <div className="text-[10px] text-gray-500 uppercase font-black tracking-widest mb-2 text-right">Status</div>
-            <div className={`text-xs font-black uppercase tracking-widest ${isAvailable ? "text-green-500" : "text-neon-purple"}`}>
-              {isAvailable ? "Ready for Shoots" : "In Production"}
+        <div className="flex justify-end">
+          <div className="glass p-6 rounded-3xl border-white/5 flex items-center gap-6">
+            <div>
+              <div className="text-[10px] text-gray-500 uppercase font-black tracking-widest mb-2 text-right">Status</div>
+              <div className={`text-xs font-black uppercase tracking-widest ${isAvailable ? "text-green-500" : "text-neon-purple"}`}>
+                {isAvailable ? "Ready for Shoots" : "In Production"}
+              </div>
             </div>
+            <button 
+              onClick={() => setIsAvailable(!isAvailable)}
+              className={`w-14 h-8 rounded-full p-1 transition-colors relative ${isAvailable ? "bg-green-500" : "bg-zinc-800"}`}
+            >
+              <motion.div 
+                animate={{ x: isAvailable ? 24 : 0 }}
+                className="w-6 h-6 bg-white rounded-full shadow-lg"
+              />
+            </button>
           </div>
-          <button 
-            onClick={() => setIsAvailable(!isAvailable)}
-            className={`w-14 h-8 rounded-full p-1 transition-colors relative ${isAvailable ? "bg-green-500" : "bg-zinc-800"}`}
-          >
-            <motion.div 
-              animate={{ x: isAvailable ? 24 : 0 }}
-              className="w-6 h-6 bg-white rounded-full shadow-lg"
-            />
-          </button>
         </div>
       </div>
 
@@ -123,11 +159,11 @@ export default function CreatorDashboard() {
           <div className="h-[300px] w-full flex items-center justify-center">
             {loading ? (
               <Loader2 className="animate-spin text-neon-purple" size={32} />
-            ) : earnings.dailyData.length === 0 ? (
+            ) : stats.dailyData.length === 0 ? (
               <div className="text-[10px] text-gray-600 font-black uppercase tracking-widest italic">No Transactional History Detected</div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={earnings.dailyData}>
+                <AreaChart data={stats.dailyData}>
                   <defs>
                     <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#a855f7" stopOpacity={0.3}/>

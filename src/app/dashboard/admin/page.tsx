@@ -41,6 +41,14 @@ export default function AdminDashboard() {
       // Fetch Total Creators
       const { count: creatorCount } = await supabase.from('creators').select('*', { count: 'exact', head: true });
 
+      // Fetch Platform Revenue
+      const { data: revenueData } = await supabase
+        .from('payments')
+        .select('amount')
+        .eq('status', 'completed');
+      
+      const totalRevenue = (revenueData?.reduce((acc, curr) => acc + curr.amount, 0) || 0) / 100;
+
       // Fetch Verification Queue
       const { data: queue } = await supabase
         .from('creators')
@@ -51,7 +59,7 @@ export default function AdminDashboard() {
       setStats({
         totalUsers: userCount || 0,
         totalCreators: creatorCount || 0,
-        platformRevenue: 0, // Mock for now until transactions table
+        platformRevenue: totalRevenue,
         fraudAlerts: 0
       });
 
@@ -61,7 +69,7 @@ export default function AdminDashboard() {
           name: q.profiles.full_name,
           category: q.category,
           level: q.level || 'Standard',
-          score: Math.floor(Math.random() * 20) + 80
+          score: q.ai_score || 0
         })));
       }
 
