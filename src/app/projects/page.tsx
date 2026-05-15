@@ -30,25 +30,16 @@ export default function ProjectsPage() {
       if (!user) return;
       setLoading(true);
       try {
-        console.log("DEBUG: Fetching projects for user role:", user?.role, "ID:", user?.id);
-        
-        let query = supabase.from('projects').select('*');
+        let query = supabase.from('projects').select('*, proposals(*)');
 
         if (user.role === 'client') {
           query = query.eq('client_id', user.id);
         } else if (user.role === 'creator') {
-          // Creators shouldn't see projects in this view
-          setProjects([]);
-          return;
+          query = query.eq('status', 'open');
         }
 
         const { data, error } = await query;
-        console.log("DEBUG: Query result:", { data, error });
-
-        if (error) {
-          console.error("DEBUG: Query error:", error);
-          throw error;
-        }
+        if (error) throw error;
 
         if (data) {
           setProjects(data);
@@ -83,12 +74,14 @@ export default function ProjectsPage() {
             </h2>
           </div>
 
-          <Link href="/post-project">
-            <button className="flex items-center gap-3 px-8 py-4 rounded-2xl bg-white text-black font-black uppercase tracking-widest text-xs hover:bg-neon-purple hover:text-white transition-all shadow-[0_0_30px_rgba(255,255,255,0.1)]">
-              <Plus size={18} />
-              New Project
-            </button>
-          </Link>
+          {user?.role === 'client' && (
+            <Link href="/post-project">
+              <button className="flex items-center gap-3 px-8 py-4 rounded-2xl bg-white text-black font-black uppercase tracking-widest text-xs hover:bg-neon-purple hover:text-white transition-all shadow-[0_0_30px_rgba(255,255,255,0.1)]">
+                <Plus size={18} />
+                New Project
+              </button>
+            </Link>
+          )}
         </div>
 
         {loading ? (

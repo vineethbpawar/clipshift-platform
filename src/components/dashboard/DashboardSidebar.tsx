@@ -16,6 +16,7 @@ import {
   Heart,
   TrendingUp,
   Briefcase,
+  Plus,
   X
 } from "lucide-react";
 import { useAuth, type Role, getDashboardPath } from "@/context/AuthContext";
@@ -60,9 +61,9 @@ export const DashboardSidebar = ({ onClose }: { onClose?: () => void }) => {
     if (role === "client") {
       return [
         ...common,
-        { href: "/marketplace", icon: Users, label: "Find Creators" },
-        { href: "/dashboard/client/saved", icon: Heart, label: "Saved Talent" },
-        { href: "/dashboard/client/analytics", icon: TrendingUp, label: "Spending" },
+        { href: "/post-project", icon: Plus, label: "Post Project" },
+        { href: "/projects", icon: Layers, label: "My Projects" },
+        { href: "/chat", icon: MessageSquare, label: "Messages" },
       ];
     }
 
