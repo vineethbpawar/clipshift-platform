@@ -12,7 +12,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 
 export default function ProjectsPage() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -72,7 +72,7 @@ export default function ProjectsPage() {
             </h2>
           </div>
 
-          {user?.role === 'client' && (
+          {role === 'client' && (
             <Link href="/post-project">
               <button className="flex items-center gap-3 px-8 py-4 rounded-2xl bg-white text-black font-black uppercase tracking-widest text-xs hover:bg-neon-purple hover:text-white transition-all shadow-[0_0_30px_rgba(255,255,255,0.1)]">
                 <Plus size={18} />
