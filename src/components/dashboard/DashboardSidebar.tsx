@@ -15,12 +15,13 @@ import {
   Map as MapIcon,
   Heart,
   TrendingUp,
-  Briefcase
+  Briefcase,
+  X
 } from "lucide-react";
 import { useAuth, type Role, getDashboardPath } from "@/context/AuthContext";
 
-const SidebarLink = ({ href, icon: Icon, label, isActive }: { href: string, icon: any, label: string, isActive: boolean }) => (
-  <Link href={href}>
+const SidebarLink = ({ href, icon: Icon, label, isActive, onClick }: { href: string, icon: any, label: string, isActive: boolean, onClick?: () => void }) => (
+  <Link href={href} onClick={onClick}>
     <motion.div
       whileHover={{ x: 5 }}
       whileTap={{ scale: 0.95 }}
@@ -42,7 +43,7 @@ const SidebarLink = ({ href, icon: Icon, label, isActive }: { href: string, icon
   </Link>
 );
 
-export const DashboardSidebar = () => {
+export const DashboardSidebar = ({ onClose }: { onClose?: () => void }) => {
   const pathname = usePathname();
   const { role } = useAuth();
 
@@ -89,9 +90,17 @@ export const DashboardSidebar = () => {
   const links = getLinks(role);
 
   return (
-    <div className="w-64 h-[calc(100vh-80px)] flex flex-col bg-black/40 backdrop-blur-md border-r border-white/5 p-6 sticky top-20">
-      <div className="flex-1 space-y-2">
-        <h3 className="text-[10px] text-gray-600 uppercase font-black tracking-widest mb-6 px-4">Menu</h3>
+    <div className="w-80 md:w-64 h-full flex flex-col bg-black/95 md:bg-black/40 backdrop-blur-xl md:backdrop-blur-md border-r border-white/5 p-6 relative">
+      {/* Mobile Close Button */}
+      <button 
+        onClick={onClose}
+        className="absolute top-6 right-6 p-2 text-gray-500 hover:text-white md:hidden"
+      >
+        <X size={20} />
+      </button>
+
+      <div className="flex-1 space-y-2 mt-12 md:mt-0">
+        <h3 className="text-[10px] text-gray-600 uppercase font-black tracking-widest mb-6 px-4 italic opacity-50">Operational Nodes</h3>
         {links.map((link) => (
           <SidebarLink
             key={link.href}
@@ -99,6 +108,7 @@ export const DashboardSidebar = () => {
             icon={link.icon}
             label={link.label}
             isActive={pathname === link.href}
+            onClick={onClose}
           />
         ))}
       </div>
@@ -109,8 +119,9 @@ export const DashboardSidebar = () => {
           icon={Settings}
           label="Settings"
           isActive={pathname === "/settings"}
+          onClick={onClose}
         />
-        <div className="px-4 py-8">
+        <div className="px-4 py-8 hidden md:block">
           <div className="glass p-4 rounded-2xl border-neon-blue/20 bg-gradient-to-br from-neon-blue/5 to-transparent">
             <h4 className="text-[9px] font-black text-white uppercase tracking-widest mb-2">Platform Health</h4>
             <div className="flex items-center gap-2">

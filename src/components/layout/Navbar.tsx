@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { motion, useScroll, useTransform } from "framer-motion";
+import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
 import { Menu, X, ShoppingCart, Search, LogOut, MessageSquare } from "lucide-react";
 import { NeonButton } from "../ui/NeonButton";
 import { useAuth, getDashboardPath } from "@/context/AuthContext";
@@ -46,7 +46,7 @@ export const Navbar = () => {
         <div className="flex justify-between h-20 items-center">
           {/* Logo */}
           <Link href="/" className="flex items-center">
-            <Image src="/logo.png" alt="ClipShift" width={180} height={60} className="h-10 w-auto" />
+            <Image src="/logo.png" alt="ClipShift" width={180} height={60} className="h-8 md:h-10 w-auto" />
           </Link>
 
           {/* Desktop Nav */}
@@ -89,7 +89,7 @@ export const Navbar = () => {
               ) : (
                 <>
                   <Link href="/auth/login">
-                    <button className="text-gray-300 hover:text-white text-sm font-bold uppercase tracking-widest px-4 py-2">
+                    <button className="text-gray-300 hover:text-white text-sm font-bold uppercase tracking-widest px-4 py-2 transition-all hover:scale-105">
                       Login
                     </button>
                   </Link>
@@ -103,49 +103,93 @@ export const Navbar = () => {
             </div>
           </div>
 
-          <div className="md:hidden flex items-center">
+          <div className="md:hidden flex items-center gap-4">
+            {user && (
+              <div className="text-[8px] font-black text-neon-purple uppercase tracking-widest px-3 py-1 border border-neon-purple/20 rounded-full">
+                Active Node
+              </div>
+            )}
             <button
               onClick={() => setIsOpen(!isOpen)}
-              className="text-gray-300 hover:text-white p-2"
+              className="text-gray-300 hover:text-white p-2 glass rounded-lg"
             >
-              {isOpen ? <X size={24} /> : <Menu size={24} />}
+              {isOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
           </div>
         </div>
       </div>
 
-      {/* Mobile menu */}
-      {isOpen && (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: "auto" }}
-          className="md:hidden glass"
-        >
-          <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-            {navLinks.map((link) => (
-              <Link
-                key={link.name}
-                href={link.href}
-                className="text-gray-300 hover:text-white block px-3 py-4 text-base font-medium border-b border-white/5"
-              >
-                {link.name}
-              </Link>
-            ))}
-            <div className="pt-4 pb-2 px-3 space-y-3">
-              <Link href="/auth/login" className="block">
-                <button className="w-full text-gray-300 hover:text-white text-sm font-bold uppercase tracking-widest px-4 py-4 glass rounded-xl">
-                  Login
-                </button>
-              </Link>
-              <Link href="/auth/signup" className="block">
-                <NeonButton variant="purple" className="w-full">
-                  Join Collective
-                </NeonButton>
-              </Link>
-            </div>
-          </div>
-        </motion.div>
-      )}
+      {/* Mobile menu Overlay */}
+      <AnimatePresence>
+        {isOpen && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsOpen(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"
+            />
+            <motion.div
+              initial={{ opacity: 0, y: -20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -20, scale: 0.95 }}
+              className="absolute top-24 left-4 right-4 z-50 md:hidden glass p-4 rounded-[32px] border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col gap-2"
+            >
+              <div className="grid grid-cols-2 gap-2 mb-4">
+                {navLinks.map((link) => (
+                  <Link
+                    key={link.name}
+                    href={link.href}
+                    onClick={() => setIsOpen(false)}
+                    className="text-gray-300 hover:text-white flex flex-col items-center justify-center p-6 glass rounded-2xl gap-2 border-white/5 transition-all active:scale-95"
+                  >
+                    <span className="text-[10px] font-black uppercase tracking-widest">{link.name}</span>
+                    {link.badge && link.badge > 0 && (
+                      <span className="text-[8px] px-2 py-0.5 bg-neon-purple text-white rounded-full">
+                        {link.badge} New
+                      </span>
+                    )}
+                  </Link>
+                ))}
+              </div>
+
+              <div className="space-y-3 pt-4 border-t border-white/5">
+                {user ? (
+                  <div className="flex flex-col gap-3">
+                    <div className="text-center p-2">
+                      <div className="text-[8px] text-gray-500 uppercase font-black tracking-widest mb-1">Identified As</div>
+                      <div className="text-xs font-bold text-white">{user.name}</div>
+                    </div>
+                    <button 
+                      onClick={() => {
+                        signOut();
+                        setIsOpen(false);
+                      }}
+                      className="w-full py-4 rounded-2xl glass border-red-500/20 text-red-500 text-[10px] font-black uppercase tracking-widest hover:bg-red-500/10"
+                    >
+                      Disconnect Node
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <Link href="/auth/login" onClick={() => setIsOpen(false)}>
+                      <button className="w-full text-gray-300 hover:text-white text-[10px] font-black uppercase tracking-widest py-4 glass rounded-2xl border-white/5">
+                        Access Node
+                      </button>
+                    </Link>
+                    <Link href="/auth/signup" onClick={() => setIsOpen(false)}>
+                      <NeonButton variant="purple" className="w-full py-4 text-[10px]">
+                        Join the Collective
+                      </NeonButton>
+                    </Link>
+                  </>
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </motion.nav>
   );
 };

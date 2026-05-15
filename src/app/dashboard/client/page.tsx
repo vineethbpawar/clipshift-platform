@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { StatCard } from "@/components/dashboard/StatCard";
-import { Wallet, Briefcase, Heart, Bell, Plus, Users, Map as MapIcon, Loader2, Info } from "lucide-react";
+import { Wallet, Briefcase, Heart, Bell, Plus, Users, Map as MapIcon, Loader2, Info, ChevronRight } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
@@ -65,29 +65,29 @@ export default function ClientDashboard() {
     <RoleGuard allowedRoles={["client"]}>
       <DashboardLayout title="Client Command Center">
       {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
         <StatCard title="Total Investment" value={0} prefix="₹" icon={Wallet} color="purple" />
         <StatCard title="Active Streams" value={projects.length} icon={Briefcase} color="blue" />
         <StatCard title="Saved Talent" value={savedCreators.length} icon={Heart} color="green" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
         {/* Left Col: Spending & Projects */}
-        <div className="lg:col-span-2 space-y-8">
-          <div className="glass p-8 rounded-[40px] border-white/5 relative overflow-hidden">
-            <h3 className="text-sm font-black text-white uppercase tracking-[0.2em] mb-8">Capital Allocation</h3>
-            <div className="h-[300px] w-full flex items-center justify-center">
+        <div className="lg:col-span-2 space-y-6 md:space-y-8">
+          <div className="glass p-6 md:p-8 rounded-[32px] md:rounded-[40px] border-white/5 relative overflow-hidden">
+            <h3 className="text-xs md:text-sm font-black text-white uppercase tracking-[0.2em] mb-8">Capital Allocation</h3>
+            <div className="h-[250px] md:h-[300px] w-full flex items-center justify-center">
               {spendingData.reduce((acc, curr) => acc + curr.value, 0) === 0 ? (
                 <div className="text-center">
-                  <div className="text-[10px] text-gray-600 uppercase font-black tracking-widest">No Expenditure Logs</div>
+                  <div className="text-[10px] text-gray-600 uppercase font-black tracking-widest italic opacity-50">No Expenditure Logs Detected</div>
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
                       data={spendingData}
-                      innerRadius={80}
-                      outerRadius={120}
+                      innerRadius={window.innerWidth < 768 ? 60 : 80}
+                      outerRadius={window.innerWidth < 768 ? 90 : 120}
                       paddingAngle={5}
                       dataKey="value"
                     >
@@ -112,35 +112,38 @@ export default function ClientDashboard() {
             </div>
             
             {projects.length === 0 ? (
-              <div className="glass p-12 rounded-3xl border-white/5 text-center">
-                <p className="text-xs text-gray-500 uppercase font-black tracking-widest">No Active Streams Detected</p>
-                <Link href="/post-project">
-                  <button className="mt-4 px-6 py-3 rounded-xl bg-neon-purple text-white text-[10px] font-black uppercase tracking-widest shadow-lg">
+              <div className="glass p-8 md:p-12 rounded-[32px] border-white/5 text-center">
+                <p className="text-[10px] md:text-xs text-gray-500 uppercase font-black tracking-widest italic opacity-50">No Active Streams Detected</p>
+                <Link href="/post-project" className="inline-block mt-6">
+                  <button className="px-8 py-3 rounded-xl bg-neon-purple text-white text-[10px] font-black uppercase tracking-widest shadow-lg hover:scale-105 transition-all">
                     Initiate Project
                   </button>
                 </Link>
               </div>
             ) : (
-              projects.map((proj) => (
-                <div key={proj.id} className="glass p-6 rounded-3xl border-white/5 flex items-center justify-between group hover:border-neon-purple/30 transition-all">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-neon-purple/10 border border-neon-purple/20 flex items-center justify-center text-neon-purple">
-                      <Briefcase size={20} />
+              <div className="space-y-4">
+                {projects.map((proj) => (
+                  <div key={proj.id} className="glass p-4 md:p-6 rounded-2xl md:rounded-3xl border-white/5 flex items-center justify-between group hover:border-neon-purple/30 transition-all gap-4">
+                    <div className="flex items-center gap-4 min-w-0">
+                      <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-neon-purple/10 border border-neon-purple/20 flex items-center justify-center text-neon-purple shrink-0">
+                        <Briefcase size={18} />
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="text-xs md:text-sm font-black text-white uppercase tracking-tighter truncate">{proj.title}</h4>
+                        <p className="text-[9px] md:text-[10px] text-gray-500 uppercase font-bold tracking-widest">{proj.status}</p>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="text-sm font-black text-white uppercase tracking-tighter">{proj.title}</h4>
-                      <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">{proj.status}</p>
-                    </div>
+                    <ChevronRight size={16} className="text-gray-600 group-hover:text-neon-purple transition-colors shrink-0" />
                   </div>
-                </div>
-              ))
+                ))}
+              </div>
             )}
           </div>
         </div>
 
         {/* Right Col: Map & Notifications */}
-        <div className="space-y-8">
-          <div className="glass p-6 rounded-[40px] border-white/5 h-[400px] relative overflow-hidden group">
+        <div className="space-y-6 md:space-y-8">
+          <div className="glass p-4 md:p-6 rounded-[32px] md:rounded-[40px] border-white/5 h-[350px] md:h-[400px] relative overflow-hidden group">
             <div className="absolute top-6 left-6 z-10">
               <h3 className="text-[10px] font-black text-white uppercase tracking-widest flex items-center gap-2">
                 <MapIcon size={12} className="text-neon-blue" />
@@ -158,27 +161,27 @@ export default function ClientDashboard() {
                 <span className="text-[10px] text-gray-600 font-black uppercase tracking-widest">No Nearby Nodes Found</span>
               </div>
             ) : (
-              <div className="w-full h-full grayscale opacity-50 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-700">
+              <div className="w-full h-full grayscale opacity-50 md:opacity-30 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-700">
                 <MapView creators={nearbyCreators} />
               </div>
             )}
 
             <div className="absolute bottom-6 left-6 right-6 z-10">
               <Link href="/explore">
-                <button className="w-full py-3 rounded-xl bg-white text-black text-[10px] font-black uppercase tracking-widest shadow-xl">
+                <button className="w-full py-3 rounded-xl bg-white text-black text-[10px] font-black uppercase tracking-widest shadow-xl hover:bg-neon-blue hover:text-white transition-all">
                   Open Discovery Map
                 </button>
               </Link>
             </div>
           </div>
 
-          <div className="glass p-8 rounded-[40px] border-white/5">
+          <div className="glass p-6 md:p-8 rounded-[32px] md:rounded-[40px] border-white/5">
             <h3 className="text-[10px] font-black text-white uppercase tracking-widest mb-6 border-b border-white/5 pb-4">Saved Creators</h3>
             {savedCreators.length === 0 ? (
-              <div className="text-center py-8">
+              <div className="text-center py-6 md:py-8">
                 <Heart size={24} className="text-gray-700 mx-auto mb-3" />
                 <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest">No saved creators yet</p>
-                <Link href="/marketplace" className="text-[8px] text-neon-purple font-black uppercase tracking-widest hover:underline mt-2 inline-block">Explore Talent</Link>
+                <Link href="/marketplace" className="text-[8px] text-neon-purple font-black uppercase tracking-widest hover:underline mt-4 inline-block">Explore Talent</Link>
               </div>
             ) : (
               <div className="space-y-4">

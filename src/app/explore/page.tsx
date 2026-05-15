@@ -150,22 +150,24 @@ export default function ExplorePage() {
         )}
 
         {/* Overlay UI - Top Bar */}
-        <div className="absolute top-28 left-0 right-0 z-20 px-4 md:px-8 flex flex-col md:flex-row items-center justify-between gap-4 pointer-events-none">
-          <LocationSearch onSearch={handleSearch} />
+        <div className="absolute top-24 md:top-28 left-0 right-0 z-20 px-4 md:px-8 flex flex-col md:flex-row items-center justify-between gap-4 pointer-events-none">
+          <div className="w-full md:max-w-sm pointer-events-auto">
+            <LocationSearch onSearch={handleSearch} />
+          </div>
           
-          <div className="flex items-center gap-3 pointer-events-auto">
+          <div className="flex items-center gap-2 md:gap-3 pointer-events-auto self-end md:self-auto">
             <button 
               onClick={handleLocate}
-              className="p-4 glass border-white/10 rounded-full text-white hover:bg-neon-purple hover:text-white transition-all shadow-lg"
+              className="p-3 md:p-4 glass border-white/10 rounded-full text-white hover:bg-neon-purple hover:text-white transition-all shadow-lg"
               title="Current Location"
             >
-              <Crosshair size={20} />
+              <Crosshair className="w-4 h-4 md:w-5 md:h-5" />
             </button>
             <button 
               onClick={() => setShowFilters(!showFilters)}
-              className={`p-4 glass border-white/10 rounded-full transition-all shadow-lg ${showFilters ? "bg-neon-purple text-white" : "text-white"}`}
+              className={`p-3 md:p-4 glass border-white/10 rounded-full transition-all shadow-lg ${showFilters ? "bg-neon-purple text-white" : "text-white"}`}
             >
-              <Filter size={20} />
+              <Filter className="w-4 h-4 md:w-5 md:h-5" />
             </button>
           </div>
         </div>
@@ -177,13 +179,13 @@ export default function ExplorePage() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
-              className="absolute top-48 right-8 z-20 w-64 space-y-4"
+              className="absolute top-44 md:top-48 right-4 md:right-8 z-20 w-[calc(100%-2rem)] sm:w-64 space-y-4"
             >
               <RadiusFilter radius={radius} setRadius={setRadius} />
               
-              <div className="glass border-white/5 rounded-2xl p-4">
+              <div className="glass border-white/5 rounded-2xl p-4 max-h-[40vh] flex flex-col overflow-hidden">
                 <div className="text-[10px] uppercase font-bold text-gray-500 tracking-widest mb-3">Found {filteredCreators.length} Creators</div>
-                <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                <div className="space-y-2 overflow-y-auto pr-2 custom-scrollbar flex-1">
                   {filteredCreators.length > 0 ? filteredCreators.map(c => (
                     <div key={c.id} className="text-xs text-white p-2 hover:bg-white/5 rounded-lg cursor-pointer transition-colors border border-transparent hover:border-white/5">
                       {c.name} • <span className="text-neon-blue">{c.location.area || 'Unknown'}</span>
@@ -199,16 +201,16 @@ export default function ExplorePage() {
 
         {/* Overlay UI - Bottom Info */}
         {!loading && creators.length > 0 && (
-          <div className="absolute bottom-8 left-8 z-20 pointer-events-none hidden md:block">
-            <div className="glass px-6 py-4 rounded-3xl border-white/5 flex items-center gap-4">
-              <div className="flex -space-x-3">
+          <div className="absolute bottom-6 md:bottom-8 left-4 md:left-8 z-20 pointer-events-none">
+            <div className="glass px-4 md:px-6 py-3 md:py-4 rounded-2xl md:rounded-3xl border-white/5 flex items-center gap-3 md:gap-4">
+              <div className="flex -space-x-2 md:-space-x-3">
                 {creators.slice(0, 3).map(c => (
-                  <img key={c.id} src={c.image} className="w-8 h-8 rounded-full border-2 border-black" alt="" />
+                  <img key={c.id} src={c.image} className="w-6 h-6 md:w-8 md:h-8 rounded-full border-2 border-black" alt="" />
                 ))}
               </div>
-              <div className="text-xs">
+              <div className="text-[10px] md:text-xs">
                 <div className="text-white font-bold">{creators.length} Premium Creators</div>
-                <div className="text-gray-500">Available in global nodes</div>
+                <div className="text-gray-500 hidden sm:block">Available in global nodes</div>
               </div>
             </div>
           </div>
