@@ -57,10 +57,9 @@ export default function LoginPage() {
         throw new Error(authData.error_description || authData.msg || "Invalid login credentials");
       }
 
-      await supabase.auth.setSession({
-        access_token: authData.access_token,
-        refresh_token: authData.refresh_token,
-      });
+      if (!authData.access_token || !authData.refresh_token || !authData.user) {
+        throw new Error("Invalid response from Supabase auth.");
+      }
 
       const profileResponse = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${authData.user.id}&select=id,email,role`, {
         method: "GET",
@@ -73,7 +72,7 @@ export default function LoginPage() {
       });
 
       const profileDataArray = await profileResponse.json();
-      console.log("DIRECT PROFILE RESPONSE", profileDataArray);
+      console.log("DIRECT PROFILE RESPONSE", { status: profileResponse.status, profileData: profileDataArray });
 
       if (!profileResponse.ok) {
         throw new Error(profileDataArray.message || "Failed to fetch profile");
@@ -85,13 +84,23 @@ export default function LoginPage() {
         throw new Error("Profile not found. Please signup again.");
       }
 
+      try {
+        await Promise.race([
+          supabase.auth.setSession({
+            access_token: authData.access_token,
+            refresh_token: authData.refresh_token,
+          }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error("setSession timeout")), 5000))
+        ]);
+      } catch (sessionErr) {
+        console.error("setSession error (ignoring):", sessionErr);
+      }
+
       let dashboardPath = "/dashboard/client";
 
       if (profile.role === "creator") {
         dashboardPath = "/dashboard/creator";
-      }
-
-      if (profile.role === "admin") {
+      } else if (profile.role === "admin") {
         dashboardPath = "/dashboard/admin";
       }
 
@@ -119,8 +128,8 @@ export default function LoginPage() {
       }
     } finally {
       clearTimeout(timeoutId);
-      console.log("LOGIN REST FINALLY");
       setLoading(false);
+      console.log("LOGIN REST FINALLY");
     }
   };
 
