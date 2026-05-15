@@ -16,15 +16,27 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [selectedRole, setSelectedRole] = useState<Role>("client");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
     try {
       await signIn(email, password);
       toast.success("Welcome back!");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to sign in");
+    } catch (err: any) {
+      console.error("Login error in component:", err);
+      let errorMessage = err.message || "Failed to sign in";
+      
+      if (errorMessage.includes("Invalid login credentials")) {
+        errorMessage = "Invalid email or password.";
+      } else if (errorMessage.includes("Failed to fetch")) {
+        errorMessage = "Cannot connect to Supabase. Check internet/network and try again.";
+      }
+      
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -87,13 +99,23 @@ export default function LoginPage() {
                   required
                 />
                 <div className="flex justify-end mt-2">
-                  <Link href="/auth/forgot-password" className="text-[10px] text-gray-500 hover:text-neon-purple transition-colors uppercase font-bold tracking-widest">
+                  <Link href="/auth/forgot-password" title="Forgot Password?" className="text-[10px] text-gray-500 hover:text-neon-purple transition-colors uppercase font-bold tracking-widest">
                     Forgot Password?
                   </Link>
                 </div>
-              </div>
+                </div>
 
-              <NeonButton variant="purple" className="w-full py-4" type="submit" disabled={loading}>
+                {error && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm text-center"
+                >
+                  {error}
+                </motion.div>
+                )}
+
+                <NeonButton variant="purple" className="w-full py-4" type="submit" disabled={loading}>
                 {loading ? <Loader2 className="animate-spin mx-auto" size={20} /> : "Access Dashboard"}
               </NeonButton>
             </form>

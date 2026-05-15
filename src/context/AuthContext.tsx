@@ -150,22 +150,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signIn = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (error) throw error;
-    
-    if (data.user) {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", data.user.id)
-        .maybeSingle();
-        
-      const userRole = (profile?.role as Role) || "client";
-      router.push(getDashboardPath(userRole));
+      if (error) {
+        console.error("Login error:", error);
+        throw error;
+      }
+      
+      if (data.user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", data.user.id)
+          .maybeSingle();
+          
+        const userRole = (profile?.role as Role) || "client";
+        router.push(getDashboardPath(userRole));
+      }
+    } catch (error) {
+      console.error("Login process failed:", error);
+      throw error;
     }
   };
 
