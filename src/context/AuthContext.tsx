@@ -63,22 +63,66 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [unlockedCreators, setUnlockedCreators] = useState<string[]>([]);
   const router = useRouter();
 
-  useEffect(() => {
-    const fetchUnlocks = async (userId: string) => {
-      try {
-        const { data } = await supabase
-          .from('unlocked_chats')
-          .select('creator_id')
-          .eq('client_id', userId);
-        
-        if (data) {
-          setUnlockedCreators(data.map(u => u.creator_id));
-        }
-      } catch (err) {
-        console.error("Error fetching unlocks:", err);
-      }
-    };
+  const handleUserSession = async (supabaseUser: { id: string }) => {
+    try {
+      const { data: profile, error: fetchError } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", supabaseUser.id)
+        .maybeSingle();
 
+      if (fetchError) {
+        console.error("Profile fetch error:", fetchError);
+        return;
+      }
+
+      if (!profile) {
+        console.warn("Profile not found for user", supabaseUser.id);
+        setUser(null);
+        setRole(null);
+        return;
+      }
+
+      const userData: User = {
+        id: supabaseUser.id,
+        role: profile.role as Role,
+        name: profile.full_name,
+        email: profile.email,
+        mobile: profile.mobile,
+        city: profile.city,
+        area: profile.area,
+        pincode: profile.pincode,
+        address: profile.address,
+        instagram: profile.instagram,
+        portfolio: profile.portfolio_link,
+        languages: profile.languages,
+        bio: profile.bio,
+        profileImage: profile.avatar_url,
+        specialization: profile.specialization
+      };
+      setUser(userData);
+      setRole(profile.role as Role);
+    } catch (err) {
+      console.error("Session handling failed:", err);
+    }
+  };
+
+  const fetchUnlocks = async (userId: string) => {
+    try {
+      const { data } = await supabase
+        .from('unlocked_chats')
+        .select('creator_id')
+        .eq('client_id', userId);
+      
+      if (data) {
+        setUnlockedCreators(data.map(u => u.creator_id));
+      }
+    } catch (err) {
+      console.error("Error fetching unlocks:", err);
+    }
+  };
+
+  useEffect(() => {
     const fetchSession = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -114,50 +158,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     return () => subscription.unsubscribe();
   }, []);
-
-  const handleUserSession = async (supabaseUser: any) => {
-    try {
-      const { data: profile, error: fetchError } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", supabaseUser.id)
-        .maybeSingle();
-
-      if (fetchError) {
-        console.error("Profile fetch error:", fetchError);
-        return;
-      }
-
-      if (!profile) {
-        console.warn("Profile not found for user", supabaseUser.id);
-        setUser(null);
-        setRole(null);
-        return;
-      }
-
-      const userData: User = {
-        id: supabaseUser.id,
-        role: (profile.role as Role) || "client",
-        name: profile.full_name,
-        email: profile.email,
-        mobile: profile.mobile,
-        city: profile.city,
-        area: profile.area,
-        pincode: profile.pincode,
-        address: profile.address,
-        instagram: profile.instagram,
-        portfolio: profile.portfolio_link,
-        languages: profile.languages,
-        bio: profile.bio,
-        profileImage: profile.avatar_url,
-        specialization: profile.specialization
-      };
-      setUser(userData);
-      setRole((profile.role as Role) || "client");
-    } catch (err) {
-      console.error("Session handling failed:", err);
-    }
-  };
 
   const signIn = async (email: string, password: string) => {
     const { data, error } = await supabase.auth.signInWithPassword({

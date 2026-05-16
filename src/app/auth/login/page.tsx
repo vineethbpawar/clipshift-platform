@@ -6,14 +6,11 @@ import { FloatingInput } from "@/components/ui/FloatingInput";
 import { NeonButton } from "@/components/ui/NeonButton";
 import { PageWrapper } from "@/components/layout/PageWrapper";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { User, Video, Loader2 } from "lucide-react";
-import { toast } from "react-hot-toast";
 import { supabase } from "@/lib/supabase";
 import { type Role } from "@/context/AuthContext";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [selectedRole, setSelectedRole] = useState<Role>("client");
@@ -90,10 +87,11 @@ export default function LoginPage() {
             access_token: authData.access_token,
             refresh_token: authData.refresh_token,
           }),
-          new Promise((_, reject) => setTimeout(() => reject(new Error("setSession timeout")), 5000))
+          new Promise((_, reject) => setTimeout(() => reject(new Error("SESSION_SAVE_TIMEOUT")), 5000))
         ]);
-      } catch (sessionErr) {
-        console.error("setSession error (ignoring):", sessionErr);
+      } catch (sessionErr: unknown) {
+        const errorMessage = sessionErr instanceof Error ? sessionErr.message : String(sessionErr);
+        console.error("SESSION_SAVE_TIMEOUT or error (ignoring):", errorMessage);
       }
 
       let dashboardPath = "/dashboard/client";
@@ -106,20 +104,21 @@ export default function LoginPage() {
 
       console.log("LOGIN REDIRECT TO", dashboardPath);
 
-      router.replace(dashboardPath);
-    } catch (err: any) {
+      // Force reload redirect
+      window.location.href = dashboardPath;
+    } catch (err: unknown) {
       console.error("LOGIN REST ERROR", err);
 
-      if (err.name === 'AbortError') {
+      if (err instanceof Error && err.name === 'AbortError') {
         setError("Login timed out. Please check your internet or Supabase connection.");
         return;
       }
 
-      const message = err?.message || "";
+      const message = err instanceof Error ? err.message : "";
 
-      if (message.includes("Invalid login credentials") || message.includes("Invalid email or password")) {
+      if (message.includes("Invalid login credentials") || message.includes("Invalid email or password") || message.includes("invalid_credentials")) {
         setError("Invalid email or password.");
-      } else if (message.includes("Failed to fetch") || message.includes("NetworkError") || err.name === 'TypeError') {
+      } else if (message.includes("Failed to fetch") || message.includes("NetworkError") || (err instanceof Error && err.name === 'TypeError')) {
         setError("Cannot connect to Supabase. Check your internet/network and try again.");
       } else if (message.includes("Profile not found")) {
         setError("Profile not found. Please signup again.");
@@ -194,9 +193,9 @@ export default function LoginPage() {
                     Forgot Password?
                   </Link>
                 </div>
-                </div>
+              </div>
 
-                {error && (
+              {error && (
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -204,16 +203,22 @@ export default function LoginPage() {
                 >
                   {error}
                 </motion.div>
-                )}
+              )}
 
-                <NeonButton variant="purple" className="w-full py-4" type="submit" disabled={loading}>
+              <NeonButton variant="purple" className="w-full py-4" type="submit" disabled={loading}>
                 {loading ? <Loader2 className="animate-spin mx-auto" size={20} /> : "Access Dashboard"}
               </NeonButton>
             </form>
 
+            <div className="mt-4 text-center">
+              <p className="text-[10px] text-gray-600 uppercase tracking-widest font-bold">
+                Debug: direct REST login enabled
+              </p>
+            </div>
+
             <div className="mt-8 pt-8 border-t border-white/5 text-center">
               <p className="text-gray-500 text-sm">
-                Don't have an account?{" "}
+                Don&apos;t have an account?{" "}
                 <Link href="/auth/signup" className="text-neon-purple font-bold hover:underline">
                   Join the Collective
                 </Link>
