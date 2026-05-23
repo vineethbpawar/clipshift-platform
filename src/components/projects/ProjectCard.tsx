@@ -42,8 +42,17 @@ export const ProjectCard = ({ project }: { project: Project }) => {
               {project.category}
             </span>
             <span className="px-3 py-1 rounded-full bg-neon-blue/10 border border-neon-blue/20 text-[9px] font-black text-neon-blue uppercase tracking-widest">
-              {project.service_type === 'editing_and_shoot' ? 'Edit + Shoot' : 'Edit Only'}
+              {project.service_type === 'editing_and_shoot' ? 'Shoot Required' : 'Edit Only'}
             </span>
+            {project.location_mode === 'anywhere_india' ? (
+              <span className="px-3 py-1 rounded-full bg-green-500/10 border border-green-500/20 text-[9px] font-black text-green-500 uppercase tracking-widest">
+                Anywhere in India
+              </span>
+            ) : (
+              <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[9px] font-black text-gray-400 uppercase tracking-widest">
+                {project.location_mode === 'preferred_location' ? 'Preferred Location' : 'Shoot Location'}
+              </span>
+            )}
             <span className="text-[9px] text-gray-500 uppercase font-bold tracking-widest flex items-center gap-1">
               <Clock size={10} />
               {timeLeft}
@@ -52,8 +61,17 @@ export const ProjectCard = ({ project }: { project: Project }) => {
           <h2 className="text-xl sm:text-2xl font-black text-white uppercase tracking-tighter leading-tight mb-2">
             {project.title}
           </h2>
-          <div className="flex items-center gap-2 text-[10px] text-gray-400 font-medium uppercase tracking-widest">
-             <MapPin size={10} /> {project.locations?.[0]?.name || "Remote/Flexible"}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[10px] text-gray-400 font-medium uppercase tracking-widest">
+             <div className="flex items-center gap-1">
+               <MapPin size={10} className="text-neon-purple" /> 
+               {project.location_mode === 'anywhere_india' ? "Remote (India)" : (project.locations?.[0]?.name || "Flexible")}
+             </div>
+             {project.location_mode !== 'anywhere_india' && project.shoot_radius_km && (
+               <div className="flex items-center gap-1 border-l border-white/10 pl-4">
+                 <Circle size={8} className="text-neon-blue fill-neon-blue/20" />
+                 Radius: {project.shoot_radius_km}km
+               </div>
+             )}
           </div>
         </div>
 

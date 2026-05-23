@@ -25,8 +25,18 @@ export const ProjectPostForm = () => {
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("Wedding");
   const [serviceType, setServiceType] = useState<"editing_only" | "editing_and_shoot">("editing_only");
-  const [radius, setRadius] = useState(20);
+  const [locationMode, setLocationMode] = useState<"anywhere_india" | "preferred_location" | "shoot_location">("anywhere_india");
+  const [radius, setRadius] = useState(100);
   const [locations, setLocations] = useState<any[]>([]);
+
+  const handleServiceTypeChange = (val: "editing_only" | "editing_and_shoot") => {
+    setServiceType(val);
+    if (val === "editing_and_shoot") {
+      setLocationMode("shoot_location");
+    } else {
+      setLocationMode("anywhere_india");
+    }
+  };
 
   const handleDetectLocation = async () => {
     setIsDetecting(true);
@@ -149,6 +159,7 @@ export const ProjectPostForm = () => {
       title, 
       description, 
       category, 
+      locationMode,
       radius, 
       locations, 
       budgetType,
@@ -173,7 +184,12 @@ export const ProjectPostForm = () => {
           description: description,
           category: category,
           status: 'open',
-          shoot_radius: radius || null,
+          location_mode: locationMode,
+          shoot_radius: radius || null, // Keeping legacy for compat if any
+          shoot_radius_km: locationMode === "anywhere_india" ? null : radius,
+          latitude: locations[0]?.lat || null,
+          longitude: locations[0]?.lng || null,
+          location: locations[0]?.name || (locationMode === "anywhere_india" ? "Nationwide" : null),
           locations: locations || [],
           files: uploadedFiles || [],
           service_type: serviceType,
@@ -254,13 +270,55 @@ export const ProjectPostForm = () => {
                     <label className="text-[10px] text-gray-500 uppercase font-bold tracking-widest ml-4">Service Type</label>
                     <select 
                       value={serviceType}
-                      onChange={(e) => setServiceType(e.target.value as any)}
+                      onChange={(e) => handleServiceTypeChange(e.target.value as any)}
                       className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-base text-white outline-none focus:border-neon-purple transition-colors appearance-none min-h-[44px]"
                     >
                       <option value="editing_only" className="bg-zinc-900">Editing Only</option>
                       <option value="editing_and_shoot" className="bg-zinc-900">Editing & Shoot</option>
                     </select>
                   </div>
+                </div>
+
+                {/* Location Mode Selection */}
+                <div className="pt-4 border-t border-white/5 space-y-4">
+                  <h4 className="text-[10px] text-gray-500 uppercase font-black tracking-widest">
+                    {serviceType === "editing_only" ? "Creator Location Preference" : "Shoot Location & Radius"}
+                  </h4>
+                  
+                  {serviceType === "editing_only" ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setLocationMode("anywhere_india")}
+                        className={`p-4 rounded-2xl border transition-all text-left ${
+                          locationMode === "anywhere_india" 
+                            ? "bg-neon-purple/10 border-neon-purple text-white shadow-[0_0_20px_rgba(168,85,247,0.1)]" 
+                            : "bg-white/5 border-white/10 text-gray-500 hover:border-white/20"
+                        }`}
+                      >
+                        <div className="text-[10px] font-black uppercase tracking-widest mb-1">Anywhere in India</div>
+                        <div className="text-[8px] opacity-60">Accept creators from across the country. Best for remote editing.</div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setLocationMode("preferred_location")}
+                        className={`p-4 rounded-2xl border transition-all text-left ${
+                          locationMode === "preferred_location" 
+                            ? "bg-neon-blue/10 border-neon-blue text-white shadow-[0_0_20px_rgba(59,130,246,0.1)]" 
+                            : "bg-white/5 border-white/10 text-gray-500 hover:border-white/20"
+                        }`}
+                      >
+                        <div className="text-[10px] font-black uppercase tracking-widest mb-1">Preferred Location</div>
+                        <div className="text-[8px] opacity-60">Choose a specific city or region for your editor.</div>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="p-4 rounded-2xl bg-neon-purple/5 border border-neon-purple/20">
+                      <p className="text-[10px] text-gray-400 italic">
+                        "Shooting requires a physical location. Choose how far creators can be from your shoot location."
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -455,7 +513,7 @@ export const ProjectPostForm = () => {
         </div>
 
         {/* Right Column: Location & Mapping */}
-        <div className="space-y-8">
+        <div className={`space-y-8 transition-all duration-500 ${locationMode === "anywhere_india" ? "opacity-30 grayscale pointer-events-none" : "opacity-100"}`}>
           <div className="glass rounded-[40px] overflow-hidden border border-white/5 relative h-[400px] lg:h-[600px] group">
             <ProjectLocationMap 
               locations={locations} 
@@ -468,8 +526,8 @@ export const ProjectPostForm = () => {
               <button
                 type="button"
                 onClick={handleDetectLocation}
-                disabled={isDetecting}
-                className="pointer-events-auto flex items-center justify-center space-x-2 px-6 py-4 rounded-xl glass border-white/10 text-neon-purple font-bold uppercase tracking-widest text-[10px] hover:bg-neon-purple/10 hover:border-neon-purple/50 transition-all group shadow-[0_0_20px_rgba(168,85,247,0)] hover:shadow-[0_0_20px_rgba(168,85,247,0.2)] max-w-xs"
+                disabled={isDetecting || locationMode === "anywhere_india"}
+                className="pointer-events-auto flex items-center justify-center space-x-2 px-6 py-4 rounded-xl glass border-white/10 text-neon-purple font-bold uppercase tracking-widest text-[10px] hover:bg-neon-purple/10 hover:border-neon-purple/50 transition-all group shadow-[0_0_20px_rgba(168,85,247,0)] hover:shadow-[0_0_20px_rgba(168,85,247,0.2)] max-w-xs disabled:opacity-50"
               >
                 {isDetecting ? (
                   <Loader2 size={14} className="animate-spin" />
@@ -486,14 +544,19 @@ export const ProjectPostForm = () => {
                 </div>
                 <input 
                   type="range" 
-                  min="5" max="100" 
+                  min="5" max="500" step="5"
                   value={radius} 
+                  disabled={locationMode === "anywhere_india"}
                   onChange={(e) => setRadius(parseInt(e.target.value))}
-                  className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-neon-purple"
+                  className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-neon-purple disabled:opacity-30"
                 />
+                <div className="flex justify-between mt-2">
+                  <span className="text-[8px] text-gray-600 font-bold">5KM</span>
+                  <span className="text-[8px] text-gray-600 font-bold">500KM</span>
+                </div>
               </div>
 
-              {locations.length > 0 && (
+              {locations.length > 0 && locationMode !== "anywhere_india" && (
                 <motion.div 
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -516,21 +579,32 @@ export const ProjectPostForm = () => {
             </div>
 
             {/* Nearby Creators Badge */}
-            <div className="absolute bottom-6 right-6 z-10">
-              <div className="glass px-4 py-2 rounded-full border-neon-purple/30 flex items-center gap-2 shadow-[0_0_20px_rgba(168,85,247,0.2)]">
-                <Users size={14} className="text-neon-purple" />
-                <span className="text-[10px] font-black text-white uppercase tracking-widest">
-                  ~12 Creators Nearby
-                </span>
+            {locationMode !== "anywhere_india" && (
+              <div className="absolute bottom-6 right-6 z-10">
+                <div className="glass px-4 py-2 rounded-full border-neon-purple/30 flex items-center gap-2 shadow-[0_0_20px_rgba(168,85,247,0.2)]">
+                  <Users size={14} className="text-neon-purple" />
+                  <span className="text-[10px] font-black text-white uppercase tracking-widest">
+                    ~12 Creators Nearby
+                  </span>
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           <div className="glass p-6 rounded-3xl border-white/5 flex gap-4">
             <Info className="text-neon-blue shrink-0" size={20} />
-            <p className="text-[10px] text-gray-500 leading-relaxed">
-              For shoot-based projects, only verified creators within your selected radius will be notified. This ensures rapid response and local expertise.
-            </p>
+            {locationMode === "anywhere_india" ? (
+              <p className="text-[10px] text-gray-400 leading-relaxed font-bold uppercase tracking-widest">
+                This project will be visible to creators across India. Remote editing nodes will be notified regardless of location.
+              </p>
+            ) : (
+              <p className="text-[10px] text-gray-500 leading-relaxed">
+                {serviceType === "editing_and_shoot" 
+                  ? "For shoot-based projects, only verified creators within your selected radius will be notified. This ensures rapid response and local expertise."
+                  : "By selecting a preferred location, we will prioritize notifying editors in that specific region."
+                }
+              </p>
+            )}
           </div>
         </div>
       </div>

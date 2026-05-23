@@ -11,6 +11,10 @@ export interface Project {
   proposals?: any[];
   milestones?: any[];
   service_type?: 'editing_only' | 'editing_and_shoot';
+  location_mode?: 'anywhere_india' | 'preferred_location' | 'shoot_location';
+  latitude?: number;
+  longitude?: number;
+  shoot_radius_km?: number;
   locations?: { name: string; lat: number; lng: number }[];
 }
 

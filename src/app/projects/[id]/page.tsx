@@ -139,7 +139,14 @@ export default function ProjectDetailPage() {
               <div className="text-[9px] text-gray-500 uppercase font-black tracking-widest mb-1">Service Type</div>
               <div className="text-xs sm:text-sm font-bold text-white uppercase">{project.service_type?.replace('_', ' ')}</div>
             </div>
-            <div className="glass p-4 rounded-2xl border-white/5 col-span-2 sm:col-span-1">
+            <div className="glass p-4 rounded-2xl border-white/5">
+              <div className="text-[9px] text-gray-500 uppercase font-black tracking-widest mb-1">Location</div>
+              <div className="text-xs sm:text-sm font-bold text-white uppercase">
+                {project.location_mode === 'anywhere_india' ? "Anywhere (India)" : (project.location || project.locations?.[0]?.name || "Not Set")}
+                {project.shoot_radius_km && ` (${project.shoot_radius_km}km)`}
+              </div>
+            </div>
+            <div className="glass p-4 rounded-2xl border-white/5">
               <div className="text-[9px] text-gray-500 uppercase font-black tracking-widest mb-1">Status</div>
               <div className="text-xs sm:text-sm font-bold text-neon-blue uppercase">{project.status}</div>
             </div>
