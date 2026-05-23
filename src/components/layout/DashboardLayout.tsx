@@ -17,7 +17,7 @@ export const DashboardLayout = ({
 
   return (
     <PageWrapper>
-      <div className="flex pt-20 h-screen overflow-hidden relative">
+      <div className="flex pt-20 h-[100dvh] overflow-hidden relative">
         {/* Mobile Sidebar Overlay */}
         <AnimatePresence>
           {isSidebarOpen && (
@@ -33,8 +33,9 @@ export const DashboardLayout = ({
 
         {/* Sidebar Wrapper */}
         <div className={`
-          fixed md:sticky top-20 z-50 md:z-30 h-[calc(100vh-80px)] transition-transform duration-300
+          fixed md:sticky top-20 z-50 md:z-30 h-[calc(100dvh-80px)] transition-transform duration-300
           ${isSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
+          ${isSidebarOpen ? "pointer-events-auto" : "pointer-events-none md:pointer-events-auto"}
         `}>
           <DashboardSidebar onClose={() => setIsSidebarOpen(false)} />
         </div>
@@ -44,7 +45,7 @@ export const DashboardLayout = ({
           <div className="flex items-center justify-between mb-8 md:hidden">
             <button 
               onClick={() => setIsSidebarOpen(true)}
-              className="p-2 glass rounded-xl text-neon-purple"
+              className="p-2 glass rounded-xl text-neon-purple active:scale-95 transition-transform"
             >
               <Menu size={24} />
             </button>
@@ -53,7 +54,7 @@ export const DashboardLayout = ({
             </div>
           </div>
 
-          <div className="max-w-6xl mx-auto space-y-8 md:space-y-12 pb-20">
+          <div className="max-w-6xl mx-auto space-y-8 md:space-y-12 pb-32 md:pb-20">
             <motion.div 
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}

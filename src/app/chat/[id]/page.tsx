@@ -92,27 +92,27 @@ export default function ChatPage() {
 
   return (
     <PageWrapper>
-      <div className="h-screen pt-20 flex bg-black">
+      <div className="h-[100dvh] pt-20 flex bg-black overflow-hidden">
         {/* Sidebar for Desktop */}
-        <div className="hidden lg:block w-full max-w-sm">
+        <div className="hidden lg:block w-full max-w-sm border-r border-white/5">
           <ChatList />
         </div>
 
         {/* Chat Main Area */}
-        <div className="flex-1 flex flex-col relative">
+        <div className="flex-1 flex flex-col relative min-w-0">
           {/* Chat Header */}
-          <div className="glass border-b border-white/5 px-8 py-4 flex items-center justify-between z-10 backdrop-blur-xl">
-            <div className="flex items-center gap-4">
+          <div className="glass border-b border-white/5 px-4 sm:px-8 py-4 flex items-center justify-between z-10 backdrop-blur-xl">
+            <div className="flex items-center gap-3 sm:gap-4 overflow-hidden">
               <Link href="/chat" className="lg:hidden text-gray-500 hover:text-white transition-colors">
                 <ArrowLeft size={20} />
               </Link>
-              <div className="w-10 h-10 rounded-xl overflow-hidden glass border border-neon-purple/30 shadow-[0_0_15px_rgba(168,85,247,0.2)]">
+              <div className="w-10 h-10 rounded-xl overflow-hidden glass border border-neon-purple/30 shadow-[0_0_15px_rgba(168,85,247,0.2)] shrink-0">
                 <img src={otherUser?.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80"} className="w-full h-full object-cover" alt="" />
               </div>
-              <div>
-                <h3 className="text-sm font-black text-white uppercase tracking-tighter flex items-center gap-2">
+              <div className="min-w-0">
+                <h3 className="text-sm font-black text-white uppercase tracking-tighter flex items-center gap-2 truncate">
                   {otherUser?.full_name}
-                  <ShieldCheck size={14} className="text-neon-blue" />
+                  <ShieldCheck size={14} className="text-neon-blue shrink-0" />
                 </h3>
                 <div className="flex items-center gap-1">
                   <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
@@ -121,8 +121,8 @@ export default function ChatPage() {
               </div>
             </div>
             
-            <div className="flex items-center gap-4 text-gray-500">
-              <Search size={18} className="cursor-pointer hover:text-white transition-colors" />
+            <div className="flex items-center gap-3 sm:gap-4 text-gray-500">
+              <Search size={18} className="hidden sm:block cursor-pointer hover:text-white transition-colors" />
               <MoreVertical size={18} className="cursor-pointer hover:text-white transition-colors" />
             </div>
           </div>
@@ -130,11 +130,11 @@ export default function ChatPage() {
           {/* Messages Container */}
           <div 
             ref={scrollRef}
-            className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar scroll-smooth"
+            className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-6 custom-scrollbar scroll-smooth"
           >
-            <div className="flex flex-col items-center justify-center py-12 text-center opacity-30">
-              <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
-                <ShieldCheck size={32} />
+            <div className="flex flex-col items-center justify-center py-8 sm:py-12 text-center opacity-30">
+              <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
+                <ShieldCheck size={28} />
               </div>
               <p className="text-[10px] font-black uppercase tracking-[0.2em] max-w-xs leading-relaxed">
                 Establishing quantum-secure channel with node ID-{otherUser?.full_name.toUpperCase()}
@@ -152,14 +152,11 @@ export default function ChatPage() {
           </div>
 
           {/* Chat Input */}
-          <div className="p-8 pt-0">
-            <div className="glass border border-white/10 rounded-[32px] p-2 flex items-center gap-2 focus-within:border-neon-purple/50 focus-within:shadow-[0_0_30px_rgba(168,85,247,0.1)] transition-all">
-              <div className="flex gap-1">
-                <button className="p-3 text-gray-500 hover:text-neon-blue transition-colors">
+          <div className="p-4 sm:p-8 pt-0">
+            <div className="glass border border-white/10 rounded-[28px] sm:rounded-[32px] p-1 sm:p-2 flex items-center gap-1 sm:gap-2 focus-within:border-neon-purple/50 focus-within:shadow-[0_0_30px_rgba(168,85,247,0.1)] transition-all">
+              <div className="flex">
+                <button className="p-2 sm:p-3 text-gray-500 hover:text-neon-blue transition-colors">
                   <Paperclip size={18} />
-                </button>
-                <button className="p-3 text-gray-500 hover:text-neon-blue transition-colors">
-                  <Image size={18} />
                 </button>
               </div>
               
@@ -168,24 +165,25 @@ export default function ChatPage() {
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyPress={(e) => e.key === "Enter" && handleSend()}
-                placeholder="Compose secure signal..."
-                className="bg-transparent border-none outline-none text-xs text-white w-full placeholder:text-gray-600 font-medium px-2"
+                placeholder="Compose signal..."
+                className="bg-transparent border-none outline-none text-base text-white w-full placeholder:text-gray-600 font-medium px-2"
                 disabled={isSending}
               />
               
               <div className="flex items-center gap-1">
-                <button className="p-3 text-gray-500 hover:text-yellow-500 transition-colors">
+                <button className="hidden sm:block p-3 text-gray-500 hover:text-yellow-500 transition-colors">
                   <Smile size={18} />
                 </button>
                 <button 
                   onClick={handleSend}
                   disabled={isSending || !inputText.trim()}
-                  className="p-4 rounded-2xl bg-neon-purple text-white shadow-lg hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:scale-100"
+                  className="p-3 sm:p-4 rounded-2xl bg-neon-purple text-white shadow-lg hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:scale-100 shrink-0"
                 >
                   {isSending ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />}
                 </button>
               </div>
             </div>
+            <div className="h-safe-area-bottom lg:hidden" />
           </div>
         </div>
       </div>

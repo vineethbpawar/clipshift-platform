@@ -45,6 +45,7 @@ export const Step2Personal = ({ onNext, onBack }: { onNext: () => void, onBack: 
           label="Email Address"
           name="email"
           type="email"
+          inputMode="email"
           value={localData.email}
           onChange={handleChange}
           required
@@ -53,11 +54,12 @@ export const Step2Personal = ({ onNext, onBack }: { onNext: () => void, onBack: 
           label="Mobile Number"
           name="mobile"
           type="tel"
+          inputMode="tel"
           value={localData.mobile}
           onChange={handleChange}
           required
         />
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FloatingInput
             label="Password"
             name="password"
@@ -76,19 +78,19 @@ export const Step2Personal = ({ onNext, onBack }: { onNext: () => void, onBack: 
           />
         </div>
 
-        <div className="flex items-center justify-between mt-12 gap-4">
+        <div className="flex flex-col sm:flex-row items-center justify-between mt-12 gap-4">
           <button
             type="button"
             onClick={onBack}
-            className="px-8 py-4 rounded-full border border-white/10 text-gray-400 font-bold uppercase tracking-widest hover:bg-white/5 transition-colors"
+            className="w-full sm:w-auto px-8 py-4 rounded-full border border-white/10 text-gray-400 font-bold uppercase tracking-widest hover:bg-white/5 transition-colors order-2 sm:order-1"
           >
             Back
           </button>
           <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             type="submit"
-            className="flex-1 px-12 py-4 rounded-full bg-neon-purple text-white font-bold uppercase tracking-widest shadow-[0_0_20px_rgba(168,85,247,0.3)]"
+            className="w-full sm:flex-1 px-12 py-4 rounded-full bg-neon-purple text-white font-bold uppercase tracking-widest shadow-[0_0_20px_rgba(168,85,247,0.3)] order-1 sm:order-2"
           >
             Continue
           </motion.button>

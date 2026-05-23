@@ -48,7 +48,7 @@ export const FloatingInput = ({
         </motion.label>
         <input
           className={cn(
-            "w-full bg-transparent px-4 pb-2 pt-6 text-white outline-none placeholder-transparent",
+            "w-full bg-transparent px-4 pb-2 pt-6 text-white text-base outline-none placeholder-transparent min-h-[56px]",
             className
           )}
           value={value}

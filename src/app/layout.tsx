@@ -1,7 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "@/components/layout/Navbar";
+import { MobileNav } from "@/components/layout/MobileNav";
 import { Footer } from "@/components/layout/Footer";
 import { AuthProvider } from "@/context/AuthContext";
 
@@ -13,6 +14,20 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "ClipShift | Premium Cinematic Creator Marketplace",
   description: "The ultimate platform for cinematic creators to showcase and trade premium assets.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "ClipShift",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#000000",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 import { ChatProvider } from "@/context/ChatContext";
@@ -36,9 +51,10 @@ export default function RootLayout({
               },
             }} />
             <Navbar />
-            <main className="flex-1 flex flex-col">
+            <main className="flex-1 flex flex-col pb-24 md:pb-0">
               {children}
             </main>
+            <MobileNav />
             <Footer />
           </ChatProvider>
         </AuthProvider>

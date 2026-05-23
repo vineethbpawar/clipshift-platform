@@ -8,6 +8,7 @@ import { Loader2, ArrowLeft, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "react-hot-toast";
 import { sanitizeDescription } from "@/lib/sanitizer";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function ProjectDetailPage() {
   const params = useParams();
@@ -117,39 +118,39 @@ export default function ProjectDetailPage() {
           <ArrowLeft size={16} /> Back
         </button>
 
-        <div className="glass rounded-[40px] p-10 border border-white/5">
-          <div className="flex justify-between items-start mb-6">
-            <h1 className="text-4xl font-black text-white uppercase tracking-tighter">{project.title}</h1>
-            <span className="px-4 py-2 rounded-full bg-neon-purple/10 border border-neon-purple/20 text-[10px] font-black text-neon-purple uppercase tracking-widest">
+        <div className="glass rounded-[32px] sm:rounded-[40px] p-6 sm:p-10 border border-white/5">
+          <div className="flex flex-col sm:flex-row justify-between items-start mb-6 gap-4">
+            <h1 className="text-2xl sm:text-4xl font-black text-white uppercase tracking-tighter leading-tight">{project.title}</h1>
+            <span className="px-4 py-2 rounded-full bg-neon-purple/10 border border-neon-purple/20 text-[10px] font-black text-neon-purple uppercase tracking-widest whitespace-nowrap">
               {project.category}
             </span>
           </div>
           
-          <p className="text-gray-400 mb-8 leading-relaxed">
+          <p className="text-sm sm:text-gray-400 mb-8 leading-relaxed">
             {isUnlocked ? project.description : sanitizeDescription(project.description)}
           </p>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-10">
-            <div>
-              <div className="text-[10px] text-gray-500 uppercase font-black tracking-widest mb-1">Budget</div>
-              <div className="text-sm font-bold text-white">{project.budget}</div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 mb-10">
+            <div className="glass p-4 rounded-2xl border-white/5">
+              <div className="text-[9px] text-gray-500 uppercase font-black tracking-widest mb-1">Budget</div>
+              <div className="text-xs sm:text-sm font-bold text-white">{project.budget}</div>
             </div>
-            <div>
-              <div className="text-[10px] text-gray-500 uppercase font-black tracking-widest mb-1">Service Type</div>
-              <div className="text-sm font-bold text-white uppercase">{project.service_type?.replace('_', ' ')}</div>
+            <div className="glass p-4 rounded-2xl border-white/5">
+              <div className="text-[9px] text-gray-500 uppercase font-black tracking-widest mb-1">Service Type</div>
+              <div className="text-xs sm:text-sm font-bold text-white uppercase">{project.service_type?.replace('_', ' ')}</div>
             </div>
-            <div>
-              <div className="text-[10px] text-gray-500 uppercase font-black tracking-widest mb-1">Status</div>
-              <div className="text-sm font-bold text-neon-blue uppercase">{project.status}</div>
+            <div className="glass p-4 rounded-2xl border-white/5 col-span-2 sm:col-span-1">
+              <div className="text-[9px] text-gray-500 uppercase font-black tracking-widest mb-1">Status</div>
+              <div className="text-xs sm:text-sm font-bold text-neon-blue uppercase">{project.status}</div>
             </div>
           </div>
 
-          <div className="flex gap-4">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
             {user?.role === 'creator' && (
               <>
                 <button 
                   onClick={() => setShowProposalModal(true)}
-                  className="px-8 py-3 bg-neon-purple text-white rounded-full font-black text-xs uppercase tracking-widest hover:scale-105"
+                  className="w-full sm:w-auto px-8 py-4 bg-neon-purple text-white rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all"
                 >
                   Submit Proposal
                 </button>
@@ -157,42 +158,71 @@ export default function ProjectDetailPage() {
                   <button 
                     onClick={handleUnlock}
                     disabled={submitting}
-                    className="px-8 py-3 bg-neon-blue text-black rounded-full font-black text-xs uppercase tracking-widest hover:scale-105"
+                    className="w-full sm:w-auto px-8 py-4 bg-neon-blue text-black rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all"
                   >
                     Unlock Contact ₹99
                   </button>
                 ) : (
-                  <button className="px-8 py-3 bg-green-500 text-black rounded-full font-black text-xs uppercase tracking-widest">
+                  <button className="w-full sm:w-auto px-8 py-4 bg-green-500 text-black rounded-full font-black text-xs uppercase tracking-widest active:scale-95 transition-all">
                     Message Client
                   </button>
                 )}
-                <button className="px-8 py-3 bg-white/5 border border-white/10 text-white rounded-full font-black text-xs uppercase tracking-widest hover:bg-white/10">
+                <button className="w-full sm:w-auto px-8 py-4 bg-white/5 border border-white/10 text-white rounded-full font-black text-xs uppercase tracking-widest hover:bg-white/10 active:scale-95 transition-all">
                   Save Project
                 </button>
               </>
             )}
             {isOwner && (
               <>
-                <button onClick={() => router.push(`/projects/${project.id}/edit`)} className="px-8 py-3 bg-white text-black rounded-full font-black text-xs uppercase tracking-widest hover:scale-105">Edit Project</button>
-                <button onClick={() => router.push(`/dashboard/client/proposals`)} className="px-8 py-3 bg-neon-purple/10 text-neon-purple border border-neon-purple/20 rounded-full font-black text-xs uppercase tracking-widest">View Proposals</button>
-                <button onClick={handleDelete} className="px-8 py-3 bg-red-500/10 text-red-500 border border-red-500/20 rounded-full font-black text-xs uppercase tracking-widest hover:bg-red-500/20">Delete Project</button>
+                <button onClick={() => router.push(`/projects/${project.id}/edit`)} className="w-full sm:w-auto px-8 py-4 bg-white text-black rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all">Edit Project</button>
+                <button onClick={() => router.push(`/dashboard/client/proposals`)} className="w-full sm:w-auto px-8 py-4 bg-neon-purple/10 text-neon-purple border border-neon-purple/20 rounded-full font-black text-xs uppercase tracking-widest active:scale-95 transition-all">View Proposals</button>
+                <button onClick={handleDelete} className="w-full sm:w-auto px-8 py-4 bg-red-500/10 text-red-500 border border-red-500/20 rounded-full font-black text-xs uppercase tracking-widest hover:bg-red-500/20 active:scale-95 transition-all">Delete Project</button>
               </>
             )}
           </div>
         </div>
 
         {showProposalModal && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
-            <div className="glass p-8 rounded-3xl w-full max-w-lg border border-white/10">
+          <div className="fixed inset-0 bg-black/80 flex items-end sm:items-center justify-center p-0 sm:p-4 z-[100]">
+            <motion.div 
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              className="glass p-6 sm:p-8 rounded-t-[32px] sm:rounded-[32px] w-full max-w-lg border-t sm:border border-white/10"
+            >
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-black text-white uppercase">Submit Proposal</h3>
-                <button onClick={() => setShowProposalModal(false)}><X className="text-gray-500 hover:text-white"/></button>
+                <button onClick={() => setShowProposalModal(false)} className="p-2"><X className="text-gray-500 hover:text-white"/></button>
               </div>
-              <textarea placeholder="Cover Letter" className="w-full bg-white/5 p-4 rounded-2xl text-sm text-white mb-4" onChange={e => setProposalData({...proposalData, coverLetter: e.target.value})}/>
-              <input type="number" placeholder="Proposed Budget (₹)" className="w-full bg-white/5 p-4 rounded-2xl text-sm text-white mb-4" onChange={e => setProposalData({...proposalData, budget: e.target.value})}/>
-              <input type="number" placeholder="Delivery Days" className="w-full bg-white/5 p-4 rounded-2xl text-sm text-white mb-6" onChange={e => setProposalData({...proposalData, days: e.target.value})}/>
-              <button onClick={handleProposalSubmit} disabled={submitting} className="w-full py-4 bg-neon-purple text-white rounded-full font-black uppercase hover:opacity-90">{submitting ? "Submitting..." : "Send Proposal"}</button>
-            </div>
+              <textarea 
+                placeholder="Cover Letter" 
+                className="w-full h-32 bg-white/5 p-4 rounded-2xl text-base text-white mb-4 outline-none focus:border-neon-purple transition-colors resize-none" 
+                onChange={e => setProposalData({...proposalData, coverLetter: e.target.value})}
+              />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                <input 
+                  type="number" 
+                  inputMode="numeric"
+                  placeholder="Proposed Budget (₹)" 
+                  className="w-full bg-white/5 p-4 rounded-2xl text-base text-white outline-none focus:border-neon-purple transition-colors" 
+                  onChange={e => setProposalData({...proposalData, budget: e.target.value})}
+                />
+                <input 
+                  type="number" 
+                  inputMode="numeric"
+                  placeholder="Delivery Days" 
+                  className="w-full bg-white/5 p-4 rounded-2xl text-base text-white outline-none focus:border-neon-purple transition-colors" 
+                  onChange={e => setProposalData({...proposalData, days: e.target.value})}
+                />
+              </div>
+              <button 
+                onClick={handleProposalSubmit} 
+                disabled={submitting} 
+                className="w-full py-5 bg-neon-purple text-white rounded-full font-black uppercase tracking-[0.2em] text-xs hover:opacity-90 active:scale-95 transition-all disabled:opacity-50"
+              >
+                {submitting ? <Loader2 className="animate-spin mx-auto" size={20} /> : "Send Proposal"}
+              </button>
+              <div className="h-safe-area-bottom sm:hidden" />
+            </motion.div>
           </div>
         )}
       </div>

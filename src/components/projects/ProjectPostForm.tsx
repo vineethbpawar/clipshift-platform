@@ -239,13 +239,13 @@ export const ProjectPostForm = () => {
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                 />
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label className="text-[10px] text-gray-500 uppercase font-bold tracking-widest ml-4">Category</label>
                     <select 
                       value={category}
                       onChange={(e) => setCategory(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white outline-none focus:border-neon-purple transition-colors appearance-none"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-base text-white outline-none focus:border-neon-purple transition-colors appearance-none min-h-[44px]"
                     >
                       {categories.map(cat => <option key={cat} value={cat} className="bg-zinc-900">{cat}</option>)}
                     </select>
@@ -255,7 +255,7 @@ export const ProjectPostForm = () => {
                     <select 
                       value={serviceType}
                       onChange={(e) => setServiceType(e.target.value as any)}
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white outline-none focus:border-neon-purple transition-colors appearance-none"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-base text-white outline-none focus:border-neon-purple transition-colors appearance-none min-h-[44px]"
                     >
                       <option value="editing_only" className="bg-zinc-900">Editing Only</option>
                       <option value="editing_and_shoot" className="bg-zinc-900">Editing & Shoot</option>
@@ -316,11 +316,12 @@ export const ProjectPostForm = () => {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
-                      className="grid grid-cols-2 gap-4"
+                      className="grid grid-cols-1 sm:grid-cols-2 gap-4"
                     >
                       <FloatingInput 
                         label="Min Budget (₹)" 
                         type="number" 
+                        inputMode="numeric"
                         placeholder="e.g. ₹5000"
                         value={minBudget}
                         onChange={(e) => setMinBudget(e.target.value)}
@@ -328,6 +329,7 @@ export const ProjectPostForm = () => {
                       <FloatingInput 
                         label="Max Budget (₹)" 
                         type="number" 
+                        inputMode="numeric"
                         placeholder="e.g. ₹10000"
                         value={maxBudget}
                         onChange={(e) => setMaxBudget(e.target.value)}
@@ -341,11 +343,12 @@ export const ProjectPostForm = () => {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
-                      className="grid grid-cols-2 gap-4"
+                      className="grid grid-cols-1 sm:grid-cols-2 gap-4"
                     >
                       <FloatingInput 
                         label="Rate/hr (₹)" 
                         type="number" 
+                        inputMode="numeric"
                         placeholder="e.g. ₹500"
                         value={hourlyRate}
                         onChange={(e) => setHourlyRate(e.target.value)}
@@ -353,6 +356,7 @@ export const ProjectPostForm = () => {
                       <FloatingInput 
                         label="Est. Hours" 
                         type="number" 
+                        inputMode="numeric"
                         placeholder="e.g. 10"
                         value={estimatedHours}
                         onChange={(e) => setEstimatedHours(e.target.value)}
@@ -452,7 +456,7 @@ export const ProjectPostForm = () => {
 
         {/* Right Column: Location & Mapping */}
         <div className="space-y-8">
-          <div className="glass rounded-[40px] overflow-hidden border border-white/5 relative h-[600px] group">
+          <div className="glass rounded-[40px] overflow-hidden border border-white/5 relative h-[400px] lg:h-[600px] group">
             <ProjectLocationMap 
               locations={locations} 
               setLocations={setLocations} 

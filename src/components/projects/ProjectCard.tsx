@@ -33,32 +33,32 @@ export const ProjectCard = ({ project }: { project: Project }) => {
   return (
     <div
       onClick={() => router.push(`/projects/${project.id}`)}
-      className="cursor-pointer glass border-white/5 rounded-[32px] p-8 overflow-hidden group hover:border-purple-500 transition-all duration-500"
+      className="cursor-pointer glass border-white/5 rounded-[32px] p-6 sm:p-8 overflow-hidden group hover:border-purple-500 transition-all duration-500"
     >
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-6">
-        <div>
-          <div className="flex items-center gap-3 mb-2">
-            <span className="px-3 py-1 rounded-full bg-neon-purple/10 border border-neon-purple/20 text-[10px] font-black text-neon-purple uppercase tracking-widest">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-6">
+        <div className="w-full sm:w-auto">
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            <span className="px-3 py-1 rounded-full bg-neon-purple/10 border border-neon-purple/20 text-[9px] font-black text-neon-purple uppercase tracking-widest">
               {project.category}
             </span>
-            <span className="px-3 py-1 rounded-full bg-neon-blue/10 border border-neon-blue/20 text-[10px] font-black text-neon-blue uppercase tracking-widest">
-              {project.service_type === 'editing_and_shoot' ? 'Editing + Shoot' : 'Editing Only'}
+            <span className="px-3 py-1 rounded-full bg-neon-blue/10 border border-neon-blue/20 text-[9px] font-black text-neon-blue uppercase tracking-widest">
+              {project.service_type === 'editing_and_shoot' ? 'Edit + Shoot' : 'Edit Only'}
             </span>
-            <span className="text-[10px] text-gray-500 uppercase font-bold tracking-widest flex items-center gap-1">
-              <Clock size={12} />
+            <span className="text-[9px] text-gray-500 uppercase font-bold tracking-widest flex items-center gap-1">
+              <Clock size={10} />
               {timeLeft}
             </span>
           </div>
-          <h2 className="text-2xl font-black text-white uppercase tracking-tighter leading-none mb-2">
+          <h2 className="text-xl sm:text-2xl font-black text-white uppercase tracking-tighter leading-tight mb-2">
             {project.title}
           </h2>
-          <div className="flex items-center gap-2 text-xs text-gray-400 font-medium uppercase tracking-widest">
-             <MapPin size={12} /> {project.locations?.[0]?.name || "Remote/Flexible"}
+          <div className="flex items-center gap-2 text-[10px] text-gray-400 font-medium uppercase tracking-widest">
+             <MapPin size={10} /> {project.locations?.[0]?.name || "Remote/Flexible"}
           </div>
         </div>
 
-        <div className="text-right">
-          <div className="text-[10px] text-gray-500 uppercase font-black tracking-widest mb-1">Budget</div>
+        <div className="w-full sm:w-auto text-left sm:text-right pt-4 sm:pt-0 border-t border-white/5 sm:border-0">
+          <div className="text-[9px] text-gray-500 uppercase font-black tracking-widest mb-1">Budget</div>
           <div className="text-xl font-black text-white">{project.budget}</div>
         </div>
       </div>
