@@ -18,8 +18,71 @@ export default function ProjectDetailPage() {
   const [loading, setLoading] = useState(true);
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [messaging, setMessaging] = useState(false);
   const [showProposalModal, setShowProposalModal] = useState(false);
   const [proposalData, setProposalData] = useState({ coverLetter: "", budget: "", days: "" });
+
+  const handleMessageClient = async () => {
+    if (!user || !project) return;
+    if (user.role !== "creator") {
+      toast.error("Only creators can message clients.");
+      return;
+    }
+    if (user.id === project.client_id) {
+      toast.error("You cannot message yourself.");
+      return;
+    }
+
+    setMessaging(true);
+    console.log("MESSAGE CLIENT CLICKED", { projectId: project.id, clientId: project.client_id, userId: user.id });
+
+    try {
+      // 1. Check for existing conversation
+      const { data: existingConv, error: fetchError } = await supabase
+        .from('conversations')
+        .select('id')
+        .eq('client_id', project.client_id)
+        .eq('creator_id', user.id)
+        .maybeSingle();
+
+      if (fetchError) throw fetchError;
+
+      if (existingConv) {
+        console.log("EXISTING CONVERSATION FOUND", existingConv);
+        router.push(`/chat/${existingConv.id}`);
+      } else {
+        // 2. Create new conversation
+        const { data: newConv, error: createError } = await supabase
+          .from('conversations')
+          .insert({
+            client_id: project.client_id,
+            creator_id: user.id,
+            last_message: `Initiated chat for project: ${project.title}`,
+            last_message_at: new Date().toISOString()
+          })
+          .select()
+          .single();
+
+        if (createError) throw createError;
+        console.log("CREATED CONVERSATION", newConv);
+        
+        // 3. Optional: Send initial system message or placeholder
+        await supabase.from('messages').insert({
+          conversation_id: newConv.id,
+          sender_id: user.id,
+          receiver_id: project.client_id,
+          content: `Hi, I'm interested in your project: ${project.title}.`
+        });
+
+        router.push(`/chat/${newConv.id}`);
+      }
+    } catch (err: any) {
+      console.error("MESSAGE CLIENT ERROR", err);
+      toast.error("Failed to initiate chat: " + (err.message || "Unknown error"));
+    } finally {
+      setMessaging(false);
+    }
+  };
 
   const handleDelete = async () => {
     if (!confirm("Are you sure you want to delete this project? This cannot be undone.")) return;
@@ -217,8 +280,12 @@ export default function ProjectDetailPage() {
                     Unlock Contact ₹99
                   </button>
                 ) : (
-                  <button className="w-full sm:w-auto px-8 py-4 bg-green-500 text-black rounded-full font-black text-xs uppercase tracking-widest active:scale-95 transition-all">
-                    Message Client
+                  <button 
+                    onClick={handleMessageClient}
+                    disabled={messaging}
+                    className="w-full sm:w-auto px-8 py-4 bg-green-500 text-black rounded-full font-black text-xs uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2"
+                  >
+                    {messaging ? <Loader2 size={16} className="animate-spin" /> : "Message Client"}
                   </button>
                 )}
                 <button className="w-full sm:w-auto px-8 py-4 bg-white/5 border border-white/10 text-white rounded-full font-black text-xs uppercase tracking-widest hover:bg-white/10 active:scale-95 transition-all">
