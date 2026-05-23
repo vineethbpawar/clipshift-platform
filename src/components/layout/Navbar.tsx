@@ -28,8 +28,9 @@ export const Navbar = () => {
 
   const navLinks = [
     { name: "Explore", href: "/explore" },
-    { name: "Marketplace", href: "/marketplace" },
+    { name: "Creators", href: "/marketplace" },
     { name: "Projects", href: "/projects" },
+    { name: "Pricing", href: "/pricing" },
     { name: "Messages", href: "/chat", badge: totalUnreadCount },
   ];
 

@@ -7,13 +7,20 @@ import { CreatorCard } from "@/components/marketplace/CreatorCard";
 import { FilterSidebar } from "@/components/marketplace/FilterSidebar";
 import { FeaturedRow } from "@/components/marketplace/FeaturedRow";
 import { PageWrapper } from "@/components/layout/PageWrapper";
-import { LayoutGrid, Map as MapIcon, TrendingUp, Sparkles, ShieldCheck, UserPlus, Loader2 } from "lucide-react";
+import { LayoutGrid, Map as MapIcon, TrendingUp, Sparkles, UserPlus, Loader2, SlidersHorizontal, X } from "lucide-react";
 import Link from "next/link";
+import { calculateCreatorRank, type CreatorProfile } from "@/lib/creators";
 
 export default function MarketplacePage() {
   const [view, setView] = useState<"grid" | "map">("grid");
-  const [selectedCategory, setSelectedCategory] = useState("");
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 100000]); // Increased range for ₹
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
+  
+  // Filters
+  const [selectedSpecialization, setSelectedSpecialization] = useState("");
+  const [selectedTier, setSelectedTier] = useState("");
+  const [minRating, setMinRating] = useState(0);
+  const [sortBy, setSortBy] = useState("rank");
+
   const [creators, setCreators] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -22,16 +29,9 @@ export default function MarketplacePage() {
       setLoading(true);
       try {
         const { data, error } = await supabase
-          .from('creators')
-          .select(`
-            *,
-            profiles (
-              full_name,
-              avatar_url,
-              city,
-              area
-            )
-          `);
+          .from('profiles')
+          .select('*')
+          .eq('role', 'creator');
 
         if (error) {
           console.error("Error fetching creators:", error);
@@ -40,18 +40,18 @@ export default function MarketplacePage() {
 
         if (data) {
           const mappedCreators = data.map(c => ({
+            ...c,
+            rank_score: calculateCreatorRank(c as CreatorProfile),
+            // Legacy mapping for CreatorCard/FeaturedRow compat
             id: c.id,
-            name: c.profiles?.full_name || "Unknown",
-            category: c.category,
-            image: c.profiles?.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80",
-            rating: c.rating || 0,
-            price: `₹${c.starting_price}`,
-            verified: c.verified,
-            city: c.profiles?.city,
-            area: c.profiles?.area,
-            delivery: c.delivery_speed || "3-5 Days",
-            location: { lat: c.location_lat, lng: c.location_lng },
-            aiScore: c.ai_score || 0
+            name: c.full_name,
+            image: c.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80",
+            category: c.specialization || "Creative",
+            price: `₹${c.starting_price || 0}`,
+            verified: c.verified_creator || false,
+            city: c.city,
+            area: c.area,
+            location: { lat: 0, lng: 0 } // Placeholder if not used in card
           }));
           setCreators(mappedCreators);
         }
@@ -66,16 +66,32 @@ export default function MarketplacePage() {
   }, []);
 
   const filteredCreators = useMemo(() => {
-    return creators.filter(c => {
-      const matchesCategory = selectedCategory === "" || c.category === selectedCategory;
-      const priceNum = parseInt(c.price.replace("₹", ""));
-      const matchesPrice = priceNum <= priceRange[1];
-      return matchesCategory && matchesPrice;
+    let result = creators.filter(c => {
+      const matchesSpec = !selectedSpecialization || c.specialization === selectedSpecialization;
+      const matchesTier = !selectedTier || c.tier === selectedTier;
+      const matchesRating = c.rating >= minRating;
+      return matchesSpec && matchesTier && matchesRating;
     });
-  }, [creators, selectedCategory, priceRange]);
 
-  const featuredCreators = creators.filter(c => c.verified).slice(0, 4);
-  const trendingCreators = [...creators].sort((a, b) => b.aiScore - a.aiScore).slice(0, 3);
+    // Sorting logic
+    result.sort((a, b) => {
+      if (sortBy === "rank") {
+        // Premium first, then rank score
+        if (a.plan_type === 'creator_premium' && b.plan_type !== 'creator_premium') return -1;
+        if (b.plan_type === 'creator_premium' && a.plan_type !== 'creator_premium') return 1;
+        return b.rank_score - a.rank_score;
+      }
+      if (sortBy === "rating") return b.rating - a.rating;
+      if (sortBy === "completed") return b.completed_projects - a.completed_projects;
+      if (sortBy === "newest") return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      return 0;
+    });
+
+    return result;
+  }, [creators, selectedSpecialization, selectedTier, minRating, sortBy]);
+
+  const featuredCreators = creators.filter(c => c.featured_creator || c.verified_creator).slice(0, 4);
+  const trendingCreators = [...creators].sort((a, b) => b.rank_score - a.rank_score).slice(0, 3);
 
   return (
     <PageWrapper>
@@ -87,14 +103,21 @@ export default function MarketplacePage() {
               Discover <span className="text-neon-purple">Elite Talent</span>
             </h1>
             <p className="text-gray-400 text-lg">
-              The collective of world-class cinematic creators, vetted by AI and trusted by industry leaders.
+              The collective of world-class cinematic creators, ranked by performance and quality.
             </p>
           </div>
 
           <div className="flex items-center gap-2 p-1.5 bg-white/5 rounded-2xl border border-white/5 self-start">
+            <button 
+              onClick={() => setShowMobileFilters(true)}
+              className="md:hidden flex items-center gap-2 px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest text-gray-500 hover:text-gray-300"
+            >
+              <SlidersHorizontal size={16} />
+              Filters
+            </button>
             <button
               onClick={() => setView("grid")}
-              className={`flex items-center gap-2 px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+              className={`hidden md:flex items-center gap-2 px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
                 view === "grid" ? "bg-neon-purple text-white shadow-lg" : "text-gray-500 hover:text-gray-300"
               }`}
             >
@@ -103,7 +126,7 @@ export default function MarketplacePage() {
             </button>
             <Link href="/explore">
               <button
-                className="flex items-center gap-2 px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest text-gray-500 hover:text-gray-300 transition-all"
+                className="hidden md:flex items-center gap-2 px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest text-gray-500 hover:text-gray-300 transition-all"
               >
                 <MapIcon size={16} />
                 Map View
@@ -136,14 +159,58 @@ export default function MarketplacePage() {
             {featuredCreators.length > 0 && <FeaturedRow creators={featuredCreators} />}
 
             {/* Main Content Area */}
-            <div className="flex flex-col md:flex-row gap-12">
-              {/* Sidebar */}
-              <FilterSidebar 
-                selectedCategory={selectedCategory}
-                setSelectedCategory={setSelectedCategory}
-                priceRange={priceRange}
-                setPriceRange={setPriceRange}
-              />
+            <div className="flex flex-col md:flex-row gap-12 relative">
+              {/* Desktop Sidebar */}
+              <div className="hidden md:block">
+                <FilterSidebar 
+                  selectedSpecialization={selectedSpecialization}
+                  setSelectedSpecialization={setSelectedSpecialization}
+                  selectedTier={selectedTier}
+                  setSelectedTier={setSelectedTier}
+                  minRating={minRating}
+                  setMinRating={setMinRating}
+                  sortBy={sortBy}
+                  setSortBy={setSortBy}
+                />
+              </div>
+
+              {/* Mobile Filter Bottom Sheet Overlay */}
+              <AnimatePresence>
+                {showMobileFilters && (
+                  <>
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      onClick={() => setShowMobileFilters(false)}
+                      className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] md:hidden"
+                    />
+                    <motion.div
+                      initial={{ y: "100%" }}
+                      animate={{ y: 0 }}
+                      exit={{ y: "100%" }}
+                      className="fixed bottom-0 left-0 right-0 glass p-8 rounded-t-[40px] z-[101] md:hidden border-t border-white/10"
+                    >
+                      <div className="flex justify-between items-center mb-8">
+                        <h3 className="text-xl font-black text-white uppercase">Filters</h3>
+                        <button onClick={() => setShowMobileFilters(false)} className="p-2 glass rounded-full">
+                          <X size={20} className="text-gray-500" />
+                        </button>
+                      </div>
+                      <FilterSidebar 
+                        selectedSpecialization={selectedSpecialization}
+                        setSelectedSpecialization={setSelectedSpecialization}
+                        selectedTier={selectedTier}
+                        setSelectedTier={setSelectedTier}
+                        minRating={minRating}
+                        setMinRating={setMinRating}
+                        sortBy={sortBy}
+                        setSortBy={setSortBy}
+                      />
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
 
               {/* Grid Area */}
               <div className="flex-1">
@@ -153,7 +220,7 @@ export default function MarketplacePage() {
                       <Sparkles size={16} />
                     </div>
                     <h2 className="text-sm font-black text-white uppercase tracking-[0.2em]">
-                      Recommended for you
+                      {sortBy === "rank" ? "Top Ranked Creators" : "Vetted Collective"}
                     </h2>
                   </div>
                   <div className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">
@@ -179,10 +246,10 @@ export default function MarketplacePage() {
 
               {/* Trending Panel */}
               {trendingCreators.length > 0 && (
-                <div className="w-full md:w-64 space-y-8">
+                <div className="hidden xl:block w-64 space-y-8">
                   <div className="flex items-center gap-2 mb-6">
                     <TrendingUp size={16} className="text-neon-blue" />
-                    <h3 className="text-white font-black uppercase tracking-widest text-sm">Trending</h3>
+                    <h3 className="text-white font-black uppercase tracking-widest text-sm">High Performance</h3>
                   </div>
                   
                   <div className="space-y-4">
@@ -193,17 +260,10 @@ export default function MarketplacePage() {
                         </div>
                         <div>
                           <div className="text-xs font-bold text-white group-hover:text-neon-purple transition-colors">{c.name}</div>
-                          <div className="text-[10px] text-gray-500 uppercase tracking-widest">{c.category}</div>
+                          <div className="text-[10px] text-gray-500 uppercase tracking-widest">Rank: {c.rank_score}</div>
                         </div>
                       </div>
                     ))}
-                  </div>
-                  
-                  <div className="glass p-6 rounded-3xl border-white/5 mt-12">
-                    <div className="text-[10px] text-neon-blue font-black uppercase tracking-widest mb-2">Pro Tip</div>
-                    <p className="text-[10px] text-gray-500 leading-relaxed">
-                      Creators with the <ShieldCheck size={8} className="inline" /> badge have passed our rigorous 100-point cinematic quality check.
-                    </p>
                   </div>
                 </div>
               )}

@@ -110,7 +110,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const fetchUnlocks = async (userId: string) => {
     try {
       const { data } = await supabase
-        .from('unlocked_chats')
+        .from('creator_unlocks')
         .select('creator_id')
         .eq('client_id', userId);
       

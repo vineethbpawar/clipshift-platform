@@ -72,8 +72,24 @@ export default function ClientDashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
-        {/* Left Col: Spending & Projects */}
+        {/* Left Col: Discovery & Projects */}
         <div className="lg:col-span-2 space-y-6 md:space-y-8">
+          <div className="glass p-8 rounded-[40px] border-white/5 bg-gradient-to-br from-neon-purple/10 via-transparent to-transparent group">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div>
+                <h3 className="text-xl font-black text-white uppercase tracking-tighter mb-2">Discover Elite Talent</h3>
+                <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest max-w-sm leading-relaxed">
+                  Browse world-class creators ranked by neural performance metrics.
+                </p>
+              </div>
+              <Link href="/marketplace">
+                <button className="px-8 py-4 rounded-2xl bg-white text-black text-[10px] font-black uppercase tracking-widest shadow-xl hover:bg-neon-purple hover:text-white transition-all">
+                  Browse Creators
+                </button>
+              </Link>
+            </div>
+          </div>
+
           <div className="glass p-6 md:p-8 rounded-[32px] md:rounded-[40px] border-white/5 relative overflow-hidden">
             <h3 className="text-xs md:text-sm font-black text-white uppercase tracking-[0.2em] mb-8">Capital Allocation</h3>
             <div className="h-[250px] md:h-[300px] w-full flex items-center justify-center">

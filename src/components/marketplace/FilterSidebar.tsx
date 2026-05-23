@@ -1,113 +1,135 @@
 "use client";
 
 import React from "react";
-import { motion } from "framer-motion";
-import { Filter, X, ChevronDown } from "lucide-react";
-import { type CreatorCategory } from "@/data/creators";
+import { Filter, Star, Zap, Award, Target, SortDesc } from "lucide-react";
 
 interface FilterSidebarProps {
-  selectedCategory: string;
-  setSelectedCategory: (c: string) => void;
-  priceRange: [number, number];
-  setPriceRange: (range: [number, number]) => void;
+  selectedSpecialization: string;
+  setSelectedSpecialization: (s: string) => void;
+  selectedTier: string;
+  setSelectedTier: (t: string) => void;
+  minRating: number;
+  setMinRating: (r: number) => void;
+  sortBy: string;
+  setSortBy: (s: string) => void;
 }
 
 export const FilterSidebar = ({
-  selectedCategory,
-  setSelectedCategory,
-  priceRange,
-  setPriceRange,
+  selectedSpecialization,
+  setSelectedSpecialization,
+  selectedTier,
+  setSelectedTier,
+  minRating,
+  setMinRating,
+  sortBy,
+  setSortBy,
 }: FilterSidebarProps) => {
-  const [isOpen, setIsOpen] = React.useState(false);
-  const categories: CreatorCategory[] = [
-    "Wedding", "Pre-Wedding", "Cinematic Reels", "YouTube", 
-    "Commercial Ads", "Drone", "Event Coverage", "Fashion", 
-    "Music Video", "Podcast", "Gaming", "Corporate Production"
-  ];
-
+  
   return (
-    <div className="w-full md:w-72 flex-shrink-0">
-      <button 
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full md:hidden flex items-center justify-between p-4 glass rounded-2xl mb-4 text-xs font-black uppercase tracking-widest text-white"
-      >
-        <span className="flex items-center gap-2">
+    <div className="w-full md:w-72 space-y-8">
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-white font-black uppercase tracking-widest text-sm flex items-center gap-2">
           <Filter size={16} className="text-neon-purple" />
-          Filter Collective
-        </span>
-        <ChevronDown size={16} className={`transition-transform ${isOpen ? "rotate-180" : ""}`} />
-      </button>
+          Filter Node
+        </h3>
+        <button 
+          onClick={() => {
+            setSelectedSpecialization("");
+            setSelectedTier("");
+            setMinRating(0);
+            setSortBy("rank");
+          }}
+          className="text-[10px] text-gray-500 hover:text-white uppercase font-bold tracking-widest transition-colors"
+        >
+          Reset
+        </button>
+      </div>
 
-      <div className={`space-y-8 ${isOpen ? "block" : "hidden md:block"}`}>
-        <div className="glass md:bg-transparent md:border-none p-6 md:p-0 rounded-[32px]">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-white font-black uppercase tracking-widest text-sm hidden md:flex items-center gap-2">
-              <Filter size={16} className="text-neon-purple" />
-              Filters
-            </h3>
-            <button 
-              onClick={() => {
-                setSelectedCategory("");
-                setPriceRange([0, 100000]);
-              }}
-              className="text-[10px] text-gray-500 hover:text-white uppercase font-bold tracking-widest transition-colors"
+      {/* Sort By */}
+      <div className="glass p-6 rounded-3xl border-white/5 space-y-4">
+        <h4 className="text-[10px] text-gray-500 uppercase font-black tracking-[0.2em] flex items-center gap-2">
+          <SortDesc size={12} className="text-neon-blue" />
+          Sort Protocol
+        </h4>
+        <div className="space-y-2">
+          {[
+            { id: 'rank', label: 'Recommended Rank', icon: Target },
+            { id: 'rating', label: 'Quality Rating', icon: Star },
+            { id: 'completed', label: 'Projects Completed', icon: Award },
+            { id: 'newest', label: 'Latest Nodes', icon: Zap },
+          ].map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setSortBy(item.id)}
+              className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${
+                sortBy === item.id 
+                  ? "bg-neon-purple/20 border-neon-purple text-white" 
+                  : "bg-white/5 border-transparent text-gray-500 hover:bg-white/10"
+              }`}
             >
-              Reset All
+              {item.label}
             </button>
-          </div>
+          ))}
+        </div>
+      </div>
 
-          {/* Category Filter */}
-          <div className="mb-10">
-            <h4 className="text-[10px] text-gray-500 uppercase font-black tracking-[0.2em] mb-4">Categories</h4>
-            <div className="grid grid-cols-2 gap-2 md:block md:space-y-2">
-              {categories.map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setSelectedCategory(selectedCategory === cat ? "" : cat)}
-                  className={`text-left px-4 py-2.5 rounded-xl text-[10px] md:text-xs font-bold transition-all duration-300 border ${
-                    selectedCategory === cat 
-                      ? "bg-neon-purple/20 border-neon-purple text-white shadow-[0_0_15px_rgba(168,85,247,0.2)]" 
-                      : "bg-white/5 border-transparent text-gray-400 hover:bg-white/10"
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-          </div>
+      {/* Specialization */}
+      <div className="glass p-6 rounded-3xl border-white/5 space-y-4">
+        <h4 className="text-[10px] text-gray-500 uppercase font-black tracking-[0.2em]">Specialization</h4>
+        <div className="grid grid-cols-1 gap-2">
+          {['editing', 'videography', 'both'].map((spec) => (
+            <button
+              key={spec}
+              onClick={() => setSelectedSpecialization(selectedSpecialization === spec ? "" : spec)}
+              className={`text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${
+                selectedSpecialization === spec 
+                  ? "bg-neon-blue/20 border-neon-blue text-white" 
+                  : "bg-white/5 border-transparent text-gray-500 hover:bg-white/10"
+              }`}
+            >
+              {spec === 'both' ? 'Editing + Shooting' : spec}
+            </button>
+          ))}
+        </div>
+      </div>
 
-          {/* Price Range Filter */}
-          <div className="mb-10">
-            <h4 className="text-[10px] text-gray-500 uppercase font-black tracking-[0.2em] mb-4">Starting Price</h4>
-            <input 
-              type="range" 
-              min="0" 
-              max="100000" 
-              step="5000"
-              value={priceRange[1]}
-              onChange={(e) => setPriceRange([0, parseInt(e.target.value)])}
-              className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-neon-purple"
-            />
-            <div className="flex justify-between mt-3 text-[10px] font-mono text-gray-400">
-              <span>₹0</span>
-              <span className="text-white font-bold">₹{priceRange[1].toLocaleString()}</span>
-            </div>
-          </div>
+      {/* Tier */}
+      <div className="glass p-6 rounded-3xl border-white/5 space-y-4">
+        <h4 className="text-[10px] text-gray-500 uppercase font-black tracking-[0.2em]">Experience Tier</h4>
+        <div className="grid grid-cols-1 gap-2">
+          {['beginner', 'professional', 'premium'].map((tier) => (
+            <button
+              key={tier}
+              onClick={() => setSelectedTier(selectedTier === tier ? "" : tier)}
+              className={`text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${
+                selectedTier === tier 
+                  ? "bg-neon-purple/20 border-neon-purple text-white shadow-[0_0_15px_rgba(168,85,247,0.2)]" 
+                  : "bg-white/5 border-transparent text-gray-500 hover:bg-white/10"
+              }`}
+            >
+              {tier}
+            </button>
+          ))}
+        </div>
+      </div>
 
-          {/* Rating Filter */}
-          <div>
-            <h4 className="text-[10px] text-gray-500 uppercase font-black tracking-[0.2em] mb-4">Quality Score</h4>
-            <div className="flex gap-2">
-              {[3, 4, 5].map((r) => (
-                <button
-                  key={r}
-                  className="flex-1 py-2 bg-white/5 border border-transparent rounded-lg text-xs font-bold text-gray-400 hover:border-white/10 transition-all"
-                >
-                  {r}+ ★
-                </button>
-              ))}
-            </div>
-          </div>
+      {/* Minimum Rating */}
+      <div className="glass p-6 rounded-3xl border-white/5 space-y-4">
+        <h4 className="text-[10px] text-gray-500 uppercase font-black tracking-[0.2em]">Minimum Quality</h4>
+        <div className="flex gap-2">
+          {[0, 3, 4, 4.5].map((r) => (
+            <button
+              key={r}
+              onClick={() => setMinRating(r)}
+              className={`flex-1 py-2 rounded-lg text-[10px] font-black transition-all border ${
+                minRating === r 
+                  ? "bg-white text-black border-white" 
+                  : "bg-white/5 border-transparent text-gray-500 hover:border-white/10"
+              }`}
+            >
+              {r === 0 ? "ALL" : `${r}+`}
+            </button>
+          ))}
         </div>
       </div>
     </div>
