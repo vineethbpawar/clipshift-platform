@@ -12,6 +12,10 @@ export const ProjectCard = ({ project }: { project: Project }) => {
   const router = useRouter();
 
   useEffect(() => {
+    console.log("PROJECT CARD MOUNTED:", project.id, project.title);
+  }, [project.id, project.title]);
+
+  useEffect(() => {
     const timer = setInterval(() => {
       const now = new Date().getTime();
       const end = new Date(project.deadline).getTime();

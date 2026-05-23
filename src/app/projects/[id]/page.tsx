@@ -36,21 +36,58 @@ export default function ProjectDetailPage() {
 
   useEffect(() => {
     const fetchProject = async () => {
-      if (!params.id) return;
+      const projectId = params.id as string;
+      if (!projectId) return;
+
+      console.log("PROJECT DETAIL PARAM ID:", projectId);
+      console.log("CURRENT USER:", user?.id);
+      console.log("CURRENT ROLE:", user?.role);
+
       const { data: projData, error: projErr } = await supabase
         .from('projects')
-        .select('*, profiles(full_name)')
-        .eq('id', params.id)
+        .select('*')
+        .eq('id', projectId)
         .maybeSingle();
 
-      if (projErr || !projData) {
-        console.error("Failed to fetch project:", projErr);
-      } else {
-        setProject(projData);
+      console.log("PROJECT DETAIL QUERY RESULT:", { data: projData, error: projErr });
+
+      if (projErr) {
+        console.error("Supabase error fetching project:", projErr);
+        setProject({ error: "Project error: " + projErr.message });
+        setLoading(false);
+        return;
+      }
+
+      if (!projData) {
+        console.error("Project not found or blocked by database policy.");
+        setProject({ error: "Project not found or blocked by database policy." });
+        setLoading(false);
+        return;
+      }
+
+      // Access Check in JS
+      const role = user?.role;
+      const canView =
+        role === "admin" ||
+        (role === "client" && projData.client_id === user?.id) ||
+        (role === "creator" && projData.status === "open") ||
+        (projData.status === "open"); // Default fallback for exploration
+
+      if (!canView) {
+        console.warn("Access denied for user", user?.id, "to project", projectId);
+        setProject({ error: "You do not have permission to view this project." });
+        setLoading(false);
+        return;
+      }
+
+      setProject(projData);
+
+      // Fetch unlock status if creator
+      if (user?.role === 'creator') {
         const { data: unlockData } = await supabase
           .from('project_unlocks')
           .select('*')
-          .eq('project_id', params.id)
+          .eq('project_id', projectId)
           .eq('freelancer_id', user?.id)
           .eq('payment_status', 'paid')
           .maybeSingle();
@@ -59,7 +96,7 @@ export default function ProjectDetailPage() {
       setLoading(false);
     };
     if (user?.id) fetchProject();
-  }, [params.id, user?.id]);
+  }, [params.id, user?.id, user?.role]);
 
   const handleUnlock = async () => {
     if (user?.role !== "creator") {
@@ -106,7 +143,17 @@ export default function ProjectDetailPage() {
   };
 
   if (loading) return <div className="flex justify-center pt-32"><Loader2 className="animate-spin text-neon-purple" /></div>;
-  if (!project) return <div className="text-center pt-32 text-white">Project not found</div>;
+  if (!project || project.error) return (
+    <div className="text-center pt-32 px-4">
+      <div className="glass p-8 rounded-3xl border-red-500/20 max-w-md mx-auto">
+        <h2 className="text-2xl font-black text-white uppercase mb-4">Access Issue</h2>
+        <p className="text-red-400 text-sm mb-8">{project?.error || "Project not found."}</p>
+        <button onClick={() => router.back()} className="px-8 py-3 bg-white/5 border border-white/10 text-white rounded-full font-black text-xs uppercase tracking-widest hover:bg-white/10">
+          Go Back
+        </button>
+      </div>
+    </div>
+  );
 
   const isOwner = user?.id === project.client_id && user?.role === "client";
   console.log("Debug Auth:", { userId: user?.id, client: project.client_id, role: user?.role, isOwner });
