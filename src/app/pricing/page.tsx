@@ -47,8 +47,8 @@ export default function PricingPage() {
     {
       id: "creator_pro",
       name: "Creator Pro",
-      price: "₹199",
-      amount: 19900,
+      price: "₹99",
+      amount: 9900,
       period: "/mo",
       icon: Rocket,
       color: "blue",
@@ -64,8 +64,8 @@ export default function PricingPage() {
     {
       id: "creator_premium",
       name: "Creator Premium",
-      price: "₹499",
-      amount: 49900,
+      price: "₹249",
+      amount: 24900,
       period: "/mo",
       icon: Crown,
       color: "purple",
@@ -82,50 +82,46 @@ export default function PricingPage() {
 
   const clientPlans = [
     {
-      id: "free",
-      name: "Free Client",
-      price: "₹0",
-      amount: 0,
-      icon: Briefcase,
-      color: "gray",
+      id: "unlock_creator_chat",
+      name: "Unlock Creator Chat",
+      price: "₹29 - ₹99",
+      amount: 4900, // Average/starting
+      icon: Users,
+      color: "blue",
       features: [
-        "Post Standard Projects",
-        "Standard Talent Discovery",
-        "Standard Unlock Fees",
-        "Basic Dashboard"
+        "Unlock chat with any creator",
+        "Beginner: ₹29 | Pro: ₹49 | Premium: ₹99",
+        "Direct connection",
+        "Instant collaboration"
       ]
     },
     {
-      id: "client_pro",
-      name: "Client Pro",
-      price: "₹299",
-      amount: 29900,
-      period: "/mo",
+      id: "boost_project",
+      name: "Boost Project Visibility",
+      price: "₹49 - ₹99",
+      amount: 4900,
       icon: Sparkles,
       color: "blue",
       popular: true,
       features: [
-        "20% Discount on Unlocks",
-        "Priority Project Visibility",
-        "Access to Top 1% Creators",
-        "Save & Shortlist Talent",
-        "Priority Proposal Review"
+        "Boost for 3 days: ₹49",
+        "Boost for 7 days: ₹99",
+        "Appear at top of discovery",
+        "High-priority exposure"
       ]
     },
     {
-      id: "client_business",
-      name: "Client Business",
-      price: "₹999",
-      amount: 99900,
-      period: "/mo",
+      id: "project_extras",
+      name: "Project Extras",
+      price: "₹99 - ₹199",
+      amount: 9900,
       icon: Award,
       color: "purple",
       features: [
-        "Bulk Project Posting",
-        "Team Hiring Protocol",
-        "Advanced Node Management",
-        "Dedicated Account Lead",
-        "Cinematic Quality Audit"
+        "Urgent Project Badge: ₹99",
+        "Premium Hiring Support: ₹199",
+        "Professional quality audit",
+        "Dedicated account assistance"
       ]
     }
   ];
@@ -286,7 +282,7 @@ export default function PricingPage() {
                 <h3 className="text-xl font-black text-white uppercase tracking-tight mb-2">{plan.name}</h3>
                 <div className="flex items-baseline gap-1">
                   <span className="text-4xl font-black text-white">{plan.price}</span>
-                  <span className="text-xs text-gray-500 font-bold uppercase tracking-widest">{plan.period}</span>
+                  {(plan as any).period && <span className="text-xs text-gray-500 font-bold uppercase tracking-widest">{(plan as any).period}</span>}
                 </div>
               </div>
 

@@ -20,6 +20,20 @@ export async function POST(req: Request) {
     const { amount, planType } = await req.json();
     console.log("PURCHASE START: Creating order for", planType, "amount:", amount);
 
+    // Validate plan type
+    const validCreatorPlans = ['creator_pro', 'creator_premium'];
+    const validClientActions = [
+      'unlock_creator_chat', 
+      'boost_project_3_days', 
+      'boost_project_7_days', 
+      'urgent_project_badge', 
+      'premium_hiring_support'
+    ];
+
+    if (!validCreatorPlans.includes(planType) && !validClientActions.includes(planType)) {
+      return NextResponse.json({ error: "Invalid plan or action type" }, { status: 400 });
+    }
+
     // amount is in rupees from frontend, convert to paise
     const amountInPaise = amount * 100;
 
