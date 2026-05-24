@@ -22,16 +22,17 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
 
+    console.time("LOGIN TOTAL");
+    console.log("LOGIN REST START", email.trim().toLowerCase());
+
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     
     const cleanEmail = email.trim().toLowerCase();
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    const timeoutId = setTimeout(() => controller.abort(), 8000); // reduced to 8s
 
     try {
-      console.log("LOGIN REST START", cleanEmail);
-
       const tokenResponse = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
         method: "POST",
         headers: {
@@ -101,12 +102,7 @@ export default function LoginPage() {
       supabase.auth.setSession({
         access_token: authData.access_token,
         refresh_token: authData.refresh_token,
-      }).then(({ error }) => {
-        if (error) console.error("BACKGROUND SET SESSION ERROR", error);
-        else console.log("BACKGROUND SET SESSION SUCCESS");
-      }).catch(err => {
-        console.error("BACKGROUND SET SESSION FAILED", err);
-      });
+      }).catch(console.error);
 
       // 4. Immediate redirect
       let dashboardPath = "/dashboard/client";
@@ -116,33 +112,29 @@ export default function LoginPage() {
         dashboardPath = "/dashboard/admin";
       }
 
+      console.timeEnd("LOGIN TOTAL");
       console.log("LOGIN REDIRECT TO", dashboardPath);
 
-      // Force reload redirect
-      window.location.href = dashboardPath;
+      window.location.replace(dashboardPath);
     } catch (err: unknown) {
       console.error("LOGIN REST ERROR", err);
 
       if (err instanceof Error && err.name === 'AbortError') {
-        setError("Login timed out. Please check your internet or Supabase connection.");
+        setError("Login is taking too long. Please check your internet connection.");
         return;
       }
 
       const message = err instanceof Error ? err.message : "";
-
       if (message.includes("Invalid login credentials") || message.includes("Invalid email or password") || message.includes("invalid_credentials")) {
         setError("Invalid email or password.");
       } else if (message.includes("Failed to fetch") || message.includes("NetworkError") || (err instanceof Error && err.name === 'TypeError')) {
         setError("Cannot connect to Supabase. Check your internet/network and try again.");
-      } else if (message.includes("Profile not found")) {
-        setError("Profile not found. Please signup again.");
       } else {
         setError(message || "Login failed. Please try again.");
       }
     } finally {
       clearTimeout(timeoutId);
       setLoading(false);
-      console.log("LOGIN REST FINALLY");
     }
   };
 

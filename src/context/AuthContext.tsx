@@ -131,79 +131,59 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     let mounted = true;
 
     async function initAuth() {
+      console.time("AUTH INIT");
       try {
         setLoading(true);
-        console.log("AUTH INIT: GETTING SESSION...");
 
         const { data, error } = await supabase.auth.getSession();
 
-        if (error) {
-          console.error("GET SESSION ERROR:", error);
-        }
-
-        const session = data?.session;
-
-        if (!session?.user) {
-          console.log("AUTH INIT: NO SESSION USER");
-          if (mounted) {
-            setUser(null);
-            setRole(null);
-            setLoading(false);
-          }
+        if (error || !data?.session?.user) {
+          console.log("AUTH INIT: NO SESSION");
+          setUser(null);
+          setRole(null);
           return;
         }
 
-        console.log("AUTH INIT: FETCHING PROFILE FOR", session.user.id);
-        const { data: profile, error: profileError } = await supabase
+        const { data: profile } = await supabase
           .from("profiles")
           .select("*")
-          .eq("id", session.user.id)
+          .eq("id", data.session.user.id)
           .maybeSingle();
 
-        if (profileError) {
-          console.error("PROFILE SESSION FETCH ERROR:", profileError);
-        }
-
-        if (!mounted) return;
-
-        if (profile) {
-          const userData: User = {
-            id: session.user.id,
-            role: profile.role as Role,
-            name: profile.full_name,
-            email: profile.email,
-            mobile: profile.mobile,
-            city: profile.city,
-            area: profile.area,
-            pincode: profile.pincode,
-            address: profile.address,
-            instagram: profile.instagram,
-            portfolio: profile.portfolio_link,
-            languages: profile.languages,
-            bio: profile.bio,
-            profileImage: profile.avatar_url,
-            specialization: profile.specialization,
-            plan_type: profile.plan_type,
-            plan_expires_at: profile.plan_expires_at
-          };
-          setUser(userData);
-          setRole(profile.role as Role);
-          setActivePlan(getActivePlan(profile));
-          await fetchUnlocks(session.user.id);
-        } else {
-          console.warn("PROFILE NOT FOUND IN DB");
-          // Optionally set user basic data from auth session
-          setRole(null);
+        if (mounted) {
+          if (profile) {
+            setUser({
+              id: data.session.user.id,
+              role: profile.role as Role,
+              name: profile.full_name,
+              email: profile.email,
+              mobile: profile.mobile,
+              city: profile.city,
+              area: profile.area,
+              pincode: profile.pincode,
+              address: profile.address,
+              instagram: profile.instagram,
+              portfolio: profile.portfolio_link,
+              languages: profile.languages,
+              bio: profile.bio,
+              profileImage: profile.avatar_url,
+              specialization: profile.specialization,
+              plan_type: profile.plan_type,
+              plan_expires_at: profile.plan_expires_at
+            });
+            setRole(profile.role as Role);
+            setActivePlan(getActivePlan(profile));
+            fetchUnlocks(data.session.user.id);
+          } else {
+            console.warn("PROFILE NOT FOUND");
+          }
         }
       } catch (error) {
         console.error("AUTH INIT ERROR:", error);
-        if (mounted) {
-          setUser(null);
-          setRole(null);
-        }
       } finally {
         if (mounted) {
           setLoading(false);
+          console.timeEnd("AUTH INIT");
         }
       }
     }
