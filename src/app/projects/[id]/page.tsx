@@ -183,26 +183,74 @@ export default function ProjectDetailPage() {
   };
 
   const handleProposalSubmit = async () => {
-    if (user?.role !== "creator") {
+    if (!user || !project) return;
+    
+    // 1. Validation
+    if (user.role !== "creator") {
       toast.error("Unauthorized. Only creators can submit proposals.");
       return;
     }
-    setSubmitting(true);
-    const { error } = await supabase.from('proposals').insert({
-      project_id: params.id,
-      freelancer_id: user?.id,
-      freelancer_role: user?.role,
-      cover_letter: proposalData.coverLetter,
-      proposed_budget: proposalData.budget,
-      estimated_delivery_days: proposalData.days
-    });
-    if (error) {
-      toast.error(error.message === "duplicate key value violates unique constraint" ? "You have already submitted a proposal." : "Failed to submit proposal.");
-    } else {
-      toast.success("Proposal submitted successfully!");
-      setShowProposalModal(false);
+
+    const { coverLetter, budget, days } = proposalData;
+    
+    if (!coverLetter.trim()) {
+      toast.error("Please provide a cover letter.");
+      return;
     }
-    setSubmitting(false);
+
+    const proposedBudget = Number(budget);
+    const estimatedDays = Number(days);
+
+    if (isNaN(proposedBudget) || proposedBudget <= 0) {
+      toast.error("Please enter a valid budget greater than 0.");
+      return;
+    }
+
+    if (isNaN(estimatedDays) || estimatedDays <= 0) {
+      toast.error("Please enter valid delivery days greater than 0.");
+      return;
+    }
+
+    setSubmitting(true);
+
+    const payload = {
+      project_id: project.id,
+      freelancer_id: user.id,
+      cover_letter: coverLetter.trim(),
+      proposed_budget: proposedBudget,
+      estimated_days: estimatedDays,
+      status: "pending"
+    };
+
+    console.log("PROPOSAL INSERT PAYLOAD:", payload);
+
+    try {
+      const { data, error } = await supabase
+        .from('proposals')
+        .insert(payload)
+        .select()
+        .single();
+
+      if (error) {
+        console.error("PROPOSAL SUBMIT ERROR:", error);
+        if (error.code === "23505") {
+          toast.error("You have already submitted a proposal for this project.");
+        } else {
+          toast.error(error.message || "Failed to submit proposal.");
+        }
+      } else {
+        console.log("PROPOSAL SUBMITTED:", data);
+        toast.success("Proposal submitted successfully!");
+        setProposalData({ coverLetter: "", budget: "", days: "" });
+        setShowProposalModal(false);
+        // Optionally refresh page or state here
+      }
+    } catch (err: any) {
+      console.error("UNEXPECTED PROPOSAL ERROR:", err);
+      toast.error("An unexpected error occurred.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (loading) return <div className="flex justify-center pt-32"><Loader2 className="animate-spin text-neon-purple" /></div>;
