@@ -62,7 +62,10 @@ export const Footer = () => {
         </div>
 
         <div className="border-t border-white/5 pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-gray-500">
-          <p>© 2026 ClipShift Platform. All rights reserved.</p>
+          <div className="flex flex-col gap-1 items-center md:items-start text-center md:text-left">
+            <p>© 2026 ClipShift Platform. All rights reserved.</p>
+            <p className="font-bold text-gray-400">Contact: clipshiftplatform@gmail.com</p>
+          </div>
           <div className="flex space-x-6 mt-4 md:mt-0">
             <Link href="#" className="hover:text-white">Privacy Policy</Link>
             <Link href="#" className="hover:text-white">Terms of Service</Link>
