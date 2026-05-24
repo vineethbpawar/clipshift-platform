@@ -1,24 +1,53 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Upload, Video, Trash2, CheckCircle2 } from "lucide-react";
 import { uploadFile } from "@/lib/storage";
 import { UploadProgress } from "../storage/UploadProgress";
 import { FilePreview } from "../storage/FilePreview";
+import { useAuth } from "@/context/AuthContext";
+import { getActivePlan, getPortfolioUploadLimit } from "@/lib/plans";
+import { supabase } from "@/lib/supabase";
+import Link from "next/link";
+import { toast } from "react-hot-toast";
 
 export const PortfolioUpload = () => {
+  const { user } = useAuth();
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [itemCount, setItemCount] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const activePlan = getActivePlan(user as any);
+  const limitValue = getPortfolioUploadLimit(activePlan);
+  const limit = limitValue === 'unlimited' ? Infinity : limitValue;
+
+  useEffect(() => {
+    const fetchCount = async () => {
+      if (!user) return;
+      const { count } = await supabase
+        .from('portfolio_items')
+        .select('*', { count: 'exact', head: true })
+        .eq('creator_id', user.id);
+      
+      setItemCount(count || 0);
+    };
+    fetchCount();
+  }, [user]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (itemCount >= limit) {
+      toast.error(`You have reached your limit of ${limit} portfolio items on the ${activePlan} plan.`);
+      return;
+    }
+
     if (file.size > 50 * 1024 * 1024) {
-      alert("Cinematic node exceeds 50MB limit.");
+      toast.error("Cinematic node exceeds 50MB limit.");
       return;
     }
 
@@ -29,7 +58,7 @@ export const PortfolioUpload = () => {
       const url = await uploadFile(file, 'portfolios', (p) => setProgress(p));
       setVideoUrl(url);
     } catch (error: any) {
-      alert("Transmission failed: " + error.message);
+      toast.error("Transmission failed: " + error.message);
     } finally {
       setUploading(false);
     }
@@ -40,13 +69,25 @@ export const PortfolioUpload = () => {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h3 className="text-sm font-black text-white uppercase tracking-[0.2em]">Portfolio Transmitter</h3>
-          <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">Deploy your latest cinematic reel</p>
+          <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">
+            {limit === Infinity ? 'Unlimited storage enabled' : `Usage: ${itemCount} / ${limit} Node Slots`}
+          </p>
         </div>
         <Video size={24} className="text-neon-blue opacity-50" />
       </div>
 
       <div className="space-y-6">
-        {!videoUrl ? (
+        {itemCount >= limit ? (
+          <div className="p-8 border-2 border-dashed border-red-500/20 rounded-3xl text-center bg-red-500/5">
+            <p className="text-xs font-black text-white uppercase tracking-widest mb-4">Transmission Limit Reached</p>
+            <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-6">Upgrade your node protocol to expand storage capacity.</p>
+            <Link href="/pricing">
+              <button className="px-8 py-3 rounded-xl bg-neon-purple text-white text-[10px] font-black uppercase tracking-widest shadow-lg">
+                Upgrade Protocol
+              </button>
+            </Link>
+          </div>
+        ) : !videoUrl ? (
           <div 
             onClick={() => fileInputRef.current?.click()}
             className="h-48 border-2 border-dashed border-white/10 rounded-3xl flex flex-col items-center justify-center cursor-pointer hover:border-neon-blue/50 transition-all group relative overflow-hidden"

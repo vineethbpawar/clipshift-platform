@@ -16,6 +16,7 @@ export interface Project {
   longitude?: number;
   shoot_radius_km?: number;
   locations?: { name: string; lat: number; lng: number }[];
+  priority_project?: boolean;
 }
 
 export interface ProjectProposal {

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Clock, CheckCircle2, Circle, AlertCircle, MapPin } from "lucide-react";
+import { Clock, CheckCircle2, Circle, AlertCircle, MapPin, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type Project } from "@/data/projects";
 import { sanitizeDescription } from "@/lib/sanitizer";
@@ -48,6 +48,12 @@ export const ProjectCard = ({ project }: { project: Project }) => {
             <span className="px-3 py-1 rounded-full bg-neon-blue/10 border border-neon-blue/20 text-[9px] font-black text-neon-blue uppercase tracking-widest">
               {project.service_type === 'editing_and_shoot' ? 'Shoot Required' : 'Edit Only'}
             </span>
+            {project.priority_project && (
+              <span className="px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-[9px] font-black text-amber-500 uppercase tracking-widest flex items-center gap-1 shadow-[0_0_10px_rgba(245,158,11,0.1)]">
+                <Zap size={10} className="fill-amber-500" />
+                Priority Stream
+              </span>
+            )}
             {project.location_mode === 'anywhere_india' ? (
               <span className="px-3 py-1 rounded-full bg-green-500/10 border border-green-500/20 text-[9px] font-black text-green-500 uppercase tracking-widest">
                 Anywhere in India

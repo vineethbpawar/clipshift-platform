@@ -5,17 +5,26 @@ import { PageWrapper } from "@/components/layout/PageWrapper";
 import { 
   Zap, CheckCircle2, ShieldCheck, Sparkles, 
   TrendingUp, Award, Users, BarChart3, 
-  Gem, Rocket, Briefcase, Crown
+  Gem, Rocket, Briefcase, Crown, Loader2
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { useAuth } from "@/context/AuthContext";
+import { loadRazorpayScript } from "@/lib/razorpay";
+import { toast } from "react-hot-toast";
+import { useRouter } from "next/navigation";
 
 export default function PricingPage() {
+  const { user } = useAuth();
+  const router = useRouter();
   const [tab, setTab] = useState<"creator" | "client">("creator");
+  const [upgrading, setUpgrading] = useState<string | null>(null);
 
   const creatorPlans = [
     {
+      id: "free",
       name: "Free Creator",
       price: "₹0",
+      amount: 0,
       icon: Gem,
       color: "gray",
       features: [
@@ -26,8 +35,10 @@ export default function PricingPage() {
       ]
     },
     {
+      id: "creator_pro",
       name: "Creator Pro",
       price: "₹199",
+      amount: 19900,
       period: "/mo",
       icon: Rocket,
       color: "blue",
@@ -41,8 +52,10 @@ export default function PricingPage() {
       ]
     },
     {
+      id: "creator_premium",
       name: "Creator Premium",
       price: "₹499",
+      amount: 49900,
       period: "/mo",
       icon: Crown,
       color: "purple",
@@ -59,8 +72,10 @@ export default function PricingPage() {
 
   const clientPlans = [
     {
+      id: "free",
       name: "Free Client",
       price: "₹0",
+      amount: 0,
       icon: Briefcase,
       color: "gray",
       features: [
@@ -71,8 +86,10 @@ export default function PricingPage() {
       ]
     },
     {
+      id: "client_pro",
       name: "Client Pro",
       price: "₹299",
+      amount: 29900,
       period: "/mo",
       icon: Sparkles,
       color: "blue",
@@ -86,8 +103,10 @@ export default function PricingPage() {
       ]
     },
     {
+      id: "client_business",
       name: "Client Business",
       price: "₹999",
+      amount: 99900,
       period: "/mo",
       icon: Award,
       color: "purple",
@@ -100,6 +119,82 @@ export default function PricingPage() {
       ]
     }
   ];
+
+  const handleUpgrade = async (planId: string, amount: number) => {
+    if (!user) {
+      router.push('/auth/login');
+      return;
+    }
+
+    if (planId === 'free') {
+       toast.success("Active Plan set to Free");
+       return;
+    }
+
+    // Role Validation
+    if (user.role === 'client' && !planId.startsWith('client_')) {
+      toast.error("You can only subscribe to Client protocols.");
+      return;
+    }
+    if (user.role === 'creator' && !planId.startsWith('creator_')) {
+      toast.error("You can only subscribe to Creator protocols.");
+      return;
+    }
+
+    setUpgrading(planId);
+    
+    try {
+      const res = await loadRazorpayScript();
+      if (!res) throw new Error("Razorpay SDK failed to load.");
+
+      const orderRes = await fetch("/api/razorpay/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount,
+          currency: "INR",
+          receipt: `plan_${planId}_${user.id}_${Date.now()}`
+        })
+      });
+      const orderData = await orderRes.json();
+      if (orderData.error) throw new Error(orderData.error);
+
+      const options = {
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: "ClipShift Network",
+        description: `Upgrade to ${planId.replace('_', ' ')} protocol`,
+        order_id: orderData.order_id,
+        handler: async (response: any) => {
+          const updateRes = await fetch("/api/premium/update-plan", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ planType: planId })
+          });
+          const updateData = await updateRes.json();
+
+          if (updateData.success) {
+            toast.success("Protocol Upgraded Successfully!");
+            setTimeout(() => window.location.reload(), 1500);
+          } else {
+            throw new Error(updateData.error || "Update failed");
+          }
+        },
+        prefill: { name: user.name, email: user.email },
+        theme: { color: "#a855f7" },
+        modal: { ondismiss: () => setUpgrading(null) }
+      };
+
+      const paymentObject = new (window as any).Razorpay(options);
+      paymentObject.open();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || "Upgrade failed.");
+    } finally {
+      setUpgrading(null);
+    }
+  };
 
   const plans = tab === "creator" ? creatorPlans : clientPlans;
 
@@ -181,12 +276,15 @@ export default function PricingPage() {
                 ))}
               </div>
 
-              <button className={`w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all ${
+              <button 
+                onClick={() => handleUpgrade(plan.id, plan.amount)}
+                disabled={upgrading !== null}
+                className={`w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all ${
+                plan.id === 'free' ? "bg-white/5 border border-white/10 text-white hover:bg-white/10" :
                 plan.color === 'purple' ? "bg-neon-purple text-white shadow-[0_0_20px_rgba(168,85,247,0.3)] hover:scale-105" :
-                plan.color === 'blue' ? "bg-neon-blue text-white shadow-[0_0_20px_rgba(59,130,246,0.3)] hover:scale-105" :
-                "bg-white/5 border border-white/10 text-white hover:bg-white/10"
+                "bg-neon-blue text-white shadow-[0_0_20px_rgba(59,130,246,0.3)] hover:scale-105"
               }`}>
-                Upgrade Node
+                {upgrading === plan.id ? <Loader2 className="animate-spin mx-auto" size={16} /> : "Upgrade Node"}
               </button>
             </motion.div>
           ))}

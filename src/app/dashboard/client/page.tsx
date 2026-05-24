@@ -11,11 +11,21 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
 import { RoleGuard } from "@/components/auth/RoleGuard";
+import { getActivePlan, getClientUnlockDiscount } from "@/lib/plans";
+import { Crown, Percent } from "lucide-react";
+
+const getPlanBadge = (plan: string) => {
+  switch (plan) {
+    case 'client_business': return 'Business';
+    case 'client_pro': return 'Pro';
+    default: return 'Basic';
+  }
+};
 
 const MapView = dynamic(() => import("@/components/map/MapView").then(mod => mod.MapView), { ssr: false });
 
 export default function ClientDashboard() {
-  const { user } = useAuth();
+  const { user, activePlan } = useAuth();
   const [projects, setProjects] = useState<any[]>([]);
   const [savedCreators, setSavedCreators] = useState<any[]>([]);
   const [nearbyCreators, setNearbyCreators] = useState<any[]>([]);
@@ -33,7 +43,6 @@ export default function ClientDashboard() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Fetch projects logic would go here (table doesn't exist yet in user prompt, but we'll fetch from creators for nearby map)
         const { data: nearby, error } = await supabase
           .from('creators')
           .select(`*, profiles(full_name, avatar_url, city, area)`)
@@ -61,14 +70,37 @@ export default function ClientDashboard() {
     fetchData();
   }, []);
 
+  const discount = getClientUnlockDiscount(activePlan);
+
   return (
     <RoleGuard allowedRoles={["client"]}>
       <DashboardLayout title="Client Command Center">
+      {/* Top Section: Plan & Global Stats */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+        <div className="flex items-center gap-4">
+           <div className="p-4 glass rounded-2xl border-neon-blue/20 flex flex-col gap-1">
+             <span className="text-[8px] text-gray-500 uppercase font-black tracking-widest">Active Protocol</span>
+             <div className="flex items-center gap-2">
+               <Crown size={16} className={activePlan === 'free' ? "text-gray-500" : "text-neon-blue"} />
+               <span className="text-sm font-black text-white uppercase tracking-tighter">{getPlanBadge(activePlan)} Node</span>
+             </div>
+           </div>
+           {activePlan === 'free' && (
+             <Link href="/pricing">
+               <button className="px-6 py-3 rounded-xl bg-neon-blue/10 text-neon-blue border border-neon-blue/20 text-[10px] font-black uppercase tracking-widest hover:bg-neon-blue hover:text-white transition-all">
+                 Upgrade Protocol
+               </button>
+             </Link>
+           )}
+        </div>
+      </div>
+
       {/* Stats Overview */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
         <StatCard title="Total Investment" value={0} prefix="₹" icon={Wallet} color="purple" />
         <StatCard title="Active Streams" value={projects.length} icon={Briefcase} color="blue" />
         <StatCard title="Saved Talent" value={savedCreators.length} icon={Heart} color="green" />
+        <StatCard title="Unlock Discount" value={discount} suffix="%" icon={Percent} color="blue" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">

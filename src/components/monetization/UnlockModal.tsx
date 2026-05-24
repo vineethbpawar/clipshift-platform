@@ -7,6 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { loadRazorpayScript } from "@/lib/razorpay";
 import { getUnlockFee } from "@/lib/creators";
+import { getActivePlan, getClientUnlockDiscount } from "@/lib/plans";
 import { supabase } from "@/lib/supabase";
 import { toast } from "react-hot-toast";
 
@@ -16,7 +17,11 @@ export const UnlockModal = ({ creator, isOpen, onClose }: { creator: any, isOpen
   const { user } = useAuth();
   const router = useRouter();
 
-  const unlockFee = getUnlockFee(creator.tier || 'beginner');
+  const baseFee = getUnlockFee(creator.tier || 'beginner');
+  const activePlan = getActivePlan(user as any);
+  const discountPercent = getClientUnlockDiscount(activePlan);
+  const discountAmount = Math.round((baseFee * discountPercent) / 100);
+  const finalFee = baseFee - discountAmount;
 
   const handleUnlock = async () => {
     if (!user) {
@@ -41,7 +46,7 @@ export const UnlockModal = ({ creator, isOpen, onClose }: { creator: any, isOpen
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          amount: unlockFee * 100, // to paise
+          amount: finalFee * 100, // to paise
           currency: "INR",
           receipt: `c_unlock_${creator.id}_${Date.now()}`
         })
@@ -64,7 +69,7 @@ export const UnlockModal = ({ creator, isOpen, onClose }: { creator: any, isOpen
           const { error: unlockError } = await supabase.from('creator_unlocks').insert({
             client_id: user.id,
             creator_id: creator.id,
-            unlock_fee: unlockFee,
+            unlock_fee: finalFee,
             payment_status: 'paid'
           });
 
@@ -172,9 +177,21 @@ export const UnlockModal = ({ creator, isOpen, onClose }: { creator: any, isOpen
 
             <div className="space-y-6">
               <div className="glass p-6 rounded-3xl border-white/5 bg-white/5">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-[10px] text-gray-400 uppercase font-black tracking-widest">Protocol Fee</span>
-                  <span className="text-2xl font-black text-white">₹{unlockFee}</span>
+                <div className="space-y-2 mb-4 border-b border-white/5 pb-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Base Protocol Fee</span>
+                    <span className="text-sm font-bold text-gray-400 line-through">₹{baseFee}</span>
+                  </div>
+                  {discountPercent > 0 && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] text-neon-blue uppercase font-black tracking-widest">{activePlan.replace('_', ' ')} Discount</span>
+                      <span className="text-xs font-bold text-neon-blue">-{discountPercent}% (₹{discountAmount})</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between pt-2">
+                    <span className="text-[10px] text-white uppercase font-black tracking-widest">Final Authorization Fee</span>
+                    <span className="text-2xl font-black text-white">₹{finalFee}</span>
+                  </div>
                 </div>
                 <div className="space-y-3">
                   {[
@@ -195,7 +212,7 @@ export const UnlockModal = ({ creator, isOpen, onClose }: { creator: any, isOpen
                 onClick={handleUnlock}
                 className="w-full py-5 rounded-2xl bg-neon-purple text-white text-xs font-black uppercase tracking-[0.2em] shadow-[0_0_30px_rgba(168,85,247,0.4)] hover:scale-[1.02] active:scale-95 transition-all"
               >
-                Initiate Secure Payment
+                Confirm & Authorize (₹{finalFee})
               </button>
 
               <div className="flex items-center justify-center gap-2 text-[8px] text-gray-600 uppercase font-black tracking-widest">

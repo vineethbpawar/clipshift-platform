@@ -22,9 +22,21 @@ import { PortfolioUpload } from "@/components/dashboard/PortfolioUpload";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { RoleGuard } from "@/components/auth/RoleGuard";
+import { canAccessAdvancedAnalytics } from "@/lib/plans";
+import Link from "next/link";
+import { Crown } from "lucide-react";
+
+// Helper for badge display
+const getPlanBadge = (plan: string) => {
+  switch (plan) {
+    case 'creator_premium': return 'Premium';
+    case 'creator_pro': return 'Pro';
+    default: return 'Basic';
+  }
+};
 
 export default function CreatorDashboard() {
-  const { user } = useAuth();
+  const { user, activePlan } = useAuth();
   const [isAvailable, setIsAvailable] = useState(true);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -117,20 +129,29 @@ export default function CreatorDashboard() {
       <DashboardLayout title="Creator Command">
       {/* Top Section: Stats & Availability */}
       <div className="space-y-6 md:space-y-8 mb-8">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 md:gap-6 w-full">
-          <StatCard title="Total Earnings" value={stats.totalEarnings} prefix="₹" icon={DollarSign} color="purple" />
-          <StatCard title="Profile Reach" value={stats.profileReach} icon={Eye} color="blue" />
-          <StatCard title="Chat Unlocks" value={stats.chatUnlocks} icon={Users} color="green" />
-          <StatCard title="Active Projects" value={stats.activeProjects} icon={Zap} color="purple" />
-          <StatCard title="Proposals Sent" value={stats.proposalsSent} icon={TrendingUp} color="blue" />
-        </div>
-        
-        <div className="flex justify-end">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="flex items-center gap-4">
+             <div className="p-4 glass rounded-2xl border-neon-purple/20 flex flex-col gap-1">
+               <span className="text-[8px] text-gray-500 uppercase font-black tracking-widest">Active Protocol</span>
+               <div className="flex items-center gap-2">
+                 <Crown size={16} className={activePlan === 'free' ? "text-gray-500" : "text-neon-purple"} />
+                 <span className="text-sm font-black text-white uppercase tracking-tighter">{getPlanBadge(activePlan)} Node</span>
+               </div>
+             </div>
+             {activePlan === 'free' && (
+               <Link href="/pricing">
+                 <button className="px-6 py-3 rounded-xl bg-neon-purple/10 text-neon-purple border border-neon-purple/20 text-[10px] font-black uppercase tracking-widest hover:bg-neon-purple hover:text-white transition-all">
+                   Upgrade Protocol
+                 </button>
+               </Link>
+             )}
+          </div>
+
           <div className="glass p-4 md:p-6 rounded-3xl border-white/5 flex items-center gap-4 md:gap-6 w-full sm:w-auto">
             <div className="flex-1 sm:flex-initial">
-              <div className="text-[9px] md:text-[10px] text-gray-500 uppercase font-black tracking-widest mb-1 md:mb-2 text-right">Status</div>
+              <div className="text-[9px] md:text-[10px] text-gray-500 uppercase font-black tracking-widest mb-1 md:mb-2 text-right">Mission Status</div>
               <div className={`text-[10px] md:text-xs font-black uppercase tracking-widest ${isAvailable ? "text-green-500" : "text-neon-purple"}`}>
-                {isAvailable ? "Ready for Shoots" : "In Production"}
+                {isAvailable ? "Available for Discovery" : "In Production Mode"}
               </div>
             </div>
             <button 
@@ -143,6 +164,14 @@ export default function CreatorDashboard() {
               />
             </button>
           </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 md:gap-6 w-full">
+          <StatCard title="Total Earnings" value={stats.totalEarnings} prefix="₹" icon={DollarSign} color="purple" />
+          <StatCard title="Profile Reach" value={stats.profileReach} icon={Eye} color="blue" />
+          <StatCard title="Chat Unlocks" value={stats.chatUnlocks} icon={Users} color="green" />
+          <StatCard title="Active Projects" value={stats.activeProjects} icon={Zap} color="purple" />
+          <StatCard title="Proposals Sent" value={stats.proposalsSent} icon={TrendingUp} color="blue" />
         </div>
       </div>
 
@@ -228,12 +257,37 @@ export default function CreatorDashboard() {
 
       {/* AI & Content Management Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-12 mt-12">
-        <VideoAnalyzer />
+        {canAccessAdvancedAnalytics(activePlan) ? (
+          <VideoAnalyzer />
+        ) : (
+          <div className="glass p-8 rounded-[40px] border-white/5 flex flex-col items-center justify-center text-center group min-h-[300px]">
+            <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mb-6 text-gray-600 group-hover:text-neon-blue transition-colors">
+               <Zap size={32} />
+            </div>
+            <h3 className="text-lg font-black text-white uppercase tracking-tight mb-2">AI Neural Analyzer</h3>
+            <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest max-w-xs mb-8 leading-relaxed">
+              Unlock advanced AI diagnostics for your cinematic streams. Requires Premium Node Protocol.
+            </p>
+            <Link href="/pricing">
+              <button className="px-8 py-3 rounded-xl border border-neon-blue/30 text-neon-blue text-[10px] font-black uppercase tracking-widest hover:bg-neon-blue/10 transition-all">
+                Upgrade to Unlock
+              </button>
+            </Link>
+          </div>
+        )}
         <PortfolioUpload />
       </div>
       
       <div className="mt-12">
-        <PortfolioInsights />
+        {canAccessAdvancedAnalytics(activePlan) ? (
+          <PortfolioInsights />
+        ) : (
+           <div className="glass p-12 rounded-[40px] border-white/5 text-center">
+             <TrendingUp size={48} className="text-gray-800 mx-auto mb-6" />
+             <h3 className="text-xl font-black text-white uppercase tracking-tighter mb-2">Cinematic Insights</h3>
+             <p className="text-gray-500 text-sm max-w-md mx-auto uppercase tracking-widest text-[10px] font-black">Detailed engagement analytics and performance metrics are available for Premium nodes.</p>
+           </div>
+        )}
       </div>
     </DashboardLayout>
     </RoleGuard>

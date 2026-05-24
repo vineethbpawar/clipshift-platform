@@ -1,4 +1,5 @@
 import { type Role } from "@/context/AuthContext";
+import { getActivePlan, getCreatorRankingBoost, type PlanType } from "./plans";
 
 export interface CreatorProfile {
   id: string;
@@ -13,7 +14,8 @@ export interface CreatorProfile {
   bio?: string;
   languages?: string[];
   starting_price?: number;
-  plan_type?: 'free' | 'creator_pro' | 'creator_premium';
+  plan_type?: PlanType;
+  plan_expires_at?: string;
   featured_creator?: boolean;
   verified_creator?: boolean;
 }
@@ -39,10 +41,9 @@ export const calculateCreatorRank = (creator: CreatorProfile) => {
   // 4. Portfolio available weight: 10%
   if (creator.portfolio_link) score += 10;
 
-  // 5. Premium tier/plan boost: up to 10% (from plan_type and featured status)
-  let boost = 0;
-  if (creator.plan_type === 'creator_pro') boost += 5;
-  if (creator.plan_type === 'creator_premium') boost += 10;
+  // 5. Premium tier/plan boost: up to 10% (from active plan_type and featured status)
+  const activePlan = getActivePlan(creator as any);
+  let boost = getCreatorRankingBoost(activePlan);
   if (creator.featured_creator) boost += 10;
   if (creator.verified_creator) boost += 5;
   

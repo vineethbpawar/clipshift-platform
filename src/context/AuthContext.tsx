@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { getActivePlan, type PlanType } from "@/lib/plans";
 
 export type Role = "client" | "creator" | "admin" | null;
 
@@ -35,11 +36,14 @@ interface User {
   lat?: number;
   lng?: number;
   specialization?: string;
+  plan_type?: PlanType;
+  plan_expires_at?: string;
 }
 
 interface AuthContextType {
   user: User | null;
   role: Role;
+  activePlan: PlanType;
   loading: boolean;
   signupData: Partial<User>;
   unlockedCreators: string[];
@@ -58,6 +62,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<Role>(null);
+  const [activePlan, setActivePlan] = useState<PlanType>("free");
   const [loading, setLoading] = useState(true);
   const [signupData, setSignupData] = useState<any>({});
   const [unlockedCreators, setUnlockedCreators] = useState<string[]>([]);
@@ -162,7 +167,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (!mounted) return;
 
         if (profile) {
-          setUser({
+          const userData: User = {
             id: session.user.id,
             role: profile.role as Role,
             name: profile.full_name,
@@ -177,9 +182,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             languages: profile.languages,
             bio: profile.bio,
             profileImage: profile.avatar_url,
-            specialization: profile.specialization
-          });
+            specialization: profile.specialization,
+            plan_type: profile.plan_type,
+            plan_expires_at: profile.plan_expires_at
+          };
+          setUser(userData);
           setRole(profile.role as Role);
+          setActivePlan(getActivePlan(profile));
           await fetchUnlocks(session.user.id);
         } else {
           console.warn("PROFILE NOT FOUND IN DB");
@@ -207,6 +216,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (!session?.user) {
           setUser(null);
           setRole(null);
+          setActivePlan("free");
           setLoading(false);
           return;
         }
@@ -219,7 +229,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         if (mounted) {
           if (profile) {
-            setUser({
+            const userData: User = {
               id: session.user.id,
               role: profile.role as Role,
               name: profile.full_name,
@@ -234,9 +244,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               languages: profile.languages,
               bio: profile.bio,
               profileImage: profile.avatar_url,
-              specialization: profile.specialization
-            });
+              specialization: profile.specialization,
+              plan_type: profile.plan_type,
+              plan_expires_at: profile.plan_expires_at
+            };
+            setUser(userData);
             setRole(profile.role as Role);
+            setActivePlan(getActivePlan(profile));
           }
           setLoading(false);
         }
@@ -403,7 +417,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   return (
     <AuthContext.Provider
       value={{ 
-        user, role, loading, setRole, signupData, unlockedCreators, 
+        user, role, activePlan, loading, setRole, signupData, unlockedCreators, 
         signIn, signUp, signOut, updateSignupData, unlockCreator,
         resetPassword, updatePassword
       }}
