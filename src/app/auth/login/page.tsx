@@ -81,40 +81,35 @@ export default function LoginPage() {
         throw new Error("Profile not found. Please signup again.");
       }
 
-      try {
-        console.log("SYNCING SESSION TO SDK...");
-        const { error: sessionError } = await supabase.auth.setSession({
-          access_token: authData.access_token,
-          refresh_token: authData.refresh_token,
-        });
-        
-        if (sessionError) throw sessionError;
-      } catch (sessionErr: unknown) {
-        console.error("SDK SESSION SYNC FAILED, USING FALLBACK:", sessionErr);
-        
-        // Manual localStorage fallback if SDK fails
-        try {
-          const projectRef = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!).hostname.split(".")[0];
-          const storageKey = `sb-${projectRef}-auth-token`;
-          
-          const sessionPayload = {
-            access_token: authData.access_token,
-            refresh_token: authData.refresh_token,
-            expires_in: authData.expires_in,
-            expires_at: Math.floor(Date.now() / 1000) + Number(authData.expires_in || 3600),
-            token_type: authData.token_type || "bearer",
-            user: authData.user
-          };
+      // 1. Build session payload
+      const sessionPayload = {
+        access_token: authData.access_token,
+        refresh_token: authData.refresh_token,
+        expires_in: authData.expires_in,
+        expires_at: Math.floor(Date.now() / 1000) + Number(authData.expires_in || 3600),
+        token_type: authData.token_type || "bearer",
+        user: authData.user,
+      };
 
-          localStorage.setItem(storageKey, JSON.stringify(sessionPayload));
-          console.log("MANUAL SESSION STORAGE SUCCESS");
-        } catch (storageErr) {
-          console.error("CRITICAL: SESSION STORAGE FAILED", storageErr);
-        }
-      }
+      // 2. Save manually to localStorage
+      const projectRef = new URL(supabaseUrl!).hostname.split(".")[0];
+      const storageKey = `sb-${projectRef}-auth-token`;
+      localStorage.setItem(storageKey, JSON.stringify(sessionPayload));
+      console.log("SESSION SAVED MANUALLY", storageKey);
 
+      // 3. Background SDK sync (do not await)
+      supabase.auth.setSession({
+        access_token: authData.access_token,
+        refresh_token: authData.refresh_token,
+      }).then(({ error }) => {
+        if (error) console.error("BACKGROUND SET SESSION ERROR", error);
+        else console.log("BACKGROUND SET SESSION SUCCESS");
+      }).catch(err => {
+        console.error("BACKGROUND SET SESSION FAILED", err);
+      });
+
+      // 4. Immediate redirect
       let dashboardPath = "/dashboard/client";
-
       if (profile.role === "creator") {
         dashboardPath = "/dashboard/creator";
       } else if (profile.role === "admin") {
