@@ -147,17 +147,22 @@ export default function PricingPage() {
       const res = await loadRazorpayScript();
       if (!res) throw new Error("Razorpay SDK failed to load.");
 
+      // Amount is already in paise from plan object, send as rupees for API normalization
+      const amountInRupees = amount / 100;
+
       const orderRes = await fetch("/api/razorpay/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          amount,
-          currency: "INR",
-          receipt: `plan_${planId}_${user.id}_${Date.now()}`
+          planType: planId,
+          amount: amountInRupees
         })
       });
       const orderData = await orderRes.json();
-      if (orderData.error) throw new Error(orderData.error);
+      
+      if (!orderRes.ok) {
+        throw new Error(orderData.error || "Failed to create Razorpay order");
+      }
 
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
@@ -189,8 +194,8 @@ export default function PricingPage() {
       const paymentObject = new (window as any).Razorpay(options);
       paymentObject.open();
     } catch (err: any) {
-      console.error(err);
-      toast.error(err.message || "Upgrade failed.");
+      console.error("CREATE ORDER FAILED:", err);
+      toast.error(err.message || "Failed to create Razorpay order");
     } finally {
       setUpgrading(null);
     }
