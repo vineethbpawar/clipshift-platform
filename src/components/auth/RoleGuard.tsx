@@ -14,19 +14,49 @@ export const RoleGuard = ({ children, allowedRoles }: RoleGuardProps) => {
   const { user, role, loading } = useAuth();
   const router = useRouter();
   const [timedOut, setTimedOut] = useState(false);
+  const [fallbackUser, setFallbackUser] = useState<any>(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (loading) {
-        console.warn("ROLEGUARD: Session verification timed out.");
-        setTimedOut(true);
+    const timer = setTimeout(async () => {
+      if (loading && !user) {
+        console.log("ROLEGUARD: Session verification slow, starting fallback...");
+        
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+        const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+        const projectRef = new URL(supabaseUrl).hostname.split(".")[0];
+        const storageKey = `sb-${projectRef}-auth-token`;
+        const rawSession = localStorage.getItem(storageKey);
+        console.log("ROLEGUARD FALLBACK SESSION FOUND", !!rawSession);
+
+        if (rawSession) {
+          try {
+            const session = JSON.parse(rawSession);
+            const response = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${session.user.id}&select=*`, {
+              headers: { "apikey": supabaseAnonKey, "Authorization": `Bearer ${session.access_token}` }
+            });
+            const profiles = await response.json();
+            const profile = profiles[0];
+            
+            console.log("ROLEGUARD FALLBACK PROFILE", profile);
+            if (profile && allowedRoles.includes(profile.role)) {
+              setFallbackUser(profile);
+            } else {
+              setTimedOut(true);
+            }
+          } catch (error) {
+            console.error("ROLEGUARD FALLBACK ERROR", error);
+            setTimedOut(true);
+          }
+        } else {
+          setTimedOut(true);
+        }
       }
-    }, 8000); 
+    }, 3000); // Trigger fallback after 3 seconds
 
     return () => clearTimeout(timer);
-  }, [loading]);
+  }, [loading, user, allowedRoles]);
 
-  if (timedOut && loading) {
+  if (timedOut && loading && !fallbackUser) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-6 bg-black px-4 text-center">
         <div className="p-8 glass border-red-500/20 rounded-3xl max-w-md">
@@ -45,7 +75,10 @@ export const RoleGuard = ({ children, allowedRoles }: RoleGuardProps) => {
     );
   }
 
-  if (loading) {
+  const effectiveUser = user || fallbackUser;
+  const effectiveRole = role || fallbackUser?.role;
+
+  if (loading && !effectiveUser) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-black">
         <Loader2 className="animate-spin text-neon-purple" size={40} />
@@ -53,11 +86,11 @@ export const RoleGuard = ({ children, allowedRoles }: RoleGuardProps) => {
     );
   }
 
-  if (!user || !role || !allowedRoles.includes(role)) {
+  if (!effectiveUser || !effectiveRole || !allowedRoles.includes(effectiveRole)) {
     router.push("/auth/login");
     return null;
   }
 
-  console.log("ROLEGUARD READY", { role, allowedRoles });
+  console.log("ROLEGUARD READY", { role: effectiveRole, allowedRoles });
   return <>{children}</>;
 };

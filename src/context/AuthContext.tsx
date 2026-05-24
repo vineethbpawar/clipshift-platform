@@ -135,10 +135,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       try {
         setLoading(true);
 
-        const { data, error } = await supabase.auth.getSession();
+        // 1. Try getSession first
+        let { data: { session } } = await supabase.auth.getSession();
 
-        if (error || !data?.session?.user) {
-          console.log("AUTH INIT: NO SESSION");
+        // 2. Fallback to localStorage if getSession is slow or empty
+        if (!session) {
+          const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+          const projectRef = new URL(supabaseUrl).hostname.split(".")[0];
+          const storageKey = `sb-${projectRef}-auth-token`;
+          const rawSession = localStorage.getItem(storageKey);
+          if (rawSession) {
+            try {
+              session = JSON.parse(rawSession);
+            } catch (e) { console.error("Failed to parse local session", e); }
+          }
+        }
+
+        if (!session?.user) {
           setUser(null);
           setRole(null);
           return;
@@ -147,36 +160,32 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const { data: profile } = await supabase
           .from("profiles")
           .select("*")
-          .eq("id", data.session.user.id)
+          .eq("id", session.user.id)
           .maybeSingle();
 
-        if (mounted) {
-          if (profile) {
-            setUser({
-              id: data.session.user.id,
-              role: profile.role as Role,
-              name: profile.full_name,
-              email: profile.email,
-              mobile: profile.mobile,
-              city: profile.city,
-              area: profile.area,
-              pincode: profile.pincode,
-              address: profile.address,
-              instagram: profile.instagram,
-              portfolio: profile.portfolio_link,
-              languages: profile.languages,
-              bio: profile.bio,
-              profileImage: profile.avatar_url,
-              specialization: profile.specialization,
-              plan_type: profile.plan_type,
-              plan_expires_at: profile.plan_expires_at
-            });
-            setRole(profile.role as Role);
-            setActivePlan(getActivePlan(profile));
-            fetchUnlocks(data.session.user.id);
-          } else {
-            console.warn("PROFILE NOT FOUND");
-          }
+        if (mounted && profile) {
+          setUser({
+            id: session.user.id,
+            role: profile.role as Role,
+            name: profile.full_name,
+            email: profile.email,
+            mobile: profile.mobile,
+            city: profile.city,
+            area: profile.area,
+            pincode: profile.pincode,
+            address: profile.address,
+            instagram: profile.instagram,
+            portfolio: profile.portfolio_link,
+            languages: profile.languages,
+            bio: profile.bio,
+            profileImage: profile.avatar_url,
+            specialization: profile.specialization,
+            plan_type: profile.plan_type,
+            plan_expires_at: profile.plan_expires_at
+          });
+          setRole(profile.role as Role);
+          setActivePlan(getActivePlan(profile));
+          fetchUnlocks(session.user.id);
         }
       } catch (error) {
         console.error("AUTH INIT ERROR:", error);
