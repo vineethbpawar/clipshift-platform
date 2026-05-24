@@ -82,16 +82,35 @@ export default function LoginPage() {
       }
 
       try {
-        await Promise.race([
-          supabase.auth.setSession({
+        console.log("SYNCING SESSION TO SDK...");
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: authData.access_token,
+          refresh_token: authData.refresh_token,
+        });
+        
+        if (sessionError) throw sessionError;
+      } catch (sessionErr: unknown) {
+        console.error("SDK SESSION SYNC FAILED, USING FALLBACK:", sessionErr);
+        
+        // Manual localStorage fallback if SDK fails
+        try {
+          const projectRef = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!).hostname.split(".")[0];
+          const storageKey = `sb-${projectRef}-auth-token`;
+          
+          const sessionPayload = {
             access_token: authData.access_token,
             refresh_token: authData.refresh_token,
-          }),
-          new Promise((_, reject) => setTimeout(() => reject(new Error("SESSION_SAVE_TIMEOUT")), 5000))
-        ]);
-      } catch (sessionErr: unknown) {
-        const errorMessage = sessionErr instanceof Error ? sessionErr.message : String(sessionErr);
-        console.error("SESSION_SAVE_TIMEOUT or error (ignoring):", errorMessage);
+            expires_in: authData.expires_in,
+            expires_at: Math.floor(Date.now() / 1000) + Number(authData.expires_in || 3600),
+            token_type: authData.token_type || "bearer",
+            user: authData.user
+          };
+
+          localStorage.setItem(storageKey, JSON.stringify(sessionPayload));
+          console.log("MANUAL SESSION STORAGE SUCCESS");
+        } catch (storageErr) {
+          console.error("CRITICAL: SESSION STORAGE FAILED", storageErr);
+        }
       }
 
       let dashboardPath = "/dashboard/client";

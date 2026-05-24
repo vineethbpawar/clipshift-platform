@@ -123,40 +123,133 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   useEffect(() => {
-    const fetchSession = async () => {
+    let mounted = true;
+
+    async function initAuth() {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          await handleUserSession(session.user);
-          await fetchUnlocks(session.user.id);
+        setLoading(true);
+        console.log("AUTH INIT: GETTING SESSION...");
+
+        const { data, error } = await supabase.auth.getSession();
+
+        if (error) {
+          console.error("GET SESSION ERROR:", error);
         }
-      } catch (err) {
-        console.error("Initial session fetch failed:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
 
-    fetchSession();
+        const session = data?.session;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      try {
-        if (session) {
-          await handleUserSession(session.user);
+        if (!session?.user) {
+          console.log("AUTH INIT: NO SESSION USER");
+          if (mounted) {
+            setUser(null);
+            setRole(null);
+            setLoading(false);
+          }
+          return;
+        }
+
+        console.log("AUTH INIT: FETCHING PROFILE FOR", session.user.id);
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", session.user.id)
+          .maybeSingle();
+
+        if (profileError) {
+          console.error("PROFILE SESSION FETCH ERROR:", profileError);
+        }
+
+        if (!mounted) return;
+
+        if (profile) {
+          setUser({
+            id: session.user.id,
+            role: profile.role as Role,
+            name: profile.full_name,
+            email: profile.email,
+            mobile: profile.mobile,
+            city: profile.city,
+            area: profile.area,
+            pincode: profile.pincode,
+            address: profile.address,
+            instagram: profile.instagram,
+            portfolio: profile.portfolio_link,
+            languages: profile.languages,
+            bio: profile.bio,
+            profileImage: profile.avatar_url,
+            specialization: profile.specialization
+          });
+          setRole(profile.role as Role);
           await fetchUnlocks(session.user.id);
         } else {
+          console.warn("PROFILE NOT FOUND IN DB");
+          // Optionally set user basic data from auth session
+          setRole(null);
+        }
+      } catch (error) {
+        console.error("AUTH INIT ERROR:", error);
+        if (mounted) {
           setUser(null);
           setRole(null);
-          setUnlockedCreators([]);
         }
-      } catch (err) {
-        console.error("Auth state change processing failed:", err);
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    initAuth();
+
+    const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("AUTH STATE CHANGE:", event);
+      try {
+        if (!session?.user) {
+          setUser(null);
+          setRole(null);
+          setLoading(false);
+          return;
+        }
+
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", session.user.id)
+          .maybeSingle();
+
+        if (mounted) {
+          if (profile) {
+            setUser({
+              id: session.user.id,
+              role: profile.role as Role,
+              name: profile.full_name,
+              email: profile.email,
+              mobile: profile.mobile,
+              city: profile.city,
+              area: profile.area,
+              pincode: profile.pincode,
+              address: profile.address,
+              instagram: profile.instagram,
+              portfolio: profile.portfolio_link,
+              languages: profile.languages,
+              bio: profile.bio,
+              profileImage: profile.avatar_url,
+              specialization: profile.specialization
+            });
+            setRole(profile.role as Role);
+          }
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error("AUTH STATE CHANGE ERROR:", error);
+        if (mounted) setLoading(false);
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      listener.subscription.unsubscribe();
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {
