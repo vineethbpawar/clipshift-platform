@@ -126,14 +126,22 @@ export default function PricingPage() {
     }
   ];
 
-  const handleUpgrade = async (planId: string, amount: number) => {
+  const handleUpgrade = async (planId: string, amount: number, isAction: boolean = false) => {
     if (!user) {
       router.push('/auth/login');
       return;
     }
 
-    if (planId === 'free') {
-       toast.success("Active Plan set to Free");
+    if (planId === 'unlock_creator_chat') {
+       router.push('/marketplace');
+       return;
+    }
+
+    if (planId !== 'free' && (planId.includes('boost') || planId.includes('badge') || planId.includes('hiring'))) {
+       // Check if project selected - assume for now we need a project param or handle project selection flow
+       // In a real app, this would open a modal to select a project.
+       toast("Select a project first to apply this boost.", { icon: 'ℹ️' });
+       router.push('/projects');
        return;
     }
 
@@ -153,16 +161,12 @@ export default function PricingPage() {
       const res = await loadRazorpayScript();
       if (!res) throw new Error("Razorpay SDK failed to load.");
 
-      // Amount is already in paise from plan object, send as rupees for API normalization
-      const amountInRupees = amount / 100;
-
+      const payload = isAction ? { actionType: planId, amount } : { planType: planId, amount };
+      
       const orderRes = await fetch("/api/razorpay/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          planType: planId,
-          amount: amountInRupees
-        })
+        body: JSON.stringify(payload)
       });
       const orderData = await orderRes.json();
       
@@ -175,22 +179,19 @@ export default function PricingPage() {
         amount: orderData.amount,
         currency: orderData.currency,
         name: "ClipShift Network",
-        description: `Upgrade to ${planId.replace('_', ' ')} protocol`,
+        description: `Purchase: ${planId.replace(/_/g, ' ')}`,
         order_id: orderData.order_id,
         handler: async (response: any) => {
-          const updateRes = await fetch("/api/premium/update-plan", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ planType: planId })
-          });
-          const updateData = await updateRes.json();
-
-          if (updateData.success) {
-            toast.success("Protocol Upgraded Successfully!");
-            setTimeout(() => window.location.reload(), 1500);
-          } else {
-            throw new Error(updateData.error || "Update failed");
-          }
+           // For subscription: update profiles.plan_type
+           if (!isAction) {
+             await fetch("/api/premium/update-plan", {
+               method: "POST",
+               headers: { "Content-Type": "application/json" },
+               body: JSON.stringify({ planType: planId })
+             });
+           }
+           toast.success("Transaction Complete!");
+           setTimeout(() => window.location.reload(), 1500);
         },
         prefill: { name: user.name, email: user.email },
         theme: { color: "#a855f7" },
@@ -298,7 +299,7 @@ export default function PricingPage() {
               </div>
 
               <button 
-                onClick={() => handleUpgrade(plan.id, plan.amount)}
+                onClick={() => handleUpgrade(plan.id, plan.amount, !plan.id.startsWith('creator_'))}
                 disabled={upgrading !== null}
                 className={`w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all ${
                 plan.id === 'free' ? "bg-white/5 border border-white/10 text-white hover:bg-white/10" :

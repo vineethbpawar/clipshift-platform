@@ -17,24 +17,36 @@ export async function POST(req: Request) {
   });
 
   try {
-    const { amount, planType } = await req.json();
-    console.log("PURCHASE START: Creating order for", planType, "amount:", amount);
+    const body = await req.json();
+    console.log("CREATE ORDER BODY:", body);
+    const { amount, planType, actionType } = body;
+    console.log("CREATE ORDER TYPE:", { planType, actionType, amount });
 
-    // Validate plan type
-    const validCreatorPlans = ['creator_pro', 'creator_premium'];
-    const validClientActions = [
-      'unlock_creator_chat', 
-      'boost_project_3_days', 
-      'boost_project_7_days', 
-      'urgent_project_badge', 
-      'premium_hiring_support'
-    ];
+    // Validate input
+    if (!amount) return NextResponse.json({ error: "Missing amount" }, { status: 400 });
 
-    if (!validCreatorPlans.includes(planType) && !validClientActions.includes(planType)) {
-      return NextResponse.json({ error: "Invalid plan or action type" }, { status: 400 });
+    // Validate plan/action
+    const validCreatorPlans: Record<string, number> = { 'creator_pro': 99, 'creator_premium': 249 };
+    const validClientActions: Record<string, number> = { 
+      'boost_project_3_days': 49, 
+      'boost_project_7_days': 99, 
+      'urgent_project_badge': 99, 
+      'premium_hiring_support': 199 
+    };
+
+    const isCreatorPlan = planType && validCreatorPlans.hasOwnProperty(planType);
+    const isClientAction = actionType && validClientActions.hasOwnProperty(actionType);
+
+    if (!isCreatorPlan && !isClientAction) {
+      return NextResponse.json({ error: `Invalid plan or action type: ${planType || actionType}` }, { status: 400 });
     }
 
-    // amount is in rupees from frontend, convert to paise
+    // Verify amount
+    const expectedAmount = isCreatorPlan ? validCreatorPlans[planType] : validClientActions[actionType];
+    if (amount !== expectedAmount) {
+      return NextResponse.json({ error: "Amount mismatch" }, { status: 400 });
+    }
+
     const amountInPaise = amount * 100;
 
     const options = {

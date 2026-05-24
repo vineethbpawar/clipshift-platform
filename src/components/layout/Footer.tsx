@@ -1,77 +1,50 @@
 import React from "react";
-import Link from "next/link";
-import { MessageSquare, Camera, Terminal, Play } from "lucide-react";
 
 export const Footer = () => {
   return (
-    <footer className="bg-black border-t border-white/5 pt-16 pb-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
-          <div className="col-span-1 md:col-span-1">
-            <Link href="/" className="flex items-center space-x-2 mb-6">
-              <span className="text-2xl font-black tracking-tighter text-white">
-                CLIP<span className="text-neon-purple">SHIFT</span>
-              </span>
-            </Link>
-            <p className="text-gray-400 text-sm leading-relaxed max-w-xs">
-              The world's premier marketplace for cinematic assets and digital creations. 
-              Elevating creator commerce to a cinematic level.
-            </p>
-          </div>
-
-          <div>
-            <h4 className="text-white font-bold mb-6">Marketplace</h4>
-            <ul className="space-y-4 text-sm text-gray-400">
-              <li><Link href="#" className="hover:text-neon-purple transition-colors">Video Assets</Link></li>
-              <li><Link href="#" className="hover:text-neon-purple transition-colors">3D Models</Link></li>
-              <li><Link href="#" className="hover:text-neon-purple transition-colors">Audio Tracks</Link></li>
-              <li><Link href="#" className="hover:text-neon-purple transition-colors">Visual Effects</Link></li>
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="text-white font-bold mb-6">Resources</h4>
-            <ul className="space-y-4 text-sm text-gray-400">
-              <li><Link href="#" className="hover:text-neon-purple transition-colors">Documentation</Link></li>
-              <li><Link href="#" className="hover:text-neon-purple transition-colors">Help Center</Link></li>
-              <li><Link href="#" className="hover:text-neon-purple transition-colors">Creator Guide</Link></li>
-              <li><Link href="#" className="hover:text-neon-purple transition-colors">Community</Link></li>
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="text-white font-bold mb-6">Connect</h4>
-            <div className="flex space-x-4 mb-8">
-              <Link href="#" className="text-gray-400 hover:text-white transition-colors">
-                <MessageSquare size={20} />
-              </Link>
-              <Link href="#" className="text-gray-400 hover:text-white transition-colors">
-                <Camera size={20} />
-              </Link>
-              <Link href="#" className="text-gray-400 hover:text-white transition-colors">
-                <Terminal size={20} />
-              </Link>
-              <Link href="#" className="text-gray-400 hover:text-white transition-colors">
-                <Play size={20} />
-              </Link>
-            </div>
-            <p className="text-gray-400 text-sm">
-              Subscribe to our newsletter for cinematic drops.
-            </p>
-          </div>
+    <footer className="bg-black py-16 px-4 md:px-8 border-t border-white/5">
+      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12">
+        <div className="col-span-1 md:col-span-1">
+          <h2 className="text-xl font-black text-white uppercase tracking-tighter mb-4">ClipShift</h2>
+          <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-relaxed">
+            ClipShift connects clients with skilled video creators for editing, shooting, portfolios, proposals, and secure project communication.
+          </p>
         </div>
 
-        <div className="border-t border-white/5 pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-gray-500">
-          <div className="flex flex-col gap-1 items-center md:items-start text-center md:text-left">
-            <p>© 2026 ClipShift Platform. All rights reserved.</p>
-            <p className="font-bold text-gray-400">Contact: clipshiftplatform@gmail.com</p>
-          </div>
-          <div className="flex space-x-6 mt-4 md:mt-0">
-            <Link href="#" className="hover:text-white">Privacy Policy</Link>
-            <Link href="#" className="hover:text-white">Terms of Service</Link>
-            <Link href="#" className="hover:text-white">Cookie Policy</Link>
-          </div>
+        <div>
+          <h4 className="text-[10px] font-black text-white uppercase tracking-widest mb-6">Platform</h4>
+          <ul className="space-y-4">
+            <li><a href="/marketplace" className="text-[10px] text-gray-500 font-bold uppercase tracking-widest hover:text-neon-purple transition-colors">Find Creators</a></li>
+            <li><a href="/post-project" className="text-[10px] text-gray-500 font-bold uppercase tracking-widest hover:text-neon-purple transition-colors">Post a Project</a></li>
+            <li><a href="/projects" className="text-[10px] text-gray-500 font-bold uppercase tracking-widest hover:text-neon-purple transition-colors">Browse Projects</a></li>
+            <li><a href="/pricing" className="text-[10px] text-gray-500 font-bold uppercase tracking-widest hover:text-neon-purple transition-colors">Pricing</a></li>
+          </ul>
         </div>
+
+        <div>
+          <h4 className="text-[10px] font-black text-white uppercase tracking-widest mb-6">Resources</h4>
+          <ul className="space-y-4">
+            <li><a href="/how-it-works" className="text-[10px] text-gray-500 font-bold uppercase tracking-widest hover:text-neon-purple transition-colors">How It Works</a></li>
+            <li><a href="/creator-guide" className="text-[10px] text-gray-500 font-bold uppercase tracking-widest hover:text-neon-purple transition-colors">Creator Guide</a></li>
+            <li><a href="/client-guide" className="text-[10px] text-gray-500 font-bold uppercase tracking-widest hover:text-neon-purple transition-colors">Client Guide</a></li>
+            <li><a href="/help" className="text-[10px] text-gray-500 font-bold uppercase tracking-widest hover:text-neon-purple transition-colors">Help Center</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <h4 className="text-[10px] font-black text-white uppercase tracking-widest mb-6">Company</h4>
+          <ul className="space-y-4">
+            <li><a href="/about" className="text-[10px] text-gray-500 font-bold uppercase tracking-widest hover:text-neon-purple transition-colors">About ClipShift</a></li>
+            <li><a href="/contact" className="text-[10px] text-gray-500 font-bold uppercase tracking-widest hover:text-neon-purple transition-colors">Contact</a></li>
+            <li><a href="/terms" className="text-[10px] text-gray-500 font-bold uppercase tracking-widest hover:text-neon-purple transition-colors">Terms</a></li>
+            <li><a href="/privacy" className="text-[10px] text-gray-500 font-bold uppercase tracking-widest hover:text-neon-purple transition-colors">Privacy</a></li>
+          </ul>
+        </div>
+      </div>
+      
+      <div className="max-w-7xl mx-auto mt-12 pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
+        <p className="text-[9px] text-gray-600 font-bold uppercase tracking-widest">© 2026 ClipShift Collective</p>
+        <p className="text-[9px] text-neon-blue font-bold uppercase tracking-widest">clipshiftplatform@gmail.com</p>
       </div>
     </footer>
   );
