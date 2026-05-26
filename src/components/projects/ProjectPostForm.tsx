@@ -65,7 +65,7 @@ export const ProjectPostForm = () => {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentFileName, setCurrentFileName] = useState("");
-  const [uploadedFiles, setUploadedFiles] = useState<{url: string, type: 'image' | 'video'}[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
 
   const [aiEstimate, setAiEstimate] = useState<any>(null);
   const [isEstimating, setIsEstimating] = useState(false);
@@ -85,14 +85,36 @@ export const ProjectPostForm = () => {
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files) return;
+    if (!files || !user) return;
 
     setUploading(true);
+    setError(null);
     
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      if (file.size > 50 * 1024 * 1024) {
-        alert(`${file.name} exceeds 50MB node limit.`);
+      console.log("PROJECT FILE SELECTED", file);
+
+      // Validation
+      const isImage = file.type.startsWith('image/');
+      const isVideo = file.type.startsWith('video/');
+      const isPDF = file.type === 'application/pdf';
+      const isZip = file.type === 'application/zip';
+
+      if (!isImage && !isVideo && !isPDF && !isZip) {
+        toast.error(`${file.name} has an unsupported file type.`);
+        continue;
+      }
+
+      if (isImage && file.size > 10 * 1024 * 1024) {
+        toast.error("Image is too large. Max 10MB.");
+        continue;
+      }
+      if (isVideo && file.size > 500 * 1024 * 1024) {
+        toast.error("Video is too large. Max 500MB.");
+        continue;
+      }
+      if (!isImage && !isVideo && file.size > 100 * 1024 * 1024) {
+        toast.error("File is too large. Max 100MB.");
         continue;
       }
 
@@ -100,13 +122,11 @@ export const ProjectPostForm = () => {
       setProgress(0);
 
       try {
-        const url = await uploadFile(file, 'project-files', (p) => setProgress(p));
-        setUploadedFiles(prev => [...prev, { 
-          url, 
-          type: file.type.startsWith('video') ? 'video' : 'image' 
-        }]);
+        const fileData = await uploadFile(file, 'project-files', user.id, (p) => setProgress(p));
+        setUploadedFiles(prev => [...prev, fileData]);
       } catch (error: any) {
-        alert(`Transmission failed for ${file.name}: ` + error.message);
+        console.error("PROJECT FILE UPLOAD ERROR", error);
+        toast.error("File upload failed. Please try again.");
       }
     }
 
@@ -466,7 +486,7 @@ export const ProjectPostForm = () => {
                   multiple
                   className="hidden" 
                   onChange={handleFileUpload}
-                  accept="video/*,image/*"
+                  accept="video/*,image/*,.pdf,.zip"
                 />
                 <label 
                   htmlFor="project-footage"
@@ -486,8 +506,10 @@ export const ProjectPostForm = () => {
                   {uploadedFiles.map((file, i) => (
                     <FilePreview 
                       key={i} 
-                      url={file.url} 
-                      type={file.type} 
+                      url={file.file_url} 
+                      type={file.file_type.startsWith('video') ? 'video' : 
+                            file.file_type === 'application/pdf' ? 'pdf' :
+                            file.file_type === 'application/zip' || file.file_type === 'application/x-zip-compressed' ? 'zip' : 'image'} 
                       className="aspect-square"
                       onRemove={() => setUploadedFiles(prev => prev.filter((_, idx) => idx !== i))}
                     />
@@ -500,12 +522,17 @@ export const ProjectPostForm = () => {
               variant="purple" 
               className="w-full py-5 text-sm tracking-[0.2em] disabled:opacity-50"
               onClick={handleSubmit}
-              disabled={submitting}
+              disabled={submitting || uploading}
             >
               {submitting ? (
                 <div className="flex items-center gap-2">
                   <Loader2 size={16} className="animate-spin" />
                   Deploying...
+                </div>
+              ) : uploading ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 size={16} className="animate-spin" />
+                  Syncing Files...
                 </div>
               ) : "Deploy Project Request"}
             </NeonButton>

@@ -41,8 +41,8 @@ export const Step4Profile = ({ onNext, onBack }: { onNext: () => void, onBack: (
 
     try {
       const { uploadFile } = await import("@/lib/storage");
-      const publicUrl = await uploadFile(file, 'avatars', (p) => setProgress(p));
-      setImagePreview(publicUrl);
+      const fileData = await uploadFile(file, 'avatars', signupData.email || 'guest', (p) => setProgress(p));
+      setImagePreview(fileData.file_url);
     } catch (error: any) {
       alert("Transmission failed: " + error.message);
     } finally {

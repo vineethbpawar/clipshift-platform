@@ -5,31 +5,48 @@ export type Bucket = 'avatars' | 'portfolios' | 'project-files';
 export const uploadFile = async (
   file: File,
   bucket: Bucket,
+  userId: string,
   onProgress: (progress: number) => void
 ) => {
   const fileExt = file.name.split('.').pop();
-  const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
-  const filePath = fileName;
+  const uuid = typeof crypto !== 'undefined' && crypto.randomUUID 
+    ? crypto.randomUUID() 
+    : Math.random().toString(36).substring(2);
+  const filePath = `${userId}/${Date.now()}-${uuid}.${fileExt}`;
+
+  console.log("PROJECT FILE UPLOAD START", filePath);
+  onProgress(40); // Set to 40% when upload starts as requested
 
   const { data, error } = await supabase.storage
     .from(bucket)
     .upload(filePath, file, {
       cacheControl: '3600',
       upsert: false,
+      contentType: file.type
     });
 
-  if (error) throw error;
+  if (error) {
+    console.error("PROJECT FILE UPLOAD ERROR:", error);
+    onProgress(0);
+    throw error;
+  }
 
-  // Simulate progress as Supabase JS doesn't natively support browser progress in upload() easily without XHR
-  // However, for cinematic feel, we'll use a simulated smooth progress since standard JS upload is fast for small files
-  // For real production with large files, TUS or XHR should be used.
   onProgress(100); 
 
   const { data: { publicUrl } } = supabase.storage
     .from(bucket)
     .getPublicUrl(filePath);
 
-  return publicUrl;
+  const uploadedFile = {
+    file_url: publicUrl,
+    file_path: filePath,
+    file_name: file.name,
+    file_type: file.type,
+    file_size: file.size
+  };
+
+  console.log("PROJECT FILE UPLOAD SUCCESS", uploadedFile);
+  return uploadedFile;
 };
 
 export const deleteFile = async (bucket: Bucket, path: string) => {

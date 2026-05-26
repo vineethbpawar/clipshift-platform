@@ -55,8 +55,9 @@ export const PortfolioUpload = () => {
     setProgress(0);
 
     try {
-      const url = await uploadFile(file, 'portfolios', (p) => setProgress(p));
-      setVideoUrl(url);
+      if (!user) return;
+      const fileData = await uploadFile(file, 'portfolios', user.id, (p) => setProgress(p));
+      setVideoUrl(fileData.file_url);
     } catch (error: any) {
       toast.error("Transmission failed: " + error.message);
     } finally {
