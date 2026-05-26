@@ -18,6 +18,18 @@ import { useAuth } from "@/context/AuthContext";
 
 const ProjectLocationMap = dynamic(() => import("../map/projects/ProjectLocationMap"), { ssr: false });
 
+interface Location {
+  lat: number;
+  lng: number;
+  name?: string;
+}
+
+interface AIEstimate {
+  badge: string;
+  recommended_budget: string;
+  market_comparison: string;
+}
+
 export const ProjectPostForm = () => {
   const { user } = useAuth();
   const [isDetecting, setIsDetecting] = useState(false);
@@ -27,7 +39,7 @@ export const ProjectPostForm = () => {
   const [serviceType, setServiceType] = useState<"editing_only" | "editing_and_shoot">("editing_only");
   const [locationMode, setLocationMode] = useState<"anywhere_india" | "preferred_location" | "shoot_location">("anywhere_india");
   const [radius, setRadius] = useState(100);
-  const [locations, setLocations] = useState<any[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
 
   const handleServiceTypeChange = (val: "editing_only" | "editing_and_shoot") => {
     setServiceType(val);
@@ -42,15 +54,16 @@ export const ProjectPostForm = () => {
     setIsDetecting(true);
     try {
       const data = await detectLocation();
-      const newLoc = { 
+      const newLoc: Location = { 
         lat: data.lat, 
         lng: data.lng, 
         name: data.area || data.city || "Current Location" 
       };
       setLocations([...locations, newLoc]);
       toast.success("Location detected!");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to detect location");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to detect location";
+      toast.error(message);
     } finally {
       setIsDetecting(false);
     }
@@ -65,9 +78,9 @@ export const ProjectPostForm = () => {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentFileName, setCurrentFileName] = useState("");
-  const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<{file_url: string; file_type: string; file_name: string}[]>([]);
 
-  const [aiEstimate, setAiEstimate] = useState<any>(null);
+  const [aiEstimate, setAiEstimate] = useState<AIEstimate | null>(null);
   const [isEstimating, setIsEstimating] = useState(false);
 
   const getEstimate = async () => {
@@ -123,12 +136,13 @@ export const ProjectPostForm = () => {
         setProgress(0);
 
         const fileData = await uploadFile(file, 'project-files', user.id, (p) => setProgress(p));
-        setUploadedFiles(prev => [...prev, fileData]);
+        setUploadedFiles(prev => [...prev, fileData as {file_url: string; file_type: string; file_name: string}]);
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("PROJECT FILE UPLOAD ERROR", error);
       setProgress(0);
-      if (error.message?.includes("timed out")) {
+      const message = error instanceof Error ? error.message : "";
+      if (message.includes("timed out")) {
         toast.error("Upload timed out. Check internet or Supabase Storage policy.");
       } else {
         toast.error("File upload failed. Please try again.");
@@ -237,9 +251,10 @@ export const ProjectPostForm = () => {
       setDescription("");
       setUploadedFiles([]);
       setLocations([]);
-    } catch (err: any) {
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to deploy project request. Please try again.";
       console.error("Submission failed:", err);
-      setError(err.message || "Failed to deploy project request. Please try again.");
+      setError(message);
     } finally {
       setSubmitting(false);
     }
@@ -340,7 +355,7 @@ export const ProjectPostForm = () => {
                   ) : (
                     <div className="p-4 rounded-2xl bg-neon-purple/5 border border-neon-purple/20">
                       <p className="text-[10px] text-gray-400 italic">
-                        "Shooting requires a physical location. Choose how far creators can be from your shoot location."
+                        &quot;Shooting requires a physical location. Choose how far creators can be from your shoot location.&quot;
                       </p>
                     </div>
                   )}
@@ -479,7 +494,7 @@ export const ProjectPostForm = () => {
                       </span>
                     </div>
                     <div className="text-sm font-black text-white mb-1">{aiEstimate.recommended_budget}</div>
-                    <p className="text-[9px] text-gray-400 italic">"{aiEstimate.market_comparison}"</p>
+                    <p className="text-[9px] text-gray-400 italic">&quot;{aiEstimate.market_comparison}&quot;</p>
                   </motion.div>
                 )}
               </div>
@@ -549,7 +564,7 @@ export const ProjectPostForm = () => {
           <div className="glass rounded-[40px] overflow-hidden border border-white/5 relative h-[400px] lg:h-[600px] group">
             <ProjectLocationMap 
               locations={locations} 
-              setLocations={setLocations} 
+              setLocations={(locs) => setLocations(locs)} 
               radius={radius} 
             />
             

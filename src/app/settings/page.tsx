@@ -79,8 +79,9 @@ export default function SettingsPage() {
         lng: data.lng
       });
       toast.success("Location detected!");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to detect location");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to detect location";
+      toast.error(message);
     } finally {
       setIsDetecting(false);
     }
@@ -102,6 +103,29 @@ export default function SettingsPage() {
   });
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+  const fetchCreatorData = React.useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from("creators")
+        .select("*")
+        .eq("id", user?.id)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (data) {
+        setCreatorData({
+          availability: data.availability || "Available",
+          categories: data.specialty || [],
+          startingPrice: data.price || "",
+          deliverySpeed: data.delivery || ""
+        });
+      }
+    } catch (err) {
+      console.error("Error fetching creator data:", err);
+    }
+  }, [user]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -129,35 +153,13 @@ export default function SettingsPage() {
 
       // Fetch creator data if applicable
       if (user.role === "creator") {
-        fetchCreatorData();
+        const syncCreator = async () => {
+          await fetchCreatorData();
+        };
+        syncCreator();
       }
     }
-  }, [user, authLoading]);
-
-  const fetchCreatorData = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("creators")
-        .select("*")
-        .eq("id", user?.id)
-        .maybeSingle();
-
-      if (!data) {
-        console.log("Profile not found");
-      }
-
-      if (data) {
-        setCreatorData({
-          availability: data.availability || "Available",
-          categories: data.specialty || [],
-          startingPrice: data.price || "",
-          deliverySpeed: data.delivery || ""
-        });
-      }
-    } catch (err) {
-      console.error("Error fetching creator data:", err);
-    }
-  };
+  }, [user, authLoading, fetchCreatorData, router]);
 
   const handleProfileSave = async () => {
     setLoading(true);

@@ -52,45 +52,7 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
   const [typingStates, setTypingStates] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (!user) return;
-
-    fetchConversations();
-
-    // Subscribe to new messages for unread counts and conversation updates
-    const messageSub = supabase
-      .channel('public:messages')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
-        const newMessage = payload.new as Message;
-        if (newMessage.receiver_id === user.id || newMessage.sender_id === user.id) {
-          // Update conversation list
-          fetchConversations();
-          
-          // If active chat, add to messages
-          if (activeConversationId && newMessage.conversation_id === activeConversationId) {
-            setActiveChatMessages(prev => {
-              if (prev.some(m => m.id === newMessage.id)) return prev;
-              return [...prev, newMessage];
-            });
-          }
-        }
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(messageSub);
-    };
-  }, [user, activeConversationId]);
-
-  useEffect(() => {
-    if (activeConversationId) {
-      fetchMessages(activeConversationId);
-    } else {
-      setActiveChatMessages([]);
-    }
-  }, [activeConversationId]);
-
-  const fetchConversations = async () => {
+  const fetchConversations = React.useCallback(async () => {
     if (!user) {
       setLoading(false);
       return;
@@ -128,7 +90,7 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
 
           return {
             ...c,
-            other_user: otherUser,
+            other_user: otherUser as any,
             unreadCount: count || 0
           };
         }));
@@ -139,9 +101,9 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
-  const fetchMessages = async (convId: string) => {
+  const fetchMessages = React.useCallback(async (convId: string) => {
     const { data, error } = await supabase
       .from('messages')
       .select('*')
@@ -151,7 +113,51 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
     if (!error && data) {
       setActiveChatMessages(data);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const initChat = async () => {
+      await fetchConversations();
+    };
+    initChat();
+
+    // Subscribe to new messages for unread counts and conversation updates
+    const messageSub = supabase
+      .channel('public:messages')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
+        const newMessage = payload.new as Message;
+        if (newMessage.receiver_id === user.id || newMessage.sender_id === user.id) {
+          // Update conversation list
+          fetchConversations();
+          
+          // If active chat, add to messages
+          if (activeConversationId && newMessage.conversation_id === activeConversationId) {
+            setActiveChatMessages(prev => {
+              if (prev.some(m => m.id === newMessage.id)) return prev;
+              return [...prev, newMessage];
+            });
+          }
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(messageSub);
+    };
+  }, [user, activeConversationId, fetchConversations]);
+
+  useEffect(() => {
+    const syncMessages = async () => {
+      if (activeConversationId) {
+        await fetchMessages(activeConversationId);
+      } else {
+        setActiveChatMessages([]);
+      }
+    };
+    syncMessages();
+  }, [activeConversationId, fetchMessages]);
 
   const sendMessage = async (receiverId: string, content: string, type: string = "text", mediaUrl?: string) => {
     if (!user) return;

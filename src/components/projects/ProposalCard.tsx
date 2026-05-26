@@ -34,7 +34,7 @@ export const ProposalCard = ({ proposal }: { proposal: ProjectProposal }) => {
 
       <div className="p-4 bg-white/5 rounded-2xl border border-white/5 mb-6">
         <p className="text-[10px] text-gray-400 leading-relaxed italic">
-          "{proposal.message}"
+          &quot;{proposal.message}&quot;
         </p>
       </div>
 

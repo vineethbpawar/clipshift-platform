@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents, Circle } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -30,25 +30,26 @@ export default function ProjectLocationMap({
   setLocations: (locs: Location[]) => void,
   radius: number
 }) {
-  const [customIcon, setCustomIcon] = useState<any>(null);
-  const [creatorIcon, setCreatorIcon] = useState<any>(null);
-
-  useEffect(() => {
-    setCustomIcon(new L.Icon({
+  const customIcon = useMemo(() => {
+    if (typeof window === "undefined") return undefined;
+    return new L.Icon({
       iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png",
       shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
       iconSize: [25, 41],
       iconAnchor: [12, 41],
       popupAnchor: [1, -34],
       shadowSize: [41, 41]
-    }));
+    });
+  }, []);
 
-    setCreatorIcon(L.divIcon({
+  const creatorIcon = useMemo(() => {
+    if (typeof window === "undefined") return undefined;
+    return L.divIcon({
       className: "custom-marker",
       html: `<div class="marker-pulse-purple"></div>`,
       iconSize: [20, 20],
       iconAnchor: [10, 10],
-    }));
+    });
   }, []);
 
   const removeLocation = (index: number) => {
@@ -73,19 +74,21 @@ export default function ProjectLocationMap({
 
       {locations.map((loc, i) => (
         <React.Fragment key={i}>
-          <Marker position={[loc.lat, loc.lng]} icon={customIcon}>
-            <Popup>
-              <div className="text-black">
-                <p className="font-bold">{loc.name}</p>
-                <button 
-                  onClick={() => removeLocation(i)}
-                  className="text-red-500 text-xs mt-1 underline"
-                >
-                  Remove Pin
-                </button>
-              </div>
-            </Popup>
-          </Marker>
+          {customIcon && (
+            <Marker position={[loc.lat, loc.lng]} icon={customIcon}>
+              <Popup>
+                <div className="text-black">
+                  <p className="font-bold">{loc.name}</p>
+                  <button 
+                    onClick={() => removeLocation(i)}
+                    className="text-red-500 text-xs mt-1 underline"
+                  >
+                    Remove Pin
+                  </button>
+                </div>
+              </Popup>
+            </Marker>
+          )}
           <Circle 
             center={[loc.lat, loc.lng]} 
             radius={radius * 1000} 
@@ -96,15 +99,17 @@ export default function ProjectLocationMap({
 
       {/* Preview nearby creators */}
       {creators.map((c) => (
-        <Marker 
-          key={c.id} 
-          position={[c.location.lat, c.location.lng]} 
-          icon={creatorIcon}
-        >
-          <Popup>
-            <div className="text-black text-xs font-bold">{c.name} (Nearby)</div>
-          </Popup>
-        </Marker>
+        creatorIcon && (
+          <Marker 
+            key={c.id} 
+            position={[c.location.lat, c.location.lng]} 
+            icon={creatorIcon}
+          >
+            <Popup>
+              <div className="text-black text-xs font-bold">{c.name} (Nearby)</div>
+            </Popup>
+          </Marker>
+        )
       ))}
     </MapContainer>
   );

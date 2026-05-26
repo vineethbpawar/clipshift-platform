@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import { motion } from "framer-motion";
 import { FloatingInput } from "@/components/ui/FloatingInput";
 import { NeonButton } from "@/components/ui/NeonButton";
 import { PageWrapper } from "@/components/layout/PageWrapper";
@@ -23,8 +22,9 @@ export default function ForgotPasswordPage() {
       await resetPassword(email);
       setSubmitted(true);
       toast.success("Reset link sent to your email");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to send reset link");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to send reset link";
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -45,7 +45,7 @@ export default function ForgotPasswordPage() {
             <h1 className="text-4xl font-black text-white mb-2 uppercase tracking-tighter">
               Recover <span className="text-neon-purple">Access</span>
             </h1>
-            <p className="text-gray-400">We'll send you a link to reset your production keys</p>
+            <p className="text-gray-400">We&apos;ll send you a link to reset your production keys</p>
           </div>
 
           <div className="glass p-8 rounded-3xl border-white/5 relative">

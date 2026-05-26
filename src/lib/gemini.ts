@@ -1,5 +1,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { supabase } from "./supabase";
+import { Project } from "@/data/projects";
+import { Creator } from "@/data/creators";
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY || "");
 
@@ -30,7 +32,7 @@ export const getGeminiResponse = async (prompt: string, feature: string) => {
   return response;
 };
 
-export const matchCreators = async (projectData: any, creators: any[]) => {
+export const matchCreators = async (projectData: Partial<Project>, creators: Creator[]) => {
   const prompt = `
     Match the top 5 creators for the following project:
     Project: ${JSON.stringify(projectData)}
@@ -42,13 +44,13 @@ export const matchCreators = async (projectData: any, creators: any[]) => {
   const response = await getGeminiResponse(prompt, "creator-match");
   try {
     return JSON.parse(response.replace(/```json|```/g, ""));
-  } catch (e) {
-    console.error("Failed to parse Gemini response", response);
+  } catch (error) {
+    console.error("Failed to parse Gemini response", error);
     return [];
   }
 };
 
-export const analyzeVideoQuality = async (videoDetails: any, portfolioHistory: any) => {
+export const analyzeVideoQuality = async (videoDetails: Record<string, unknown>, portfolioHistory: Record<string, unknown>[]) => {
   const prompt = `
     Analyze the video quality based on these details:
     Video: ${JSON.stringify(videoDetails)}
@@ -60,13 +62,13 @@ export const analyzeVideoQuality = async (videoDetails: any, portfolioHistory: a
   const response = await getGeminiResponse(prompt, "video-analysis");
   try {
     return JSON.parse(response.replace(/```json|```/g, ""));
-  } catch (e) {
-    console.error("Failed to parse Gemini response", response);
+  } catch (error) {
+    console.error("Failed to parse Gemini response", error);
     return null;
   }
 };
 
-export const estimatePrice = async (projectDetails: any) => {
+export const estimatePrice = async (projectDetails: Partial<Project>) => {
   const prompt = `
     Estimate a fair price range for this project:
     ${JSON.stringify(projectDetails)}
@@ -77,13 +79,13 @@ export const estimatePrice = async (projectDetails: any) => {
   const response = await getGeminiResponse(prompt, "price-estimator");
   try {
     return JSON.parse(response.replace(/```json|```/g, ""));
-  } catch (e) {
-    console.error("Failed to parse Gemini response", response);
+  } catch (error) {
+    console.error("Failed to parse Gemini response", error);
     return null;
   }
 };
 
-export const getPortfolioInsights = async (portfolioData: any) => {
+export const getPortfolioInsights = async (portfolioData: Record<string, unknown>[]) => {
   const prompt = `
     Analyze this portfolio and provide insights:
     ${JSON.stringify(portfolioData)}
@@ -94,8 +96,8 @@ export const getPortfolioInsights = async (portfolioData: any) => {
   const response = await getGeminiResponse(prompt, "portfolio-insights");
   try {
     return JSON.parse(response.replace(/```json|```/g, ""));
-  } catch (e) {
-    console.error("Failed to parse Gemini response", response);
+  } catch (error) {
+    console.error("Failed to parse Gemini response", error);
     return null;
   }
 };

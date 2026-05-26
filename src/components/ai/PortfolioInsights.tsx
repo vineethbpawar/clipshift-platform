@@ -6,12 +6,18 @@ import { TrendingUp, Zap, Target, Search, BarChart3, ArrowUpRight, Loader2, Spar
 import { getPortfolioInsights } from "@/lib/gemini";
 import { useAuth } from "@/context/AuthContext";
 
+interface Insights {
+  trending_styles: string[];
+  improvement_tips: string[];
+  gaps: string;
+}
+
 export const PortfolioInsights = () => {
   const { user } = useAuth();
-  const [insights, setInsights] = useState<any>(null);
+  const [insights, setInsights] = useState<Insights | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const fetchInsights = async () => {
+  const fetchInsights = React.useCallback(async () => {
     if (!user) return;
     setLoading(true);
     try {
@@ -23,18 +29,21 @@ export const PortfolioInsights = () => {
         recentStyles: []
       };
       
-      const result = await getPortfolioInsights(portfolioData);
+      const result = await getPortfolioInsights([portfolioData]);
       setInsights(result);
     } catch (error) {
       console.error("Failed to fetch insights:", error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
-    fetchInsights();
-  }, []);
+    const init = async () => {
+      await fetchInsights();
+    };
+    init();
+  }, [fetchInsights]);
 
   if (loading) {
     return (
@@ -90,7 +99,7 @@ export const PortfolioInsights = () => {
           ]).map((tip: string, i: number) => (
             <div key={i} className="p-4 bg-white/5 rounded-2xl border border-white/5 flex items-center justify-between group cursor-pointer hover:border-white/10 transition-all">
               <div className="flex-1">
-                <p className="text-[10px] text-gray-400 leading-relaxed italic">"{tip}"</p>
+                <p className="text-[10px] text-gray-400 leading-relaxed italic">&quot;{tip}&quot;</p>
               </div>
               <ArrowUpRight size={16} className="text-gray-600 group-hover:text-neon-blue transition-colors ml-4 shrink-0" />
             </div>

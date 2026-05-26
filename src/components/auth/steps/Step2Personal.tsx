@@ -33,7 +33,7 @@ export const Step2Personal = ({ onNext, onBack }: { onNext: () => void, onBack: 
     <div className="max-w-md mx-auto">
       <div className="text-center mb-12">
         <h2 className="text-3xl font-black text-white mb-2 uppercase tracking-tight">Personal Identity</h2>
-        <p className="text-gray-400">Let's start with the basics of your profile</p>
+        <p className="text-gray-400">Let&apos;s start with the basics of your profile</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">

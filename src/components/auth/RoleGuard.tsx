@@ -13,8 +13,9 @@ interface RoleGuardProps {
 export const RoleGuard = ({ children, allowedRoles }: RoleGuardProps) => {
   const { user, role, loading } = useAuth();
   const router = useRouter();
-  const [isReady, setIsReady] = useState(false);
   const [timedOut, setTimedOut] = useState(false);
+
+  const isReady = !loading && user && role && allowedRoles.includes(role);
 
   useEffect(() => {
     console.log("ROLEGUARD STATE", { loading, hasUser: !!user, role, allowedRoles });
@@ -26,12 +27,9 @@ export const RoleGuard = ({ children, allowedRoles }: RoleGuardProps) => {
       }
     }, 5000);
 
-    // If auth is loaded and user matches
+    // Side effects: Redirects
     if (!loading) {
-      if (user && role && allowedRoles.includes(role)) {
-        console.log("ROLEGUARD ALLOWED");
-        setIsReady(true);
-      } else if (user && role && !allowedRoles.includes(role)) {
+      if (user && role && !allowedRoles.includes(role)) {
         // Wrong dashboard for this role
         const correctPath = getDashboardPath(role);
         console.log("ROLEGUARD: Wrong dashboard, redirecting to", correctPath);
@@ -58,16 +56,10 @@ export const RoleGuard = ({ children, allowedRoles }: RoleGuardProps) => {
         try {
           const session = JSON.parse(rawSession);
           if (session?.user) {
-            // We still need to verify the role matches
-            // For now, if we have a user and it's taking too long, we might trust the localStorage 
-            // if we could get the profile. But without AuthContext ready, it's risky.
-            // However, the instructions say to render if valid session and profile matches.
-            // This is complex without the profile state. 
-            // Let's reload to try and force a clean sync if stuck.
             console.log("ROLEGUARD: Stuck, forcing reload");
             window.location.reload();
           }
-        } catch (e) { router.push("/auth/login"); }
+        } catch { router.push("/auth/login"); }
       } else {
         router.push("/auth/login");
       }

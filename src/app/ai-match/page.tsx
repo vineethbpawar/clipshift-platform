@@ -2,16 +2,21 @@
 
 import React, { useState } from "react";
 import { PageWrapper } from "@/components/layout/PageWrapper";
-import { creators } from "@/data/creators";
+import { creators, Creator } from "@/data/creators";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Search, ShieldCheck, ChevronDown, Zap, ArrowRight, BrainCircuit } from "lucide-react";
+import { Sparkles, ShieldCheck, Zap, ArrowRight, BrainCircuit } from "lucide-react";
 import Link from "next/link";
 
 import { matchCreators } from "@/lib/gemini";
 
+interface MatchResult extends Creator {
+  matchScore: number;
+  aiReason: string;
+}
+
 export default function AIMatchPage() {
   const [isSearching, setIsSearching] = useState(false);
-  const [results, setResults] = useState<any[]>([]);
+  const [results, setResults] = useState<MatchResult[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     type: "Cinematic Reel",
@@ -27,14 +32,14 @@ export default function AIMatchPage() {
 
     try {
       const matchedData = await matchCreators(formData, creators);
-      const matches = matchedData.map((match: any) => {
+      const matches = (matchedData as { id: string; score: number; reason: string }[]).map((match) => {
         const creator = creators.find(c => c.id === match.id) || creators[0]; // Fallback to first creator if ID mismatch
         return {
           ...creator,
           matchScore: match.score,
           aiReason: match.reason
         };
-      }).sort((a: any, b: any) => b.matchScore - a.matchScore);
+      }).sort((a, b) => b.matchScore - a.matchScore);
       setResults(matches);
     } catch (error) {
       console.error("Matching failed:", error);
@@ -199,7 +204,7 @@ export default function AIMatchPage() {
                           AI Inference Result
                         </h4>
                         <p className="text-xs text-gray-300 leading-relaxed italic">
-                          "{creator.aiReason}"
+                          &quot;{creator.aiReason}&quot;
                         </p>
                       </div>
                     </motion.div>

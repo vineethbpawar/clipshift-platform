@@ -6,9 +6,18 @@ import { Search, BrainCircuit, ShieldCheck, Sparkles, AlertCircle, CheckCircle2 
 import { ScoreCircle } from "./ScoreCircle";
 import { analyzeVideoQuality } from "@/lib/gemini";
 
+interface Scores {
+  cinematography: number;
+  colorGrade: number;
+  pacing: number;
+  audio: number;
+  overall: number;
+  feedback: string | string[];
+}
+
 export const VideoAnalyzer = () => {
   const [status, setStatus] = useState<"idle" | "scanning" | "done">("idle");
-  const [scores, setScores] = useState<any>(null);
+  const [scores, setScores] = useState<Scores | null>(null);
   const [videoDescription, setVideoDescription] = useState("");
 
   const startAnalysis = async () => {
@@ -16,7 +25,7 @@ export const VideoAnalyzer = () => {
     setStatus("scanning");
     
     try {
-      const result = await analyzeVideoQuality({ description: videoDescription }, {});
+      const result = await analyzeVideoQuality({ description: videoDescription }, []);
       if (result) {
         setScores({
           cinematography: result.Cinematography || result.cinematography || 0,

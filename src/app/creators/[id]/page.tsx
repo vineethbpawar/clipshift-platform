@@ -178,7 +178,7 @@ export default function CreatorProfilePage() {
               </h3>
               <div className="glass p-8 rounded-[40px] border-white/5">
                 <p className="text-gray-400 leading-relaxed text-sm md:text-base italic">
-                  "{creator.bio || "This cinematic creator has not yet defined their mission brief. Proceeding with standard creative protocols."}"
+                  &quot;{creator.bio || "This cinematic creator has not yet defined their mission brief. Proceeding with standard creative protocols."}&quot;
                 </p>
               </div>
             </section>

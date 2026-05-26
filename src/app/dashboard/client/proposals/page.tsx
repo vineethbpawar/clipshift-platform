@@ -100,8 +100,8 @@ export default function ClientProposalsPage() {
               <div key={prop.id} className="glass p-6 rounded-2xl border border-white/10 flex justify-between items-center">
                 <div>
                   <h3 className="text-lg font-bold text-white">{prop.projects?.title}</h3>
-                  <p className="text-sm text-gray-400">By {prop.profiles?.full_name} ({prop.freelancer_role})</p>
-                  <p className="text-xs text-gray-500 mt-2">Budget: ₹{prop.proposed_budget} | Delivery: {prop.estimated_delivery_days} days</p>
+                  <p className="text-sm text-gray-400">By {prop.profiles?.full_name}</p>
+                  <p className="text-xs text-gray-500 mt-2">Budget: ₹{prop.proposed_budget} | Delivery: {prop.estimated_days} days</p>
                 </div>
                 {(!prop.status || prop.status === 'pending') ? (
                   <div className="flex gap-4">

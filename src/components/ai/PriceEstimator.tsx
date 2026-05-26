@@ -1,28 +1,27 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { motion, useSpring, useTransform } from "framer-motion";
-import { DollarSign, Zap, TrendingUp, AlertCircle, Sparkles } from "lucide-react";
+import React, { useEffect, useState, useMemo } from "react";
+import { motion, useSpring } from "framer-motion";
+import { AlertCircle, Sparkles } from "lucide-react";
 
-export const PriceEstimator = ({ projectType = "Cinematic Reel", duration = "60s" }: { projectType?: string, duration?: string }) => {
-  const [range, setRange] = useState({ min: 15000, max: 25000 });
-  const [marketAvg, setMarketAvg] = useState(18000);
-
-  const springMin = useSpring(0, { mass: 1, stiffness: 60, damping: 20 });
-  const springMax = useSpring(0, { mass: 1, stiffness: 60, damping: 20 });
-  
-  const [displayMin, setDisplayMin] = useState("0");
-  const [displayMax, setDisplayMax] = useState("0");
-
-  useEffect(() => {
-    // Logic based on project type
+export const PriceEstimator = ({ projectType = "Cinematic Reel" }: { projectType?: string, duration?: string }) => {
+  const range = useMemo(() => {
     const base = projectType.includes("Reel") ? 15000 : 45000;
     const offset = 0;
-    setRange({ min: base + offset, max: base + offset + 15000 });
-    setMarketAvg(base + offset + 2000);
-    
-    springMin.set(base + offset);
-    springMax.set(base + offset + 15000);
+    return { min: base + offset, max: base + offset + 15000 };
+  }, [projectType]);
+
+  const marketAvg = useMemo(() => range.min + 2000, [range]);
+
+  const springMin = useSpring(range.min, { mass: 1, stiffness: 60, damping: 20 });
+  const springMax = useSpring(range.max, { mass: 1, stiffness: 60, damping: 20 });
+  
+  const [displayMin, setDisplayMin] = useState(range.min.toLocaleString());
+  const [displayMax, setDisplayMax] = useState(range.max.toLocaleString());
+
+  useEffect(() => {
+    springMin.set(range.min);
+    springMax.set(range.max);
 
     const unMin = springMin.on("change", (v) => setDisplayMin(Math.floor(v).toLocaleString()));
     const unMax = springMax.on("change", (v) => setDisplayMax(Math.floor(v).toLocaleString()));
@@ -31,7 +30,7 @@ export const PriceEstimator = ({ projectType = "Cinematic Reel", duration = "60s
       unMin();
       unMax();
     };
-  }, [projectType, duration, springMin, springMax]);
+  }, [range, springMin, springMax]);
 
   return (
     <div className="glass p-8 rounded-[40px] border-white/5 bg-gradient-to-br from-neon-purple/5 to-transparent">

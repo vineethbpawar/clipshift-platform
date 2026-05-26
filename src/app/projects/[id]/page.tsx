@@ -162,24 +162,66 @@ export default function ProjectDetailPage() {
   }, [params.id, user?.id, user?.role]);
 
   const handleUnlock = async () => {
-    if (user?.role !== "creator") {
+    if (!user) return;
+    if (user.role !== "creator") {
       toast.error("Unauthorized. Only creators can unlock projects.");
       return;
     }
-    setSubmitting(true);
-    const { error } = await supabase.from('project_unlocks').insert({
-      project_id: params.id,
-      freelancer_id: user?.id,
-      payment_status: 'paid',
-      unlocked_at: new Date().toISOString()
-    });
-    if (error) {
-      toast.error("Failed to unlock.");
-    } else {
-      setIsUnlocked(true);
-      toast.success("Contact unlocked!");
+
+    if (project?.status !== "open") {
+      toast.error("This project is no longer open for unlocks.");
+      return;
     }
-    setSubmitting(false);
+
+    setSubmitting(true);
+
+    const payload = {
+      project_id: project.id,
+      freelancer_id: user.id,
+      unlock_fee: 99,
+      payment_status: "paid"
+    };
+
+    console.log("UNLOCK PROJECT USER", user);
+    console.log("UNLOCK PROJECT ROLE", user.role);
+    console.log("UNLOCK PROJECT PAYLOAD", payload);
+
+    try {
+      // Check if already unlocked
+      const { data: existingUnlock } = await supabase
+        .from('project_unlocks')
+        .select('*')
+        .eq('project_id', project.id)
+        .eq('freelancer_id', user.id)
+        .maybeSingle();
+
+      if (existingUnlock) {
+        setIsUnlocked(true);
+        toast.success("Contact already unlocked.");
+        setSubmitting(false);
+        return;
+      }
+
+      const { error } = await supabase.from('project_unlocks').insert(payload);
+
+      if (error) {
+        console.error("UNLOCK PROJECT ERROR", error);
+        if (error.code === "23505") {
+          toast.success("Contact already unlocked.");
+          setIsUnlocked(true);
+        } else {
+          toast.error("Failed to unlock.");
+        }
+      } else {
+        setIsUnlocked(true);
+        toast.success("Contact unlocked!");
+      }
+    } catch (err) {
+      console.error("UNLOCK PROJECT UNEXPECTED ERROR", err);
+      toast.error("An unexpected error occurred.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleProposalSubmit = async () => {
@@ -188,6 +230,11 @@ export default function ProjectDetailPage() {
     // 1. Validation
     if (user.role !== "creator") {
       toast.error("Unauthorized. Only creators can submit proposals.");
+      return;
+    }
+
+    if (project.status !== "open") {
+      toast.error("This project is no longer accepting proposals.");
       return;
     }
 
@@ -217,12 +264,14 @@ export default function ProjectDetailPage() {
       project_id: project.id,
       freelancer_id: user.id,
       cover_letter: coverLetter.trim(),
-      proposed_budget: proposedBudget,
-      estimated_days: estimatedDays,
+      proposed_budget: String(proposedBudget),
+      estimated_days: Number(estimatedDays),
       status: "pending"
     };
 
-    console.log("PROPOSAL INSERT PAYLOAD:", payload);
+    console.log("SUBMIT PROPOSAL USER", user);
+    console.log("SUBMIT PROPOSAL ROLE", user.role);
+    console.log("FINAL PROPOSAL PAYLOAD", payload);
 
     try {
       const { data, error } = await supabase
@@ -232,9 +281,9 @@ export default function ProjectDetailPage() {
         .single();
 
       if (error) {
-        console.error("PROPOSAL SUBMIT ERROR:", error);
+        console.error("SUBMIT PROPOSAL ERROR", error);
         if (error.code === "23505") {
-          toast.error("You have already submitted a proposal for this project.");
+          toast.error("You already submitted this proposal.");
         } else {
           toast.error(error.message || "Failed to submit proposal.");
         }
@@ -243,10 +292,9 @@ export default function ProjectDetailPage() {
         toast.success("Proposal submitted successfully!");
         setProposalData({ coverLetter: "", budget: "", days: "" });
         setShowProposalModal(false);
-        // Optionally refresh page or state here
       }
-    } catch (err: any) {
-      console.error("UNEXPECTED PROPOSAL ERROR:", err);
+    } catch (err) {
+      console.error("SUBMIT PROPOSAL UNEXPECTED ERROR", err);
       toast.error("An unexpected error occurred.");
     } finally {
       setSubmitting(false);
