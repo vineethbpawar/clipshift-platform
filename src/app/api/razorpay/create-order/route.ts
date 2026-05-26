@@ -26,8 +26,13 @@ export async function POST(req: Request) {
     if (!amount) return NextResponse.json({ error: "Missing amount" }, { status: 400 });
 
     // Validate plan/action
-    const validCreatorPlans: Record<string, number> = { 'creator_pro': 99, 'creator_premium': 249 };
+    const validCreatorPlans: Record<string, number> = { 
+      'creator_pro': 99, 
+      'creator_premium': 249 
+    };
+    
     const validClientActions: Record<string, number> = { 
+      'unlock_creator_chat': 49, // Base/Average price for generic UI; actual check happens in UnlockModal
       'boost_project_3_days': 49, 
       'boost_project_7_days': 99, 
       'urgent_project_badge': 99, 
@@ -42,8 +47,16 @@ export async function POST(req: Request) {
     }
 
     // Verify amount
-    const expectedAmount = isCreatorPlan ? validCreatorPlans[planType] : validClientActions[actionType];
-    if (amount !== expectedAmount) {
+    let expectedAmount = 0;
+    if (isCreatorPlan) expectedAmount = validCreatorPlans[planType];
+    else if (isClientAction) expectedAmount = validClientActions[actionType];
+
+    // For chat unlocks, we allow a range based on tier (29, 49, 99)
+    if (actionType === 'unlock_creator_chat') {
+      if (![29, 49, 99].includes(amount)) {
+        return NextResponse.json({ error: "Invalid unlock amount" }, { status: 400 });
+      }
+    } else if (amount !== expectedAmount) {
       return NextResponse.json({ error: "Amount mismatch" }, { status: 400 });
     }
 

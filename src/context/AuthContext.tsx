@@ -131,86 +131,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     let mounted = true;
 
     async function initAuth() {
-      console.time("AUTH INIT");
       try {
         setLoading(true);
 
-        // 1. Try getSession first
-        let { data: { session } } = await supabase.auth.getSession();
+        // 1. Try getSession
+        const { data: { session } } = await supabase.auth.getSession();
 
-        // 2. Fallback to localStorage if getSession is slow or empty
-        if (!session) {
-          const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-          const projectRef = new URL(supabaseUrl).hostname.split(".")[0];
-          const storageKey = `sb-${projectRef}-auth-token`;
-          const rawSession = localStorage.getItem(storageKey);
-          if (rawSession) {
-            try {
-              session = JSON.parse(rawSession);
-            } catch (e) { console.error("Failed to parse local session", e); }
+        if (!session?.user) {
+          if (mounted) {
+            setUser(null);
+            setRole(null);
+            setLoading(false);
           }
-        }
-
-        if (!session?.user) {
-          setUser(null);
-          setRole(null);
           return;
         }
 
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", session.user.id)
-          .maybeSingle();
-
-        if (mounted && profile) {
-          setUser({
-            id: session.user.id,
-            role: profile.role as Role,
-            name: profile.full_name,
-            email: profile.email,
-            mobile: profile.mobile,
-            city: profile.city,
-            area: profile.area,
-            pincode: profile.pincode,
-            address: profile.address,
-            instagram: profile.instagram,
-            portfolio: profile.portfolio_link,
-            languages: profile.languages,
-            bio: profile.bio,
-            profileImage: profile.avatar_url,
-            specialization: profile.specialization,
-            plan_type: profile.plan_type,
-            plan_expires_at: profile.plan_expires_at
-          });
-          setRole(profile.role as Role);
-          setActivePlan(getActivePlan(profile));
-          fetchUnlocks(session.user.id);
-        }
-      } catch (error) {
-        console.error("AUTH INIT ERROR:", error);
-      } finally {
-        if (mounted) {
-          setLoading(false);
-          console.timeEnd("AUTH INIT");
-        }
-      }
-    }
-
-    initAuth();
-
-    const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("AUTH STATE CHANGE:", event);
-      try {
-        if (!session?.user) {
-          setUser(null);
-          setRole(null);
-          setActivePlan("free");
-          setLoading(false);
-          return;
-        }
-
-        const { data: profile } = await supabase
+        const { data: profile, error: profileError } = await supabase
           .from("profiles")
           .select("*")
           .eq("id", session.user.id)
@@ -218,6 +154,61 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         if (mounted) {
           if (profile) {
+            setUser({
+              id: session.user.id,
+              role: profile.role as Role,
+              name: profile.full_name,
+              email: profile.email,
+              mobile: profile.mobile,
+              city: profile.city,
+              area: profile.area,
+              pincode: profile.pincode,
+              address: profile.address,
+              instagram: profile.instagram,
+              portfolio: profile.portfolio_link,
+              languages: profile.languages,
+              bio: profile.bio,
+              profileImage: profile.avatar_url,
+              specialization: profile.specialization,
+              plan_type: profile.plan_type,
+              plan_expires_at: profile.plan_expires_at
+            });
+            setRole(profile.role as Role);
+            setActivePlan(getActivePlan(profile));
+            fetchUnlocks(session.user.id);
+          } else {
+            setUser(null);
+            setRole(null);
+          }
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error("AUTH INIT ERROR:", error);
+        if (mounted) setLoading(false);
+      }
+    }
+
+    initAuth();
+
+    const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      try {
+        if (event === 'SIGNED_OUT') {
+          setUser(null);
+          setRole(null);
+          setActivePlan("free");
+          setUnlockedCreators([]);
+          setLoading(false);
+          return;
+        }
+
+        if (session?.user) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", session.user.id)
+            .maybeSingle();
+
+          if (mounted && profile) {
             const userData: User = {
               id: session.user.id,
               role: profile.role as Role,
@@ -240,9 +231,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             setUser(userData);
             setRole(profile.role as Role);
             setActivePlan(getActivePlan(profile));
+            if (event === 'SIGNED_IN') fetchUnlocks(session.user.id);
           }
-          setLoading(false);
         }
+        if (mounted) setLoading(false);
       } catch (error) {
         console.error("AUTH STATE CHANGE ERROR:", error);
         if (mounted) setLoading(false);

@@ -12,11 +12,11 @@ export const CreatorCard = ({ creator }: { creator: any }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const { user } = useAuth();
+  const { user, unlockedCreators } = useAuth();
   const router = useRouter();
 
-  // In a real app, this would come from a database check in AuthContext or parent
-  const isUnlocked = false; 
+  // Check if creator is unlocked by this client
+  const isUnlocked = unlockedCreators.includes(creator.id); 
 
   const handleMouseEnter = () => {
     setIsHovered(true);
@@ -36,10 +36,15 @@ export const CreatorCard = ({ creator }: { creator: any }) => {
   const handleChat = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (isUnlocked) {
-      router.push(`/chat/${creator.id}`);
+      // Find direct conversation with this creator
+      router.push(`/chat?id=${creator.id}`);
     } else {
       setIsModalOpen(true);
     }
+  };
+
+  const handleCardClick = () => {
+    router.push(`/creators/${creator.id}`);
   };
 
   return (
@@ -52,7 +57,8 @@ export const CreatorCard = ({ creator }: { creator: any }) => {
         whileHover={{ y: -5 }}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-        className="group relative glass border-white/5 rounded-[32px] overflow-hidden transition-all duration-500 hover:border-neon-purple/50"
+        onClick={handleCardClick}
+        className="group relative glass border-white/5 rounded-[32px] overflow-hidden transition-all duration-500 hover:border-neon-purple/50 cursor-pointer"
       >
         {/* Badges Overlay */}
         <div className="absolute top-4 left-4 z-20 flex flex-col gap-2">

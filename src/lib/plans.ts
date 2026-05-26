@@ -1,4 +1,4 @@
-export type PlanType = 'free' | 'creator_pro' | 'creator_premium' | 'client_pro' | 'client_business';
+export type PlanType = 'free' | 'creator_pro' | 'creator_premium';
 
 export interface Profile {
   plan_type: PlanType;
@@ -23,7 +23,8 @@ export function isCreatorPlan(plan: PlanType): boolean {
 }
 
 export function isClientPlan(plan: PlanType): boolean {
-  return plan === 'client_pro' || plan === 'client_business';
+  // Clients are now pay-per-use only
+  return false;
 }
 
 export function getCreatorRankingBoost(plan: PlanType): number {
@@ -35,11 +36,8 @@ export function getCreatorRankingBoost(plan: PlanType): number {
 }
 
 export function getClientUnlockDiscount(plan: PlanType): number {
-  switch (plan) {
-    case 'client_pro': return 20;
-    case 'client_business': return 30;
-    default: return 0;
-  }
+  // Removing client-side discounts as there are no monthly client tiers
+  return 0;
 }
 
 export function getPortfolioUploadLimit(plan: PlanType): number | 'unlimited' {
@@ -51,9 +49,10 @@ export function getPortfolioUploadLimit(plan: PlanType): number | 'unlimited' {
 }
 
 export function canAccessAdvancedAnalytics(plan: PlanType): boolean {
-  return plan === 'creator_premium' || plan === 'client_business';
+  // Only creators have tiers now
+  return plan === 'creator_premium';
 }
 
 export function canAccessPriorityVisibility(plan: PlanType): boolean {
-  return isCreatorPlan(plan) || isClientPlan(plan);
+  return isCreatorPlan(plan);
 }

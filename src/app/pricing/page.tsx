@@ -48,7 +48,7 @@ export default function PricingPage() {
       id: "creator_pro",
       name: "Creator Pro",
       price: "₹99",
-      amount: 9900,
+      amount: 99,
       period: "/mo",
       icon: Rocket,
       color: "blue",
@@ -65,7 +65,7 @@ export default function PricingPage() {
       id: "creator_premium",
       name: "Creator Premium",
       price: "₹249",
-      amount: 24900,
+      amount: 249,
       period: "/mo",
       icon: Crown,
       color: "purple",
@@ -85,43 +85,45 @@ export default function PricingPage() {
       id: "unlock_creator_chat",
       name: "Unlock Creator Chat",
       price: "₹29 - ₹99",
-      amount: 4900, // Average/starting
+      amount: 49,
       icon: Users,
       color: "blue",
+      isAction: true,
       features: [
-        "Unlock chat with any creator",
-        "Beginner: ₹29 | Pro: ₹49 | Premium: ₹99",
-        "Direct connection",
-        "Instant collaboration"
+        "Permanent node connection",
+        "Direct cinematic messaging",
+        "Secure signal encryption",
+        "One-time authorization"
       ]
     },
     {
       id: "boost_project",
-      name: "Boost Project Visibility",
+      name: "Project Boost",
       price: "₹49 - ₹99",
-      amount: 4900,
+      amount: 49,
       icon: Sparkles,
       color: "blue",
-      popular: true,
+      isAction: true,
       features: [
-        "Boost for 3 days: ₹49",
-        "Boost for 7 days: ₹99",
-        "Appear at top of discovery",
-        "High-priority exposure"
+        "Top of discovery list",
+        "3 Days: ₹49 | 7 Days: ₹99",
+        "High-priority exposure",
+        "Faster talent matching"
       ]
     },
     {
       id: "project_extras",
-      name: "Project Extras",
+      name: "Mission Upgrades",
       price: "₹99 - ₹199",
-      amount: 9900,
+      amount: 99,
       icon: Award,
       color: "purple",
+      isAction: true,
       features: [
-        "Urgent Project Badge: ₹99",
+        "Urgent Mission Badge: ₹99",
         "Premium Hiring Support: ₹199",
         "Professional quality audit",
-        "Dedicated account assistance"
+        "Dedicated network assistance"
       ]
     }
   ];
@@ -132,27 +134,27 @@ export default function PricingPage() {
       return;
     }
 
-    if (planId === 'unlock_creator_chat') {
-       router.push('/marketplace');
-       return;
-    }
-
-    if (planId !== 'free' && (planId.includes('boost') || planId.includes('badge') || planId.includes('hiring'))) {
-       // Check if project selected - assume for now we need a project param or handle project selection flow
-       // In a real app, this would open a modal to select a project.
-       toast("Select a project first to apply this boost.", { icon: 'ℹ️' });
-       router.push('/projects');
-       return;
-    }
+    if (planId === 'free') return;
 
     // Role Validation
     if (user.role === 'client' && planId.startsWith('creator_')) {
-      toast.error("Client accounts can only purchase client plans.");
+      toast.error("Client accounts use pay-per-use actions.");
       return;
     }
-    if (user.role === 'creator' && planId.startsWith('client_')) {
-      toast.error("Creator accounts can only purchase creator plans.");
+    if (user.role === 'creator' && (planId === 'unlock_creator_chat' || planId === 'boost_project' || planId === 'project_extras')) {
+      toast.error("Creator accounts only purchase monthly plans.");
       return;
+    }
+
+    if (isAction && (planId === 'boost_project' || planId === 'project_extras')) {
+       toast("Access this from your Project Dashboard to select a specific mission.", { icon: 'ℹ️' });
+       router.push('/dashboard/client');
+       return;
+    }
+
+    if (isAction && planId === 'unlock_creator_chat') {
+       router.push('/marketplace');
+       return;
     }
 
     setUpgrading(planId);
@@ -182,14 +184,18 @@ export default function PricingPage() {
         description: `Purchase: ${planId.replace(/_/g, ' ')}`,
         order_id: orderData.order_id,
         handler: async (response: any) => {
-           // For subscription: update profiles.plan_type
            if (!isAction) {
-             await fetch("/api/premium/update-plan", {
+             const updateRes = await fetch("/api/premium/update-plan", {
                method: "POST",
                headers: { "Content-Type": "application/json" },
                body: JSON.stringify({ planType: planId })
              });
+             if (!updateRes.ok) {
+               toast.error("Payment successful but plan update failed. Contact support.");
+               return;
+             }
            }
+
            toast.success("Transaction Complete!");
            setTimeout(() => window.location.reload(), 1500);
         },
@@ -223,33 +229,31 @@ export default function PricingPage() {
         </div>
 
         {/* Role-based Tab Switcher */}
-        {!user?.role && (
-            <div className="flex justify-center mb-16">
-              <div className="p-1.5 glass rounded-2xl border border-white/5 flex gap-2">
-                <button
-                  onClick={() => setTab("creator")}
-                  className={`px-8 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
-                    tab === "creator" ? "bg-neon-purple text-white shadow-lg" : "text-gray-500 hover:text-gray-300"
-                  }`}
-                >
-                  For Creators
-                </button>
-                <button
-                  onClick={() => setTab("client")}
-                  className={`px-8 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
-                    tab === "client" ? "bg-neon-blue text-white shadow-lg" : "text-gray-500 hover:text-gray-300"
-                  }`}
-                >
-                  For Clients
-                </button>
-              </div>
+        {!user?.role ? (
+          <div className="flex justify-center mb-16">
+            <div className="p-1.5 glass rounded-2xl border border-white/5 flex gap-2">
+              <button
+                onClick={() => setTab("creator")}
+                className={`px-8 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+                  tab === "creator" ? "bg-neon-purple text-white shadow-lg" : "text-gray-500 hover:text-gray-300"
+                }`}
+              >
+                For Creators
+              </button>
+              <button
+                onClick={() => setTab("client")}
+                className={`px-8 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+                  tab === "client" ? "bg-neon-blue text-white shadow-lg" : "text-gray-500 hover:text-gray-300"
+                }`}
+              >
+                For Clients
+              </button>
             </div>
-        )}
-
-        {user?.role && (
+          </div>
+        ) : (
           <div className="flex justify-center mb-16">
             <h2 className="text-xl font-black text-white uppercase tracking-widest">
-              {user.role === 'creator' ? 'Creator Premium Plans' : 'Client Premium Plans'}
+              {user.role === 'creator' ? 'Creator Premium Protocols' : 'Client Pay-Per-Use Actions'}
             </h2>
           </div>
         )}
@@ -263,10 +267,10 @@ export default function PricingPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.1 }}
               className={`relative glass p-8 rounded-[40px] border-white/5 flex flex-col group ${
-                plan.popular ? "border-neon-purple/30 bg-neon-purple/[0.02]" : ""
+                (plan as any).popular ? "border-neon-purple/30 bg-neon-purple/[0.02]" : ""
               }`}
             >
-              {plan.popular && (
+              {(plan as any).popular && (
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1.5 bg-neon-purple rounded-full text-[8px] font-black text-white uppercase tracking-widest shadow-lg">
                   Most Optimized
                 </div>
@@ -299,14 +303,16 @@ export default function PricingPage() {
               </div>
 
               <button 
-                onClick={() => handleUpgrade(plan.id, plan.amount, !plan.id.startsWith('creator_'))}
+                onClick={() => handleUpgrade(plan.id, plan.amount, (plan as any).isAction)}
                 disabled={upgrading !== null}
                 className={`w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all ${
-                plan.id === 'free' ? "bg-white/5 border border-white/10 text-white hover:bg-white/10" :
+                plan.id === 'free' ? "bg-white/5 border border-white/10 text-white hover:bg-white/10 cursor-not-allowed" :
                 plan.color === 'purple' ? "bg-neon-purple text-white shadow-[0_0_20px_rgba(168,85,247,0.3)] hover:scale-105" :
                 "bg-neon-blue text-white shadow-[0_0_20px_rgba(59,130,246,0.3)] hover:scale-105"
               }`}>
-                {upgrading === plan.id ? <Loader2 className="animate-spin mx-auto" size={16} /> : "Upgrade Node"}
+                {upgrading === plan.id ? <Loader2 className="animate-spin mx-auto" size={16} /> : 
+                 plan.id === 'free' ? "Current Protocol" : 
+                 (plan as any).isAction ? "Initiate Action" : "Upgrade Node"}
               </button>
             </motion.div>
           ))}
