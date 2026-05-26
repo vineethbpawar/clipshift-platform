@@ -15,38 +15,77 @@ export const uploadFile = async (
   const filePath = `${userId}/${Date.now()}-${uuid}.${fileExt}`;
 
   console.log("PROJECT FILE UPLOAD START", filePath);
-  onProgress(40); // Set to 40% when upload starts as requested
+  onProgress(40);
 
-  const { data, error } = await supabase.storage
+  // 1. Bucket access test
+  try {
+    const { data: buckets, error: bucketError } = await supabase.storage.listBuckets();
+    console.log("SUPABASE STORAGE BUCKET TEST", { buckets, bucketError });
+    if (bucketError) {
+      console.error("Storage access failed. Check Supabase policies.");
+    }
+  } catch (e) {
+    console.error("Bucket test error", e);
+  }
+
+  // 2. Upload with Timeout
+  console.log("SUPABASE STORAGE UPLOAD START", {
+    bucket,
+    filePath,
+    fileName: file.name,
+    fileSize: file.size,
+    fileType: file.type
+  });
+
+  const uploadPromise = supabase.storage
     .from(bucket)
     .upload(filePath, file, {
-      cacheControl: '3600',
+      cacheControl: "3600",
       upsert: false,
-      contentType: file.type
+      contentType: file.type || "application/octet-stream",
     });
 
-  if (error) {
-    console.error("PROJECT FILE UPLOAD ERROR:", error);
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error("Upload timed out after 30 seconds")), 30000)
+  );
+
+  try {
+    const response = await Promise.race([
+      uploadPromise,
+      timeoutPromise
+    ]) as any;
+
+    const { data, error } = response;
+    console.log("SUPABASE STORAGE UPLOAD RESPONSE", { data, error });
+
+    if (error) {
+      console.error("PROJECT FILE UPLOAD ERROR", error);
+      onProgress(0);
+      throw error;
+    }
+
+    onProgress(100); 
+
+    const { data: { publicUrl } } = supabase.storage
+      .from(bucket)
+      .getPublicUrl(filePath);
+
+    const uploadedFile = {
+      file_url: publicUrl,
+      file_path: filePath,
+      file_name: file.name,
+      file_type: file.type,
+      file_size: file.size
+    };
+
+    console.log("PROJECT FILE UPLOAD SUCCESS", uploadedFile);
+    return uploadedFile;
+
+  } catch (error: any) {
+    console.error("PROJECT FILE UPLOAD ERROR", error);
     onProgress(0);
     throw error;
   }
-
-  onProgress(100); 
-
-  const { data: { publicUrl } } = supabase.storage
-    .from(bucket)
-    .getPublicUrl(filePath);
-
-  const uploadedFile = {
-    file_url: publicUrl,
-    file_path: filePath,
-    file_name: file.name,
-    file_type: file.type,
-    file_size: file.size
-  };
-
-  console.log("PROJECT FILE UPLOAD SUCCESS", uploadedFile);
-  return uploadedFile;
 };
 
 export const deleteFile = async (bucket: Bucket, path: string) => {

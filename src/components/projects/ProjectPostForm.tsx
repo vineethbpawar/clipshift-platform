@@ -90,49 +90,54 @@ export const ProjectPostForm = () => {
     setUploading(true);
     setError(null);
     
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      console.log("PROJECT FILE SELECTED", file);
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        console.log("PROJECT FILE SELECTED", file);
 
-      // Validation
-      const isImage = file.type.startsWith('image/');
-      const isVideo = file.type.startsWith('video/');
-      const isPDF = file.type === 'application/pdf';
-      const isZip = file.type === 'application/zip';
+        // Validation
+        const isImage = file.type.startsWith('image/');
+        const isVideo = file.type.startsWith('video/');
+        const isPDF = file.type === 'application/pdf';
+        const isZip = file.type === 'application/zip';
 
-      if (!isImage && !isVideo && !isPDF && !isZip) {
-        toast.error(`${file.name} has an unsupported file type.`);
-        continue;
-      }
+        if (!isImage && !isVideo && !isPDF && !isZip) {
+          toast.error(`${file.name} has an unsupported file type.`);
+          continue;
+        }
 
-      if (isImage && file.size > 10 * 1024 * 1024) {
-        toast.error("Image is too large. Max 10MB.");
-        continue;
-      }
-      if (isVideo && file.size > 500 * 1024 * 1024) {
-        toast.error("Video is too large. Max 500MB.");
-        continue;
-      }
-      if (!isImage && !isVideo && file.size > 100 * 1024 * 1024) {
-        toast.error("File is too large. Max 100MB.");
-        continue;
-      }
+        if (isImage && file.size > 10 * 1024 * 1024) {
+          toast.error("Image is too large. Max 10MB.");
+          continue;
+        }
+        if (isVideo && file.size > 500 * 1024 * 1024) {
+          toast.error("Video is too large. Max 500MB.");
+          continue;
+        }
+        if (!isImage && !isVideo && file.size > 100 * 1024 * 1024) {
+          toast.error("File is too large. Max 100MB.");
+          continue;
+        }
 
-      setCurrentFileName(file.name);
-      setProgress(0);
+        setCurrentFileName(file.name);
+        setProgress(0);
 
-      try {
         const fileData = await uploadFile(file, 'project-files', user.id, (p) => setProgress(p));
         setUploadedFiles(prev => [...prev, fileData]);
-      } catch (error: any) {
-        console.error("PROJECT FILE UPLOAD ERROR", error);
+      }
+    } catch (error: any) {
+      console.error("PROJECT FILE UPLOAD ERROR", error);
+      setProgress(0);
+      if (error.message?.includes("timed out")) {
+        toast.error("Upload timed out. Check internet or Supabase Storage policy.");
+      } else {
         toast.error("File upload failed. Please try again.");
       }
+    } finally {
+      setUploading(false);
+      setProgress(0);
+      setCurrentFileName("");
     }
-
-    setUploading(false);
-    setProgress(0);
-    setCurrentFileName("");
   };
 
   const [submitting, setSubmitting] = useState(false);
