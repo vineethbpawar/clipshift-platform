@@ -276,7 +276,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     if (!profile) {
-      throw new Error("Profile not found. Please signup again.");
+      throw new Error("Profile not found. Please signup again or contact support.");
+    }
+
+    const validRoles = ["client", "creator", "admin"];
+    if (!validRoles.includes(profile.role)) {
+      throw new Error("Invalid account role. Please contact support.");
     }
 
     const userData: User = {

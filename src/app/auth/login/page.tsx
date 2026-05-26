@@ -33,6 +33,8 @@ export default function LoginPage() {
     const timeoutId = setTimeout(() => controller.abort(), 8000); // reduced to 8s
 
     try {
+      console.log("LOGIN EMAIL", cleanEmail);
+
       const tokenResponse = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
         method: "POST",
         headers: {
@@ -49,15 +51,17 @@ export default function LoginPage() {
 
       const authData = await tokenResponse.json();
 
-      console.log("DIRECT AUTH RESPONSE", { status: tokenResponse.status, authData });
-
       if (!tokenResponse.ok) {
         throw new Error(authData.error_description || authData.msg || "Invalid login credentials");
       }
 
+      console.log("LOGIN AUTH USER ID", authData.user?.id);
+
       if (!authData.access_token || !authData.refresh_token || !authData.user) {
         throw new Error("Invalid response from Supabase auth.");
       }
+
+      console.log("LOGIN PROFILE FETCH START", authData.user.id);
 
       const profileResponse = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${authData.user.id}&select=id,email,role`, {
         method: "GET",
@@ -70,7 +74,7 @@ export default function LoginPage() {
       });
 
       const profileDataArray = await profileResponse.json();
-      console.log("DIRECT PROFILE RESPONSE", { status: profileResponse.status, profileData: profileDataArray });
+      console.log("LOGIN PROFILE FETCH RESULT", profileDataArray);
 
       if (!profileResponse.ok) {
         throw new Error(profileDataArray.message || "Failed to fetch profile");
@@ -79,7 +83,14 @@ export default function LoginPage() {
       const profile = profileDataArray[0];
 
       if (!profile) {
-        throw new Error("Profile not found. Please signup again.");
+        throw new Error("Profile not found. Please signup again or contact support.");
+      }
+
+      console.log("LOGIN PROFILE ROLE", profile.role);
+
+      const validRoles = ["client", "creator", "admin"];
+      if (!validRoles.includes(profile.role)) {
+        throw new Error("Invalid account role. Please contact support.");
       }
 
       // 1. Build session payload
@@ -112,8 +123,8 @@ export default function LoginPage() {
         dashboardPath = "/dashboard/admin";
       }
 
+      console.log("LOGIN REDIRECT PATH", dashboardPath);
       console.timeEnd("LOGIN TOTAL");
-      console.log("LOGIN REDIRECT TO", dashboardPath);
 
       window.location.replace(dashboardPath);
     } catch (err: unknown) {
