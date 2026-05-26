@@ -68,49 +68,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [unlockedCreators, setUnlockedCreators] = useState<string[]>([]);
   const router = useRouter();
 
-  const handleUserSession = async (supabaseUser: { id: string }) => {
-    try {
-      const { data: profile, error: fetchError } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", supabaseUser.id)
-        .maybeSingle();
-
-      if (fetchError) {
-        console.error("Profile fetch error:", fetchError);
-        return;
-      }
-
-      if (!profile) {
-        console.warn("Profile not found for user", supabaseUser.id);
-        setUser(null);
-        setRole(null);
-        return;
-      }
-
-      const userData: User = {
-        id: supabaseUser.id,
-        role: profile.role as Role,
-        name: profile.full_name,
-        email: profile.email,
-        mobile: profile.mobile,
-        city: profile.city,
-        area: profile.area,
-        pincode: profile.pincode,
-        address: profile.address,
-        instagram: profile.instagram,
-        portfolio: profile.portfolio_link,
-        languages: profile.languages,
-        bio: profile.bio,
-        profileImage: profile.avatar_url,
-        specialization: profile.specialization
-      };
-      setUser(userData);
-      setRole(profile.role as Role);
-    } catch (err) {
-      console.error("Session handling failed:", err);
-    }
-  };
+  const [authError, setAuthError] = useState<string | null>(null);
 
   const fetchUnlocks = async (userId: string) => {
     try {
@@ -131,32 +89,80 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     let mounted = true;
 
     async function initAuth() {
+      console.log("AUTH INIT START");
       try {
         setLoading(true);
+        setAuthError(null);
 
-        // 1. Try getSession
-        const { data: { session } } = await supabase.auth.getSession();
+        let session = null;
+        let source = "none";
+
+        // 1. Try Supabase SDK
+        const { data: { session: sdkSession } } = await supabase.auth.getSession();
+        if (sdkSession) {
+          session = sdkSession;
+          source = "sdk";
+        }
+
+        // 2. Try Supabase expected localStorage key
+        if (!session) {
+          const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+          const projectRef = new URL(supabaseUrl).hostname.split(".")[0];
+          const storageKey = `sb-${projectRef}-auth-token`;
+          const rawSession = localStorage.getItem(storageKey);
+          if (rawSession) {
+            try {
+              session = JSON.parse(rawSession);
+              source = "storage_key";
+            } catch (e) { console.error("Failed to parse local storage session", e); }
+          }
+        }
+
+        // 3. Try clipshift_session backup
+        if (!session) {
+          const backupSession = localStorage.getItem("clipshift_session");
+          if (backupSession) {
+            try {
+              session = JSON.parse(backupSession);
+              source = "backup_key";
+            } catch (e) { console.error("Failed to parse backup session", e); }
+          }
+        }
+
+        console.log("AUTH SESSION SOURCE", source);
 
         if (!session?.user) {
+          console.log("AUTH INIT: No session found");
           if (mounted) {
             setUser(null);
             setRole(null);
-            setLoading(false);
           }
           return;
         }
 
+        const userId = session.user.id;
+        console.log("AUTH USER ID", userId);
+
         const { data: profile, error: profileError } = await supabase
           .from("profiles")
           .select("*")
-          .eq("id", session.user.id)
+          .eq("id", userId)
           .maybeSingle();
+
+        if (profileError) {
+          console.error("AUTH PROFILE FETCH ERROR", profileError);
+          setAuthError("Failed to load profile data.");
+        }
 
         if (mounted) {
           if (profile) {
+            console.log("AUTH PROFILE", profile);
+            const userRole = profile.role as Role;
+            console.log("AUTH ROLE", userRole);
+
             setUser({
-              id: session.user.id,
-              role: profile.role as Role,
+              id: userId,
+              role: userRole,
               name: profile.full_name,
               email: profile.email,
               mobile: profile.mobile,
@@ -173,24 +179,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               plan_type: profile.plan_type,
               plan_expires_at: profile.plan_expires_at
             });
-            setRole(profile.role as Role);
+            setRole(userRole);
             setActivePlan(getActivePlan(profile));
-            fetchUnlocks(session.user.id);
+            fetchUnlocks(userId);
           } else {
+            console.warn("AUTH INIT: Profile not found for", userId);
+            setAuthError("Profile not found.");
             setUser(null);
             setRole(null);
           }
-          setLoading(false);
         }
       } catch (error) {
         console.error("AUTH INIT ERROR:", error);
-        if (mounted) setLoading(false);
+        setAuthError("An unexpected error occurred during sync.");
+      } finally {
+        if (mounted) {
+          setLoading(false);
+          console.log("AUTH INIT DONE");
+        }
       }
     }
 
     initAuth();
 
     const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("AUTH STATE CHANGE:", event);
       try {
         if (event === 'SIGNED_OUT') {
           setUser(null);
@@ -209,9 +222,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             .maybeSingle();
 
           if (mounted && profile) {
+            const userRole = profile.role as Role;
             const userData: User = {
               id: session.user.id,
-              role: profile.role as Role,
+              role: userRole,
               name: profile.full_name,
               email: profile.email,
               mobile: profile.mobile,
@@ -229,7 +243,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               plan_expires_at: profile.plan_expires_at
             };
             setUser(userData);
-            setRole(profile.role as Role);
+            setRole(userRole);
             setActivePlan(getActivePlan(profile));
             if (event === 'SIGNED_IN') fetchUnlocks(session.user.id);
           }
@@ -366,13 +380,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signOut = async () => {
+    console.log("AUTH SIGNOUT START");
     try {
       await supabase.auth.signOut();
+      
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+      const projectRef = new URL(supabaseUrl).hostname.split(".")[0];
+      const storageKey = `sb-${projectRef}-auth-token`;
+      
+      localStorage.removeItem(storageKey);
+      localStorage.removeItem("clipshift_session");
+      localStorage.removeItem("clipshift_unlocks");
+      
       setUser(null);
       setRole(null);
       setUnlockedCreators([]);
-      localStorage.removeItem("clipshift_unlocks");
-      router.push("/auth/login");
+      console.log("AUTH SIGNOUT SUCCESS");
+      window.location.replace("/auth/login");
     } catch (error) {
       console.error("Logout failed:", error);
     }

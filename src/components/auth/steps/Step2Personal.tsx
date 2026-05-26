@@ -5,8 +5,11 @@ import { FloatingInput } from "../../ui/FloatingInput";
 import { useAuth } from "@/context/AuthContext";
 import { motion } from "framer-motion";
 
+import { Eye, EyeOff } from "lucide-react";
+
 export const Step2Personal = ({ onNext, onBack }: { onNext: () => void, onBack: () => void }) => {
   const { signupData, updateSignupData } = useAuth();
+  const [showPassword, setShowPassword] = useState(false);
   const [localData, setLocalData] = useState({
     name: signupData.name || "",
     email: signupData.email || "",
@@ -60,14 +63,23 @@ export const Step2Personal = ({ onNext, onBack }: { onNext: () => void, onBack: 
           required
         />
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <FloatingInput
-            label="Password"
-            name="password"
-            type="password"
-            value={localData.password}
-            onChange={handleChange}
-            required
-          />
+          <div className="relative">
+            <FloatingInput
+              label="Password"
+              name="password"
+              type={showPassword ? "text" : "password"}
+              value={localData.password}
+              onChange={handleChange}
+              required
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
+            >
+              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
           <FloatingInput
             label="Date of Birth"
             name="dob"

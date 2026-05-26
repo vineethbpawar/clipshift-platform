@@ -7,7 +7,7 @@ import { NeonButton } from "@/components/ui/NeonButton";
 import { PageWrapper } from "@/components/layout/PageWrapper";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
-import { Loader2, ShieldCheck, Lock } from "lucide-react";
+import { Loader2, ShieldCheck, Lock, Eye, EyeOff } from "lucide-react";
 import { toast } from "react-hot-toast";
 
 export default function ResetPasswordPage() {
@@ -15,6 +15,7 @@ export default function ResetPasswordPage() {
   const router = useRouter();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -56,20 +57,32 @@ export default function ResetPasswordPage() {
                 <span className="text-[10px] font-black text-white uppercase tracking-widest">Security Protocol Active</span>
               </div>
 
-              <FloatingInput
-                label="New Password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-              <FloatingInput
-                label="Confirm New Password"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-              />
+              <div className="relative">
+                <FloatingInput
+                  label="New Password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+
+              <div className="relative">
+                <FloatingInput
+                  label="Confirm New Password"
+                  type={showPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                />
+              </div>
 
               <NeonButton variant="purple" className="w-full py-4" type="submit" disabled={loading}>
                 {loading ? <Loader2 className="animate-spin mx-auto" size={20} /> : "Update Credentials"}

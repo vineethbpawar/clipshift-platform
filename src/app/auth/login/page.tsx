@@ -6,13 +6,14 @@ import { FloatingInput } from "@/components/ui/FloatingInput";
 import { NeonButton } from "@/components/ui/NeonButton";
 import { PageWrapper } from "@/components/layout/PageWrapper";
 import Link from "next/link";
-import { User, Video, Loader2 } from "lucide-react";
+import { User, Video, Loader2, Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { type Role } from "@/context/AuthContext";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [selectedRole, setSelectedRole] = useState<Role>("client");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
@@ -23,10 +24,8 @@ export default function LoginPage() {
     setError("");
 
     console.time("LOGIN TOTAL");
-    console.log("LOGIN REST START", email.trim().toLowerCase());
-
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
     
     const cleanEmail = email.trim().toLowerCase();
     const controller = new AbortController();
@@ -39,8 +38,8 @@ export default function LoginPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "apikey": supabaseAnonKey!,
-          "Authorization": `Bearer ${supabaseAnonKey!}`
+          "apikey": supabaseAnonKey,
+          "Authorization": `Bearer ${supabaseAnonKey}`
         },
         body: JSON.stringify({
           email: cleanEmail,
@@ -66,7 +65,7 @@ export default function LoginPage() {
       const profileResponse = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${authData.user.id}&select=id,email,role`, {
         method: "GET",
         headers: {
-          "apikey": supabaseAnonKey!,
+          "apikey": supabaseAnonKey,
           "Authorization": `Bearer ${authData.access_token}`,
           "Content-Type": "application/json"
         },
@@ -97,17 +96,19 @@ export default function LoginPage() {
       const sessionPayload = {
         access_token: authData.access_token,
         refresh_token: authData.refresh_token,
-        expires_in: authData.expires_in,
+        expires_in: authData.expires_in || 3600,
         expires_at: Math.floor(Date.now() / 1000) + Number(authData.expires_in || 3600),
         token_type: authData.token_type || "bearer",
         user: authData.user,
       };
 
-      // 2. Save manually to localStorage
-      const projectRef = new URL(supabaseUrl!).hostname.split(".")[0];
+      // 2. Save manually to localStorage (Standard key + Backup)
+      const projectRef = new URL(supabaseUrl).hostname.split(".")[0];
       const storageKey = `sb-${projectRef}-auth-token`;
+      
       localStorage.setItem(storageKey, JSON.stringify(sessionPayload));
-      console.log("SESSION SAVED MANUALLY", storageKey);
+      localStorage.setItem("clipshift_session", JSON.stringify(sessionPayload));
+      console.log("SESSION SAVED MANUALLY", { storageKey, backup: "clipshift_session" });
 
       // 3. Background SDK sync (do not await)
       supabase.auth.setSession({
@@ -200,11 +201,19 @@ export default function LoginPage() {
               <div className="relative">
                 <FloatingInput
                   label="Password"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
                 <div className="flex justify-end mt-2">
                   <Link href="/auth/forgot-password" title="Forgot Password?" className="text-[10px] text-gray-500 hover:text-neon-purple transition-colors uppercase font-bold tracking-widest">
                     Forgot Password?

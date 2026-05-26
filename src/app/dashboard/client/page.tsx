@@ -43,14 +43,12 @@ export default function ClientDashboard() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const { data: nearby, error } = await supabase
+        const { data: nearby, error: nearbyError } = await supabase
           .from('creators')
           .select(`*, profiles(full_name, avatar_url, city, area)`)
           .limit(5);
         
-        if (error) {
-          console.error("Error fetching nearby creators:", error);
-        }
+        if (nearbyError) console.error("Error fetching nearby creators:", nearbyError);
 
         if (nearby) {
           setNearbyCreators(nearby.map(n => ({
@@ -60,6 +58,20 @@ export default function ClientDashboard() {
             location: { lat: n.location_lat, lng: n.location_lng, area: n.profiles?.area }
           })));
         }
+
+        // Fetch actual client projects
+        if (user) {
+          const { data: projData, error: projError } = await supabase
+            .from('projects')
+            .select('*')
+            .eq('client_id', user.id)
+            .order('created_at', { ascending: false })
+            .limit(5);
+
+          if (projError) console.error("Error fetching client projects:", projError);
+          if (projData) setProjects(projData);
+        }
+
       } catch (err) {
         console.error("Client dashboard fetch failed:", err);
       } finally {
@@ -68,7 +80,7 @@ export default function ClientDashboard() {
     };
 
     fetchData();
-  }, []);
+  }, [user]);
 
   const discount = getClientUnlockDiscount(activePlan);
 

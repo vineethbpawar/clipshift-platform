@@ -92,7 +92,7 @@ export default function CreatorDashboard() {
         let totalEarnings = 0;
         let dailyData: any[] = [];
 
-        if (payments) {
+        if (payments && payments.length > 0) {
           const totalPaise = payments.reduce((acc, curr) => acc + curr.amount, 0);
           totalEarnings = totalPaise / 100;
 
@@ -107,7 +107,7 @@ export default function CreatorDashboard() {
 
         setStats({
           totalEarnings,
-          profileReach: 0, // Placeholder for future analytics
+          profileReach: 0,
           chatUnlocks: unlockCount || 0,
           activeProjects: activeCount || 0,
           proposalsSent: proposalsCount || 0,

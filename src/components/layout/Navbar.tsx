@@ -4,13 +4,13 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
-import { Menu, X, ShoppingCart, Search, LogOut, MessageSquare } from "lucide-react";
+import { Menu, X, ShoppingCart, Search, LogOut, MessageSquare, Loader2 } from "lucide-react";
 import { NeonButton } from "../ui/NeonButton";
 import { useAuth, getDashboardPath } from "@/context/AuthContext";
 import { useChat } from "@/context/ChatContext";
 
 export const Navbar = () => {
-  const { user, signOut } = useAuth();
+  const { user, signOut, loading } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const { scrollY } = useScroll();
   const backgroundColor = useTransform(
@@ -34,9 +34,7 @@ export const Navbar = () => {
     { name: "Messages", href: "/chat", badge: totalUnreadCount },
   ];
 
-  if (user) {
-    navLinks.unshift({ name: "Dashboard", href: getDashboardPath(user.role) });
-  }
+  const dashboardPath = user ? getDashboardPath(user.role) : "/auth/login";
 
   return (
     <motion.nav
@@ -52,6 +50,14 @@ export const Navbar = () => {
 
           {/* Desktop Nav */}
           <div className="hidden md:flex items-center space-x-8">
+            {user && (
+              <Link
+                href={dashboardPath}
+                className="text-sm font-black text-neon-purple hover:text-white uppercase tracking-widest transition-colors"
+              >
+                Dashboard
+              </Link>
+            )}
             {navLinks.map((link) => (
               <Link
                 key={link.name}
@@ -77,13 +83,24 @@ export const Navbar = () => {
               <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-neon-purple" />
             </button>
             
-            <div className="flex items-center space-x-2 border-l border-white/10 ml-4 pl-4">
-              {user ? (
+            <div className="flex items-center space-x-2 border-l border-white/10 ml-4 pl-4 min-w-[120px] justify-end">
+              {loading ? (
+                <Loader2 className="animate-spin text-gray-500" size={20} />
+              ) : user ? (
                 <div className="flex items-center space-x-4">
-                  <Link href={getDashboardPath(user.role)} className="text-white font-bold text-sm uppercase tracking-widest hover:text-neon-purple transition-colors">
-                    {user.name}
-                  </Link>
-                  <button onClick={signOut} className="text-gray-500 hover:text-red-500 transition-colors">
+                  <div className="flex flex-col items-end">
+                    <span className="text-white font-black text-[10px] uppercase tracking-widest truncate max-w-[100px]">
+                      {user.name}
+                    </span>
+                    <span className="text-[8px] text-neon-blue font-bold uppercase tracking-widest">
+                      {user.role} Node
+                    </span>
+                  </div>
+                  <button 
+                    onClick={() => signOut()} 
+                    className="p-2 glass rounded-lg text-gray-500 hover:text-red-500 transition-colors"
+                    title="Disconnect Node"
+                  >
                     <LogOut size={18} />
                   </button>
                 </div>
@@ -105,7 +122,7 @@ export const Navbar = () => {
           </div>
 
           <div className="md:hidden flex items-center gap-4">
-            {user && (
+            {!loading && user && (
               <div className="text-[8px] font-black text-neon-purple uppercase tracking-widest px-3 py-1 border border-neon-purple/20 rounded-full">
                 Active Node
               </div>
@@ -138,6 +155,15 @@ export const Navbar = () => {
               className="absolute top-24 left-4 right-4 z-50 md:hidden glass p-4 rounded-[32px] border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col gap-2"
             >
               <div className="grid grid-cols-2 gap-2 mb-4">
+                {user && (
+                  <Link
+                    href={dashboardPath}
+                    onClick={() => setIsOpen(false)}
+                    className="text-neon-purple hover:text-white flex flex-col items-center justify-center p-6 glass rounded-2xl gap-2 border-neon-purple/20 transition-all active:scale-95"
+                  >
+                    <span className="text-[10px] font-black uppercase tracking-widest">Dashboard</span>
+                  </Link>
+                )}
                 {navLinks.map((link) => (
                   <Link
                     key={link.name}
@@ -156,11 +182,16 @@ export const Navbar = () => {
               </div>
 
               <div className="space-y-3 pt-4 border-t border-white/5">
-                {user ? (
+                {loading ? (
+                  <div className="flex justify-center py-4">
+                    <Loader2 className="animate-spin text-neon-purple" size={20} />
+                  </div>
+                ) : user ? (
                   <div className="flex flex-col gap-3">
                     <div className="text-center p-2">
                       <div className="text-[8px] text-gray-500 uppercase font-black tracking-widest mb-1">Identified As</div>
                       <div className="text-xs font-bold text-white">{user.name}</div>
+                      <div className="text-[8px] text-neon-blue font-black uppercase tracking-widest mt-1">{user.role} Node</div>
                     </div>
                     <button 
                       onClick={() => {
