@@ -315,7 +315,7 @@ export default function ProjectDetailPage() {
       project_id: project.id,
       freelancer_id: user.id,
       cover_letter: coverLetter.trim(),
-      proposed_budget: String(proposedBudget),
+      proposed_budget: Number(proposedBudget),
       estimated_days: Number(estimatedDays),
       status: "pending"
     };
