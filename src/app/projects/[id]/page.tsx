@@ -163,7 +163,9 @@ export default function ProjectDetailPage() {
 
   const handleUnlock = async () => {
     if (!user) return;
-    if (user.role !== "creator") {
+    const role = user.role;
+    
+    if (role !== "creator") {
       toast.error("Unauthorized. Only creators can unlock projects.");
       return;
     }
@@ -179,11 +181,12 @@ export default function ProjectDetailPage() {
       project_id: project.id,
       freelancer_id: user.id,
       unlock_fee: 99,
-      payment_status: "paid"
+      payment_status: "paid",
     };
 
     console.log("UNLOCK PROJECT USER", user);
-    console.log("UNLOCK PROJECT ROLE", user.role);
+    console.log("UNLOCK PROJECT ROLE", role);
+    console.log("UNLOCK PROJECT STATUS", project.status);
     console.log("UNLOCK PROJECT PAYLOAD", payload);
 
     try {
@@ -202,7 +205,13 @@ export default function ProjectDetailPage() {
         return;
       }
 
-      const { error } = await supabase.from('project_unlocks').insert(payload);
+      const { data, error } = await supabase
+        .from('project_unlocks')
+        .insert(payload)
+        .select()
+        .single();
+
+      console.log("UNLOCK PROJECT RESULT", data);
 
       if (error) {
         console.error("UNLOCK PROJECT ERROR", error);
@@ -210,15 +219,15 @@ export default function ProjectDetailPage() {
           toast.success("Contact already unlocked.");
           setIsUnlocked(true);
         } else {
-          toast.error("Failed to unlock.");
+          toast.error(error.message || "Failed to unlock.");
         }
       } else {
         setIsUnlocked(true);
         toast.success("Contact unlocked!");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("UNLOCK PROJECT UNEXPECTED ERROR", err);
-      toast.error("An unexpected error occurred.");
+      toast.error(err.message || "An unexpected error occurred.");
     } finally {
       setSubmitting(false);
     }
