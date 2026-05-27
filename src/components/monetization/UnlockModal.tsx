@@ -65,55 +65,71 @@ export const UnlockModal = ({ creator, isOpen, onClose }: { creator: any, isOpen
         handler: async (response: any) => {
           setStatus("processing");
           
-          // 4. Verify & Record Unlock in DB
-          const { error: unlockError } = await supabase.from('creator_unlocks').insert({
-            client_id: user.id,
-            creator_id: creator.id,
-            unlock_fee: finalFee,
-            payment_status: 'paid'
-          });
-
-          if (unlockError) throw unlockError;
-
-          // 5. Create/Get Direct Conversation
-          const { data: existingConv } = await supabase
-            .from('conversations')
-            .select('id')
-            .eq('client_id', user.id)
-            .eq('creator_id', creator.id)
-            .eq('conversation_type', 'direct')
-            .maybeSingle();
-
-          let conversationId = existingConv?.id;
-
-          if (!conversationId) {
-            const { data: newConv, error: convError } = await supabase
-              .from('conversations')
-              .insert({
-                client_id: user.id,
-                creator_id: creator.id,
-                conversation_type: 'direct',
-                last_message: "Direct connection established.",
-                last_message_at: new Date().toISOString()
+          try {
+            // 4. Verify & Record Unlock via Server
+            const verifyRes = await fetch("/api/razorpay/verify-payment", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                type: 'creator_unlock',
+                payload: {
+                  client_id: user.id,
+                  creator_id: creator.id,
+                  amount: finalFee * 100
+                }
               })
-              .select()
-              .single();
-            
-            if (convError) throw convError;
-            conversationId = newConv.id;
-
-            // Initial message
-            await supabase.from('messages').insert({
-              conversation_id: conversationId,
-              sender_id: user.id,
-              receiver_id: creator.id,
-              content: `Hi ${creator.full_name || creator.name}, I've unlocked your node for collaboration.`
             });
-          }
 
-          setStatus("success");
-          toast.success("Node Unlocked!");
-          setTimeout(() => router.push(`/chat/${conversationId}`), 2000);
+            const verifyData = await verifyRes.json();
+            if (!verifyRes.ok) throw new Error(verifyData.error || "Verification failed");
+
+            // 5. Create/Get Direct Conversation
+            const { data: existingConv } = await supabase
+              .from('conversations')
+              .select('id')
+              .eq('client_id', user.id)
+              .eq('creator_id', creator.id)
+              .eq('conversation_type', 'direct')
+              .maybeSingle();
+
+            let conversationId = existingConv?.id;
+
+            if (!conversationId) {
+              const { data: newConv, error: convError } = await supabase
+                .from('conversations')
+                .insert({
+                  client_id: user.id,
+                  creator_id: creator.id,
+                  conversation_type: 'direct',
+                  last_message: "Direct connection established.",
+                  last_message_at: new Date().toISOString()
+                })
+                .select()
+                .single();
+              
+              if (convError) throw convError;
+              conversationId = newConv.id;
+
+              // Initial message
+              await supabase.from('messages').insert({
+                conversation_id: conversationId,
+                sender_id: user.id,
+                receiver_id: creator.id,
+                content: `Hi ${creator.full_name || creator.name}, I've unlocked your node for collaboration.`
+              });
+            }
+
+            setStatus("success");
+            toast.success("Node Unlocked!");
+            setTimeout(() => router.push(`/chat/${conversationId}`), 2000);
+          } catch (err: any) {
+            console.error("VERIFICATION ERROR:", err);
+            setStatus("error");
+            setErrorMessage(err.message || "Verification failed.");
+          }
         },
         prefill: {
           name: user.name,

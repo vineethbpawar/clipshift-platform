@@ -184,20 +184,33 @@ export default function PricingPage() {
         description: `Purchase: ${planId.replace(/_/g, ' ')}`,
         order_id: orderData.order_id,
         handler: async (response: any) => {
-           if (!isAction) {
-             const updateRes = await fetch("/api/premium/update-plan", {
+           try {
+             const verifyRes = await fetch("/api/razorpay/verify-payment", {
                method: "POST",
                headers: { "Content-Type": "application/json" },
-               body: JSON.stringify({ planType: planId })
+               body: JSON.stringify({
+                 razorpay_order_id: response.razorpay_order_id,
+                 razorpay_payment_id: response.razorpay_payment_id,
+                 razorpay_signature: response.razorpay_signature,
+                 type: isAction ? (planId === 'unlock_creator_chat' ? 'creator_unlock' : 'project_unlock') : 'plan_upgrade',
+                 payload: {
+                   user_id: user.id,
+                   planType: planId,
+                   amount: amount * 100
+                 }
+               })
              });
-             if (!updateRes.ok) {
-               toast.error("Payment successful but plan update failed. Contact support.");
-               return;
-             }
-           }
 
-           toast.success("Transaction Complete!");
-           setTimeout(() => window.location.reload(), 1500);
+             const verifyData = await verifyRes.json();
+             if (!verifyRes.ok) throw new Error(verifyData.error || "Verification failed");
+
+             toast.success("Transaction Complete!");
+             setTimeout(() => window.location.reload(), 1500);
+           } catch (err: any) {
+             console.error("VERIFICATION ERROR:", err);
+             toast.error(err.message || "Verification failed.");
+             setUpgrading(null);
+           }
         },
         prefill: { name: user.name, email: user.email },
         theme: { color: "#a855f7" },

@@ -103,13 +103,15 @@ export default function SettingsPage() {
   });
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const initialized = React.useRef(false);
 
   const fetchCreatorData = React.useCallback(async () => {
     try {
+      if (!user) return;
       const { data, error } = await supabase
         .from("creators")
         .select("*")
-        .eq("id", user?.id)
+        .eq("id", user.id)
         .maybeSingle();
 
       if (error) throw error;
@@ -133,7 +135,7 @@ export default function SettingsPage() {
       return;
     }
 
-    if (user) {
+    if (user && !initialized.current) {
       setProfileData({
         name: user.name || "",
         bio: user.bio || "",
@@ -153,11 +155,9 @@ export default function SettingsPage() {
 
       // Fetch creator data if applicable
       if (user.role === "creator") {
-        const syncCreator = async () => {
-          await fetchCreatorData();
-        };
-        syncCreator();
+        fetchCreatorData();
       }
+      initialized.current = true;
     }
   }, [user, authLoading, fetchCreatorData, router]);
 

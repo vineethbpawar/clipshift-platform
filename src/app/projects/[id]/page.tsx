@@ -9,6 +9,7 @@ import { useAuth } from "@/context/AuthContext";
 import { toast } from "react-hot-toast";
 import { sanitizeDescription } from "@/lib/sanitizer";
 import { motion, AnimatePresence } from "framer-motion";
+import { loadRazorpayScript } from "@/lib/razorpay";
 
 export default function ProjectDetailPage() {
   const params = useParams();
@@ -184,13 +185,10 @@ export default function ProjectDetailPage() {
       payment_status: "paid",
     };
 
-    console.log("UNLOCK PROJECT USER", user);
-    console.log("UNLOCK PROJECT ROLE", role);
-    console.log("UNLOCK PROJECT STATUS", project.status);
-    console.log("UNLOCK PROJECT PAYLOAD", payload);
+    console.log("PROJECT UNLOCK PAYLOAD", payload);
 
     try {
-      // Check if already unlocked
+      // 1. Check if already unlocked
       const { data: existingUnlock } = await supabase
         .from('project_unlocks')
         .select('*')
@@ -205,30 +203,74 @@ export default function ProjectDetailPage() {
         return;
       }
 
-      const { data, error } = await supabase
-        .from('project_unlocks')
-        .insert(payload)
-        .select()
-        .single();
+      // 2. Load Razorpay Script
+      const res = await loadRazorpayScript();
+      if (!res) throw new Error("Razorpay SDK failed to load.");
 
-      console.log("UNLOCK PROJECT RESULT", data);
+      // 3. Create Order
+      const orderRes = await fetch("/api/razorpay/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: 99,
+          actionType: 'boost_project_7_days', // Using a valid action type from the API
+          payload: { project_id: project.id }
+        })
+      });
+      const orderData = await orderRes.json();
+      if (orderData.error) throw new Error(orderData.error);
 
-      if (error) {
-        console.error("UNLOCK PROJECT ERROR", error);
-        if (error.code === "23505") {
-          toast.success("Contact already unlocked.");
-          setIsUnlocked(true);
-        } else {
-          toast.error(error.message || "Failed to unlock.");
-        }
-      } else {
-        setIsUnlocked(true);
-        toast.success("Contact unlocked!");
-      }
+      // 4. Open Razorpay Checkout
+      const options = {
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: "ClipShift Collective",
+        description: `Unlock contact for project: ${project.title}`,
+        order_id: orderData.order_id,
+        handler: async (response: any) => {
+          setSubmitting(true);
+          try {
+            // 5. Verify & Record Unlock via Server
+            const verifyRes = await fetch("/api/razorpay/verify-payment", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                type: 'project_unlock',
+                payload: {
+                  project_id: project.id,
+                  freelancer_id: user.id,
+                  amount: 99 * 100
+                }
+              })
+            });
+
+            const verifyData = await verifyRes.json();
+            if (!verifyRes.ok) throw new Error(verifyData.error || "Verification failed");
+
+            setIsUnlocked(true);
+            toast.success("Contact unlocked!");
+          } catch (err: any) {
+            console.error("PROJECT UNLOCK ERROR", err);
+            toast.error(err.message || "Verification failed.");
+          } finally {
+            setSubmitting(false);
+          }
+        },
+        prefill: { name: user.name, email: user.email },
+        theme: { color: "#a855f7" },
+        modal: { ondismiss: () => setSubmitting(false) }
+      };
+
+      const paymentObject = new (window as any).Razorpay(options);
+      paymentObject.open();
+
     } catch (err: any) {
-      console.error("UNLOCK PROJECT UNEXPECTED ERROR", err);
+      console.error("PROJECT UNLOCK ERROR", err);
       toast.error(err.message || "An unexpected error occurred.");
-    } finally {
       setSubmitting(false);
     }
   };
