@@ -11,7 +11,8 @@ import {
   MapPin, 
   Zap,
   ChevronRight,
-  Loader2
+  Loader2,
+  Layers
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { CommissionTable } from "@/components/monetization/CommissionTable";
@@ -44,6 +45,7 @@ export default function CreatorDashboard() {
     profileReach: 0,
     chatUnlocks: 0,
     activeProjects: 0,
+    openProjects: 0,
     proposalsSent: 0,
     dailyData: [] as any[]
   });
@@ -80,14 +82,22 @@ export default function CreatorDashboard() {
 
         if (proposalsError) console.error("Error fetching proposals:", proposalsError);
 
-        // 4. Fetch Active Projects (Accepted Proposals)
+        // 4. Fetch Active Projects Count
         const { count: activeCount, error: activeError } = await supabase
-          .from('proposals')
+          .from('projects')
           .select('*', { count: 'exact', head: true })
-          .eq('freelancer_id', user.id)
-          .eq('status', 'accepted');
+          .eq('assigned_creator_id', user.id)
+          .in('status', ['in_progress', 'delivered', 'completed']);
 
         if (activeError) console.error("Error fetching active projects:", activeError);
+
+        // 5. Fetch Open Projects Count
+        const { count: openCount, error: openError } = await supabase
+          .from('projects')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'open');
+
+        if (openError) console.error("Error fetching open projects:", openError);
 
         let totalEarnings = 0;
         let dailyData: any[] = [];
@@ -110,6 +120,7 @@ export default function CreatorDashboard() {
           profileReach: 0,
           chatUnlocks: unlockCount || 0,
           activeProjects: activeCount || 0,
+          openProjects: openCount || 0,
           proposalsSent: proposalsCount || 0,
           dailyData
         });
@@ -168,10 +179,10 @@ export default function CreatorDashboard() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 md:gap-6 w-full">
           <StatCard title="Total Earnings" value={stats.totalEarnings} prefix="₹" icon={DollarSign} color="purple" />
-          <StatCard title="Profile Reach" value={stats.profileReach} icon={Eye} color="blue" />
-          <StatCard title="Chat Unlocks" value={stats.chatUnlocks} icon={Users} color="green" />
-          <StatCard title="Active Projects" value={stats.activeProjects} icon={Zap} color="purple" />
+          <StatCard title="Active Work" value={stats.activeProjects} icon={Zap} color="purple" />
+          <StatCard title="Open Projects" value={stats.openProjects} icon={Layers} color="blue" />
           <StatCard title="Proposals Sent" value={stats.proposalsSent} icon={TrendingUp} color="blue" />
+          <StatCard title="Chat Unlocks" value={stats.chatUnlocks} icon={Users} color="green" />
         </div>
       </div>
 
@@ -217,9 +228,23 @@ export default function CreatorDashboard() {
         <div className="space-y-6 md:space-y-8">
           <div className="glass p-6 md:p-8 rounded-[32px] md:rounded-[40px] border-white/5 bg-gradient-to-br from-neon-purple/5 to-transparent">
             <h3 className="text-[10px] font-black text-white uppercase tracking-widest mb-6">Production Pipeline</h3>
-            <div className="space-y-4 text-center py-4 md:py-8 opacity-40">
-              <span className="text-[8px] font-black uppercase tracking-widest">No Active Streams</span>
-            </div>
+            {stats.activeProjects > 0 ? (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 glass rounded-2xl border-white/5">
+                  <span className="text-[10px] text-white font-bold uppercase tracking-widest">{stats.activeProjects} Active Streams</span>
+                  <Link href="/dashboard/creator/active-projects">
+                    <ChevronRight size={16} className="text-neon-purple" />
+                  </Link>
+                </div>
+                <Link href="/dashboard/creator/active-projects" className="block text-center py-2 text-[8px] text-neon-purple font-black uppercase tracking-widest hover:underline">
+                  Enter Workspaces
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-4 text-center py-4 md:py-8 opacity-40">
+                <span className="text-[8px] font-black uppercase tracking-widest">No Active Streams</span>
+              </div>
+            )}
           </div>
 
           <div className="glass p-6 md:p-8 rounded-[32px] md:rounded-[40px] border-neon-blue/20">

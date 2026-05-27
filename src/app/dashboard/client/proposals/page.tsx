@@ -7,11 +7,13 @@ import { Loader2 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useAuth } from "@/context/AuthContext";
 import { RoleGuard } from "@/components/auth/RoleGuard";
+import { useRouter } from "next/navigation";
 
 export default function ClientProposalsPage() {
   const [proposals, setProposals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
+  const router = useRouter();
 
   const fetchProposals = async () => {
     if (!user?.id) {
@@ -64,22 +66,85 @@ export default function ClientProposalsPage() {
     else setLoading(false);
   }, [user?.id]);
 
-  const handleAction = async (id: string, status: 'accepted' | 'rejected', projectId: string, freelancerId: string) => {
+  const handleAction = async (proposal: any, actionStatus: 'accepted' | 'rejected') => {
     setLoading(true);
+    console.log("ACCEPT PROPOSAL START", proposal);
+    
     try {
-      if (status === 'accepted') {
-        await supabase.from('proposals').update({ status: 'accepted' }).eq('id', id);
-        await supabase.from('proposals').update({ status: 'rejected' }).eq('project_id', projectId).neq('id', id);
-        await supabase.from('projects').update({ status: 'in_progress', creator_id: freelancerId }).eq('id', projectId);
-      } else {
-        await supabase.from('proposals').update({ status: 'rejected' }).eq('id', id);
+      // 1. Force Session Restoration
+      const { data: sessionData } = await supabase.auth.getSession();
+      let activeSession = sessionData.session;
+
+      if (!activeSession) {
+        const { getStoredSession } = await import("@/lib/supabase");
+        const storedSession = getStoredSession();
+        if (storedSession?.access_token && storedSession?.refresh_token) {
+          const { data, error: sessionError } = await supabase.auth.setSession({
+            access_token: storedSession.access_token,
+            refresh_token: storedSession.refresh_token,
+          });
+          if (sessionError) throw sessionError;
+          activeSession = data.session;
+        }
       }
-      
-      toast.success(`Proposal ${status}`);
-      await fetchProposals();
-    } catch (err) {
-      console.error("Proposal action failed:", err);
-      toast.error("Action failed");
+
+      if (!activeSession) {
+        toast.error("Your session expired. Please login again.");
+        return;
+      }
+
+      if (actionStatus === 'accepted') {
+        // 2. Update selected proposal
+        const { error: propUpdateErr } = await supabase
+          .from('proposals')
+          .update({ status: 'accepted' })
+          .eq('id', proposal.id);
+        
+        if (propUpdateErr) throw propUpdateErr;
+        console.log("ACCEPTED PROPOSAL UPDATED");
+
+        // 3. Update all other proposals for same project
+        const { error: rejectOthersErr } = await supabase
+          .from('proposals')
+          .update({ status: 'rejected' })
+          .eq('project_id', proposal.project_id)
+          .neq('id', proposal.id);
+        
+        if (rejectOthersErr) throw rejectOthersErr;
+        console.log("OTHER PROPOSALS REJECTED");
+
+        // 4. Update project
+        const { error: projUpdateErr } = await supabase
+          .from('projects')
+          .update({ 
+            status: 'in_progress', 
+            assigned_creator_id: proposal.freelancer_id,
+            accepted_proposal_id: proposal.id,
+            progress: 10,
+            current_stage: 'kickoff'
+          })
+          .eq('id', proposal.project_id);
+
+        if (projUpdateErr) throw projUpdateErr;
+        console.log("PROJECT MOVED TO ACTIVE WORKSPACE", proposal.project_id);
+        console.log("PROJECT ASSIGNED TO CREATOR", proposal.freelancer_id);
+
+        toast.success("Proposal accepted! Project moved to workspace.");
+        router.push("/dashboard/client/active-projects");
+      } else {
+        // Reject logic
+        const { error: rejectErr } = await supabase
+          .from('proposals')
+          .update({ status: 'rejected' })
+          .eq('id', proposal.id);
+        
+        if (rejectErr) throw rejectErr;
+        toast.success("Proposal rejected.");
+        await fetchProposals();
+      }
+    } catch (err: any) {
+      console.error("ACCEPT PROPOSAL ERROR", err);
+      toast.error(err.message || "Action failed");
     } finally {
       setLoading(false);
     }
@@ -106,13 +171,13 @@ export default function ClientProposalsPage() {
                 {(!prop.status || prop.status === 'pending') ? (
                   <div className="flex gap-4">
                     <button 
-                      onClick={() => handleAction(prop.id, 'accepted', prop.project_id, prop.freelancer_id)} 
+                      onClick={() => handleAction(prop, 'accepted')} 
                       className="px-4 py-2 bg-green-500 text-white rounded-lg font-bold text-xs uppercase hover:bg-green-600 transition"
                     >
                       Accept Proposal
                     </button>
                     <button 
-                      onClick={() => handleAction(prop.id, 'rejected', prop.project_id, prop.freelancer_id)} 
+                      onClick={() => handleAction(prop, 'rejected')} 
                       className="px-4 py-2 bg-red-500 text-white rounded-lg font-bold text-xs uppercase hover:bg-red-600 transition"
                     >
                       Reject Proposal

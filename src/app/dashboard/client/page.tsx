@@ -59,17 +59,30 @@ export default function ClientDashboard() {
           })));
         }
 
-        // Fetch actual client projects
+        // Fetch actual client projects (active ones)
         if (user) {
           const { data: projData, error: projError } = await supabase
             .from('projects')
             .select('*')
             .eq('client_id', user.id)
-            .order('created_at', { ascending: false })
+            .in('status', ['in_progress', 'delivered', 'completed'])
+            .order('updated_at', { ascending: false })
             .limit(5);
 
           if (projError) console.error("Error fetching client projects:", projError);
           if (projData) setProjects(projData);
+
+          // Fetch total investment
+          const { data: payments } = await supabase
+            .from('payments')
+            .select('amount')
+            .eq('client_id', user.id)
+            .eq('status', 'completed');
+          
+          if (payments) {
+            const total = payments.reduce((acc, curr) => acc + curr.amount, 0) / 100;
+            setStats(prev => ({ ...prev, totalInvestment: total }));
+          }
         }
 
       } catch (err) {
@@ -82,12 +95,13 @@ export default function ClientDashboard() {
     fetchData();
   }, [user]);
 
+  const [stats, setStats] = useState({ totalInvestment: 0 });
   const discount = getClientUnlockDiscount(activePlan);
 
   return (
     <RoleGuard allowedRoles={["client"]}>
       <DashboardLayout title="Client Command Center">
-      {/* Top Section: Plan & Global Stats */}
+      {/* ... Top Section ... */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
         <div className="flex items-center gap-4">
            <div className="p-4 glass rounded-2xl border-neon-blue/20 flex flex-col gap-1">
@@ -109,14 +123,14 @@ export default function ClientDashboard() {
 
       {/* Stats Overview */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
-        <StatCard title="Total Investment" value={0} prefix="₹" icon={Wallet} color="purple" />
-        <StatCard title="Active Streams" value={projects.length} icon={Briefcase} color="blue" />
+        <StatCard title="Total Investment" value={stats.totalInvestment} prefix="₹" icon={Wallet} color="purple" />
+        <StatCard title="Active Workspaces" value={projects.length} icon={Briefcase} color="blue" />
         <StatCard title="Saved Talent" value={savedCreators.length} icon={Heart} color="green" />
         <StatCard title="Unlock Discount" value={discount} suffix="%" icon={Percent} color="blue" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
-        {/* Left Col: Discovery & Projects */}
+        {/* ... Discovery & Projects ... */}
         <div className="lg:col-span-2 space-y-6 md:space-y-8">
           <div className="glass p-8 rounded-[40px] border-white/5 bg-gradient-to-br from-neon-purple/10 via-transparent to-transparent group">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -167,34 +181,36 @@ export default function ClientDashboard() {
 
           <div className="space-y-4">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Active Production Stream</h3>
-              <Link href="/projects" className="text-[10px] text-neon-blue font-black uppercase tracking-widest hover:underline">View All</Link>
+              <h3 className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Active Workspaces</h3>
+              <Link href="/dashboard/client/active-projects" className="text-[10px] text-neon-blue font-black uppercase tracking-widest hover:underline">View All</Link>
             </div>
             
             {projects.length === 0 ? (
               <div className="glass p-8 md:p-12 rounded-[32px] border-white/5 text-center">
-                <p className="text-[10px] md:text-xs text-gray-500 uppercase font-black tracking-widest italic opacity-50">No Active Streams Detected</p>
-                <Link href="/post-project" className="inline-block mt-6">
+                <p className="text-[10px] md:text-xs text-gray-500 uppercase font-black tracking-widest italic opacity-50">No Active Workspaces Detected</p>
+                <Link href="/dashboard/client/proposals" className="inline-block mt-6">
                   <button className="px-8 py-3 rounded-xl bg-neon-purple text-white text-[10px] font-black uppercase tracking-widest shadow-lg hover:scale-105 transition-all">
-                    Initiate Project
+                    Review Proposals
                   </button>
                 </Link>
               </div>
             ) : (
               <div className="space-y-4">
                 {projects.map((proj) => (
-                  <div key={proj.id} className="glass p-4 md:p-6 rounded-2xl md:rounded-3xl border-white/5 flex items-center justify-between group hover:border-neon-purple/30 transition-all gap-4">
-                    <div className="flex items-center gap-4 min-w-0">
-                      <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-neon-purple/10 border border-neon-purple/20 flex items-center justify-center text-neon-purple shrink-0">
-                        <Briefcase size={18} />
+                  <Link key={proj.id} href={`/dashboard/projects/${proj.id}/workspace`} className="block">
+                    <div className="glass p-4 md:p-6 rounded-2xl md:rounded-3xl border-white/5 flex items-center justify-between group hover:border-neon-purple/30 transition-all gap-4">
+                      <div className="flex items-center gap-4 min-w-0">
+                        <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-neon-purple/10 border border-neon-purple/20 flex items-center justify-center text-neon-purple shrink-0">
+                          <Briefcase size={18} />
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-xs md:text-sm font-black text-white uppercase tracking-tighter truncate">{proj.title}</h4>
+                          <p className="text-[9px] md:text-[10px] text-gray-500 uppercase font-bold tracking-widest">{proj.status}</p>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <h4 className="text-xs md:text-sm font-black text-white uppercase tracking-tighter truncate">{proj.title}</h4>
-                        <p className="text-[9px] md:text-[10px] text-gray-500 uppercase font-bold tracking-widest">{proj.status}</p>
-                      </div>
+                      <ChevronRight size={16} className="text-gray-600 group-hover:text-neon-purple transition-colors shrink-0" />
                     </div>
-                    <ChevronRight size={16} className="text-gray-600 group-hover:text-neon-purple transition-colors shrink-0" />
-                  </div>
+                  </Link>
                 ))}
               </div>
             )}

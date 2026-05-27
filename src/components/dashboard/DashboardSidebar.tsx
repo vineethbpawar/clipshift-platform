@@ -17,6 +17,7 @@ import {
   TrendingUp,
   Briefcase,
   Plus,
+  Send,
   X
 } from "lucide-react";
 import { useAuth, type Role, getDashboardPath } from "@/context/AuthContext";
@@ -62,6 +63,7 @@ export const DashboardSidebar = ({ onClose }: { onClose?: () => void }) => {
       return [
         ...common,
         { href: "/post-project", icon: Plus, label: "Post Project" },
+        { href: "/dashboard/client/active-projects", icon: Briefcase, label: "Active Projects" },
         { href: "/projects", icon: Layers, label: "My Projects" },
         { href: "/chat", icon: MessageSquare, label: "Messages" },
       ];
@@ -70,6 +72,8 @@ export const DashboardSidebar = ({ onClose }: { onClose?: () => void }) => {
     if (role === "creator") {
       return [
         ...common,
+        { href: "/dashboard/creator/active-projects", icon: TrendingUp, label: "Active Work" },
+        { href: "/dashboard/creator/proposals", icon: Send, label: "My Proposals" },
         { href: `${dashboardPath}/earnings`, icon: DollarSign, label: "Earnings" },
         { href: `${dashboardPath}/portfolio`, icon: Briefcase, label: "My Portfolio" },
         { href: "/explore", icon: MapIcon, label: "Live Map" },

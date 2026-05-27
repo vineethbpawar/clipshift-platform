@@ -28,12 +28,10 @@ export default function ProjectsPage() {
       if (!user) return;
       setLoading(true);
       try {
-        let query = supabase.from('projects').select('*, proposals(*)');
+        let query = supabase.from('projects').select('*, proposals(*)').eq('status', 'open');
 
         if (user.role === 'client') {
           query = query.eq('client_id', user.id);
-        } else if (user.role === 'creator') {
-          query = query.eq('status', 'open');
         }
 
         const { data, error } = await query;

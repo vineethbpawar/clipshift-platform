@@ -131,15 +131,13 @@ export default function ProjectDetailPage() {
 
       // Access Check in JS
       const role = user?.role;
-      const canView =
-        role === "admin" ||
-        (role === "client" && projData.client_id === user?.id) ||
-        (role === "creator" && projData.status === "open") ||
-        (projData.status === "open"); // Default fallback for exploration
+      const isAssignedCreator = projData.assigned_creator_id === user?.id;
+      const isOwner = projData.client_id === user?.id;
+      const isAdmin = role === "admin";
 
-      if (!canView) {
+      if (projData.status !== "open" && !isAssignedCreator && !isOwner && !isAdmin) {
         console.warn("Access denied for user", user?.id, "to project", projectId);
-        setProject({ error: "You do not have permission to view this project." });
+        setProject({ error: "This project is no longer accepting proposals." });
         setLoading(false);
         return;
       }
@@ -458,39 +456,67 @@ export default function ProjectDetailPage() {
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
             {user?.role === 'creator' && (
               <>
-                <button 
-                  onClick={() => setShowProposalModal(true)}
-                  className="w-full sm:w-auto px-8 py-4 bg-neon-purple text-white rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all"
-                >
-                  Submit Proposal
-                </button>
-                {!isUnlocked ? (
+                {project.status === 'open' ? (
+                  <>
+                    <button 
+                      onClick={() => setShowProposalModal(true)}
+                      className="w-full sm:w-auto px-8 py-4 bg-neon-purple text-white rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all"
+                    >
+                      Submit Proposal
+                    </button>
+                    {!isUnlocked ? (
+                      <button 
+                        onClick={handleUnlock}
+                        disabled={submitting}
+                        className="w-full sm:w-auto px-8 py-4 bg-neon-blue text-black rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all"
+                      >
+                        Unlock Contact ₹99
+                      </button>
+                    ) : (
+                      <button 
+                        onClick={handleMessageClient}
+                        disabled={messaging}
+                        className="w-full sm:w-auto px-8 py-4 bg-green-500 text-black rounded-full font-black text-xs uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2"
+                      >
+                        {messaging ? <Loader2 size={16} className="animate-spin" /> : "Message Client"}
+                      </button>
+                    )}
+                    <button className="w-full sm:w-auto px-8 py-4 bg-white/5 border border-white/10 text-white rounded-full font-black text-xs uppercase tracking-widest hover:bg-white/10 active:scale-95 transition-all">
+                      Save Project
+                    </button>
+                  </>
+                ) : project.assigned_creator_id === user?.id ? (
                   <button 
-                    onClick={handleUnlock}
-                    disabled={submitting}
-                    className="w-full sm:w-auto px-8 py-4 bg-neon-blue text-black rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all"
+                    onClick={() => router.push(`/dashboard/projects/${project.id}/workspace`)}
+                    className="w-full sm:w-auto px-8 py-4 bg-white text-black rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all"
                   >
-                    Unlock Contact ₹99
+                    Open Workspace
                   </button>
                 ) : (
-                  <button 
-                    onClick={handleMessageClient}
-                    disabled={messaging}
-                    className="w-full sm:w-auto px-8 py-4 bg-green-500 text-black rounded-full font-black text-xs uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2"
-                  >
-                    {messaging ? <Loader2 size={16} className="animate-spin" /> : "Message Client"}
-                  </button>
+                  <div className="w-full p-4 glass border-white/5 rounded-2xl text-center">
+                    <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest">
+                      This project has already been assigned to another creator.
+                    </p>
+                  </div>
                 )}
-                <button className="w-full sm:w-auto px-8 py-4 bg-white/5 border border-white/10 text-white rounded-full font-black text-xs uppercase tracking-widest hover:bg-white/10 active:scale-95 transition-all">
-                  Save Project
-                </button>
               </>
             )}
             {isOwner && (
               <>
-                <button onClick={() => router.push(`/projects/${project.id}/edit`)} className="w-full sm:w-auto px-8 py-4 bg-white text-black rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all">Edit Project</button>
-                <button onClick={() => router.push(`/dashboard/client/proposals`)} className="w-full sm:w-auto px-8 py-4 bg-neon-purple/10 text-neon-purple border border-neon-purple/20 rounded-full font-black text-xs uppercase tracking-widest active:scale-95 transition-all">View Proposals</button>
-                <button onClick={handleDelete} className="w-full sm:w-auto px-8 py-4 bg-red-500/10 text-red-500 border border-red-500/20 rounded-full font-black text-xs uppercase tracking-widest hover:bg-red-500/20 active:scale-95 transition-all">Delete Project</button>
+                {project.status === 'open' ? (
+                  <>
+                    <button onClick={() => router.push(`/projects/${project.id}/edit`)} className="w-full sm:w-auto px-8 py-4 bg-white text-black rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all">Edit Project</button>
+                    <button onClick={() => router.push(`/dashboard/client/proposals`)} className="w-full sm:w-auto px-8 py-4 bg-neon-purple/10 text-neon-purple border border-neon-purple/20 rounded-full font-black text-xs uppercase tracking-widest active:scale-95 transition-all">View Proposals</button>
+                    <button onClick={handleDelete} className="w-full sm:w-auto px-8 py-4 bg-red-500/10 text-red-500 border border-red-500/20 rounded-full font-black text-xs uppercase tracking-widest hover:bg-red-500/20 active:scale-95 transition-all">Delete Project</button>
+                  </>
+                ) : (
+                  <button 
+                    onClick={() => router.push(`/dashboard/projects/${project.id}/workspace`)}
+                    className="w-full sm:w-auto px-8 py-4 bg-white text-black rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all"
+                  >
+                    Open Workspace
+                  </button>
+                )}
               </>
             )}
           </div>
