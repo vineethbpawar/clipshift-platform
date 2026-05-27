@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { PageWrapper } from "@/components/layout/PageWrapper";
-import { supabase } from "@/lib/supabase";
+import { supabase, getStoredSession } from "@/lib/supabase";
 import { useParams, useRouter } from "next/navigation";
 import { Loader2, ArrowLeft, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -311,20 +311,66 @@ export default function ProjectDetailPage() {
 
     setSubmitting(true);
 
-    const payload = {
-      project_id: project.id,
-      freelancer_id: user.id,
-      cover_letter: coverLetter.trim(),
-      proposed_budget: Number(proposedBudget),
-      estimated_days: Number(estimatedDays),
-      status: "pending"
-    };
-
-    console.log("SUBMIT PROPOSAL USER", user);
-    console.log("SUBMIT PROPOSAL ROLE", user.role);
-    console.log("FINAL PROPOSAL PAYLOAD", payload);
-
     try {
+      // 2. Force Session Restoration
+      const { data: sessionData } = await supabase.auth.getSession();
+      let activeSession = sessionData.session;
+
+      if (!activeSession) {
+        const storedSession = getStoredSession();
+        if (storedSession?.access_token && storedSession?.refresh_token) {
+          const { data, error } = await supabase.auth.setSession({
+            access_token: storedSession.access_token,
+            refresh_token: storedSession.refresh_token,
+          });
+
+          if (error) {
+            console.error("SUPABASE SESSION RESTORE ERROR", error);
+            throw error;
+          }
+          activeSession = data.session;
+        }
+      }
+
+      if (!activeSession) {
+        toast.error("Your session expired. Please login again.");
+        router.push("/auth/login");
+        return;
+      }
+
+      const payload = {
+        project_id: project.id,
+        freelancer_id: activeSession.user.id,
+        cover_letter: coverLetter.trim(),
+        proposed_budget: Number(proposedBudget),
+        estimated_days: Number(estimatedDays),
+        status: "pending"
+      };
+
+      console.log("PROPOSAL ACTIVE SESSION", {
+        hasSession: !!activeSession,
+        sessionUserId: activeSession?.user?.id,
+        payloadFreelancerId: payload.freelancer_id
+      });
+
+      console.log("SUBMIT PROPOSAL USER", user);
+      console.log("SUBMIT PROPOSAL ROLE", user.role);
+      console.log("FINAL PROPOSAL PAYLOAD", payload);
+
+      // 3. Check for duplicate proposal using activeSession ID
+      const { data: existingProposal } = await supabase
+        .from('proposals')
+        .select('id')
+        .eq('project_id', project.id)
+        .eq('freelancer_id', activeSession.user.id)
+        .maybeSingle();
+
+      if (existingProposal) {
+        toast.error("You already submitted this proposal.");
+        setSubmitting(false);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('proposals')
         .insert(payload)
@@ -344,9 +390,9 @@ export default function ProjectDetailPage() {
         setProposalData({ coverLetter: "", budget: "", days: "" });
         setShowProposalModal(false);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("SUBMIT PROPOSAL UNEXPECTED ERROR", err);
-      toast.error("An unexpected error occurred.");
+      toast.error(err.message || "An unexpected error occurred.");
     } finally {
       setSubmitting(false);
     }

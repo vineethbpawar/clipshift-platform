@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import { supabase, getStoredSession } from "@/lib/supabase";
 import { getActivePlan, type PlanType } from "@/lib/plans";
 
 export type Role = "client" | "creator" | "admin" | null;
@@ -104,28 +104,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           source = "sdk";
         }
 
-        // 2. Try Supabase expected localStorage key
+        // 2. Try Stored Session
         if (!session) {
-          const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-          const projectRef = new URL(supabaseUrl).hostname.split(".")[0];
-          const storageKey = `sb-${projectRef}-auth-token`;
-          const rawSession = localStorage.getItem(storageKey);
-          if (rawSession) {
-            try {
-              session = JSON.parse(rawSession);
-              source = "storage_key";
-            } catch (e) { console.error("Failed to parse local storage session", e); }
-          }
-        }
-
-        // 3. Try clipshift_session backup
-        if (!session) {
-          const backupSession = localStorage.getItem("clipshift_session");
-          if (backupSession) {
-            try {
-              session = JSON.parse(backupSession);
-              source = "backup_key";
-            } catch (e) { console.error("Failed to parse backup session", e); }
+          const stored = getStoredSession();
+          if (stored) {
+            session = stored;
+            source = "stored";
           }
         }
 
