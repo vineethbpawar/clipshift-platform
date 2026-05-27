@@ -40,6 +40,16 @@ const DashboardSidebar = ({ isOpen, onClose }: { isOpen: boolean, onClose: () =>
 
   const dashboardPath = getDashboardPath(role);
 
+  const isActive = (href: string) => {
+    if (href === "/dashboard/client" || href === "/dashboard/creator") {
+      return pathname === href;
+    }
+    if (href === "/chat" || href === "/messages") {
+      return pathname.startsWith("/chat") || pathname.startsWith("/messages");
+    }
+    return pathname === href || pathname.startsWith(href + "/");
+  };
+
   const getLinks = () => {
     const common = [
       { href: dashboardPath, icon: LayoutDashboard, label: "Overview" },
@@ -58,7 +68,7 @@ const DashboardSidebar = ({ isOpen, onClose }: { isOpen: boolean, onClose: () =>
     if (role === "creator") {
       return [
         ...common,
-        { href: "/dashboard/creator/active-projects", icon: TrendingUp, label: "Active Work" },
+        { href: "/dashboard/creator/active-projects", icon: TrendingUp, label: "Active Projects" },
         { href: "/dashboard/creator/proposals", icon: Send, label: "My Proposals" },
         { href: `${dashboardPath}/earnings`, icon: DollarSign, label: "Earnings" },
         { href: `${dashboardPath}/portfolio`, icon: Briefcase, label: "My Portfolio" },
@@ -104,7 +114,7 @@ const DashboardSidebar = ({ isOpen, onClose }: { isOpen: boolean, onClose: () =>
                  <SidebarLink 
                    key={link.label} 
                    {...link} 
-                   isActive={pathname === link.href} 
+                   isActive={isActive(link.href)} 
                    onClick={onClose}
                  />
                ))}

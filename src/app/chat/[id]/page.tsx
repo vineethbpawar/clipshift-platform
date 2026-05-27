@@ -62,10 +62,13 @@ export default function ChatPage() {
         }
       }
 
+      console.log("CHAT CURRENT USER", user.id);
+      console.log("CHAT CONVERSATION ID", conversationId);
+      console.log("CHAT CONVERSATION RESULT", conversation);
+
       const receiverId = user.id === conversation.client_id ? conversation.creator_id : conversation.client_id;
       await sendMessage(receiverId, inputText);
       setInputText("");
-      console.log("CHAT MESSAGE SENT SUCCESSFUL");
     } catch (err) {
       console.error("CHAT ERROR", err);
     } finally {

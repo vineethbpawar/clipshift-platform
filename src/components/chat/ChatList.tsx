@@ -27,7 +27,7 @@ export const ChatList = () => {
         {loading ? (
           <div className="py-20 flex flex-col items-center gap-3">
             <Loader2 className="animate-spin text-neon-purple" size={24} />
-            <span className="text-[10px] text-gray-600 font-black uppercase tracking-widest">Scanning Signal...</span>
+            <span className="text-[10px] text-gray-600 font-black uppercase tracking-widest">Loading messages...</span>
           </div>
         ) : conversations.length > 0 ? (
           conversations.map((conv) => {
@@ -59,7 +59,7 @@ export const ChatList = () => {
                     </div>
                     <div className="flex items-center justify-between">
                       <p className={`text-[10px] truncate transition-colors ${conv.unreadCount && conv.unreadCount > 0 ? "text-white font-black" : "text-gray-500 group-hover:text-gray-300"}`}>
-                        {conv.last_message || "Start a cinematic conversation..."}
+                        {conv.last_message || "Start a conversation..."}
                       </p>
                       {conv.unreadCount !== undefined && conv.unreadCount > 0 && (
                         <span className="w-4 h-4 bg-neon-purple text-white text-[8px] font-black flex items-center justify-center rounded-full shadow-[0_0_10px_rgba(168,85,247,0.5)]">
@@ -76,7 +76,7 @@ export const ChatList = () => {
           <div className="py-20 text-center px-8 flex flex-col items-center">
             <MessageSquare size={32} className="text-gray-800 mb-4" />
             <p className="text-[10px] text-gray-600 uppercase font-black tracking-widest leading-relaxed">
-              No active signals found. Unlock a creator to start collaborating.
+              No conversations found. Unlock a creator to start collaborating.
             </p>
           </div>
         )}

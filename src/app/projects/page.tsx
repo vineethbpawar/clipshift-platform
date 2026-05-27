@@ -18,24 +18,33 @@ export default function ProjectsPage() {
   const [projects, setProjects] = useState<any[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchProjects = async () => {
       try {
         setLoading(true);
+        setError(null);
         console.log("OPEN PROJECTS FETCH START");
 
         // 1. Restore Session
         const { data: sessionData } = await supabase.auth.getSession();
-        if (!sessionData.session) {
+        let activeSession = sessionData.session;
+
+        if (!activeSession) {
           const { getStoredSession } = await import("@/lib/supabase");
           const stored = getStoredSession();
           if (stored?.access_token) {
-            await supabase.auth.setSession({ access_token: stored.access_token, refresh_token: stored.refresh_token });
+            const { data, error: sessionError } = await supabase.auth.setSession({
+              access_token: stored.access_token,
+              refresh_token: stored.refresh_token,
+            });
+            if (sessionError) throw sessionError;
+            activeSession = data.session;
           }
         }
 
-        // 2. Fetch projects directly without joins first
+        // 2. Fetch projects directly
         let query = supabase.from('projects').select('*').eq('status', 'open').order('created_at', { ascending: false });
 
         if (user?.role === 'client') {
@@ -47,20 +56,20 @@ export default function ProjectsPage() {
 
         if (error) throw error;
 
-        if (data) {
-          setProjects(data);
-          if (data.length > 0) setSelectedProjectId(data[0].id);
-        }
-      } catch (err) {
+        setProjects(data || []);
+        if (data && data.length > 0) setSelectedProjectId(data[0].id);
+        
+      } catch (err: any) {
         console.error("PROJECTS FETCH ERROR", err);
+        setError("Could not load projects. Please refresh.");
       } finally {
         setLoading(false);
       }
     };
 
-    if (user) fetchProjects();
-    else setLoading(false);
-  }, [user]);
+    if (user?.id) fetchProjects();
+    else if (!user) setLoading(false);
+  }, [user?.id]);
 
   const activeProject = projects.find(p => p.id === selectedProjectId);
 
@@ -95,6 +104,11 @@ export default function ProjectsPage() {
           <div className="py-20 flex flex-col items-center gap-4">
             <Loader2 className="animate-spin text-neon-purple" size={40} />
             <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em]">Loading projects...</span>
+          </div>
+        ) : error ? (
+          <div className="py-20 text-center">
+            <p className="text-red-400 font-bold mb-4">{error}</p>
+            <button onClick={() => window.location.reload()} className="px-6 py-2 bg-white text-black rounded-lg font-black uppercase text-xs">Refresh</button>
           </div>
         ) : projects.length === 0 ? (
           <div className="py-32 flex flex-col items-center text-center glass rounded-[40px] border-white/5">
@@ -138,7 +152,7 @@ export default function ProjectsPage() {
             <div className="space-y-8">
               <div className="flex items-center gap-2 mb-2">
                 <Zap size={16} className="text-neon-purple" />
-                <h3 className="text-white font-black uppercase tracking-widest text-sm">Review Proposals</h3>
+                <h3 className="text-white font-black uppercase tracking-widest text-sm">View Proposals</h3>
               </div>
 
               <div className="space-y-4">

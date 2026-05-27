@@ -33,16 +33,16 @@ export const DashboardLayout = ({
 
         {/* Sidebar Wrapper */}
         <div className={`
-          fixed md:sticky top-20 z-50 md:z-30 h-[calc(100dvh-80px)] transition-transform duration-300
-          ${isSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
-          ${isSidebarOpen ? "pointer-events-auto" : "pointer-events-none md:pointer-events-auto"}
+          fixed lg:sticky top-20 z-50 lg:z-30 h-[calc(100dvh-80px)] transition-transform duration-300 w-72 shrink-0
+          ${isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
+          ${isSidebarOpen ? "pointer-events-auto" : "pointer-events-none lg:pointer-events-auto"}
         `}>
           <DashboardSidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
         </div>
 
-        <main className="flex-1 p-4 md:p-12 overflow-y-auto custom-scrollbar relative">
+        <main className="flex-1 p-4 lg:p-12 overflow-y-auto custom-scrollbar relative min-w-0">
           {/* Mobile Header Toggle */}
-          <div className="flex items-center justify-between mb-8 md:hidden">
+          <div className="flex items-center justify-between mb-8 lg:hidden">
             <button 
               onClick={() => setIsSidebarOpen(true)}
               className="p-2 glass rounded-xl text-neon-purple active:scale-95 transition-transform"

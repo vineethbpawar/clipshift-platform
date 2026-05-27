@@ -227,7 +227,7 @@ export default function CreatorDashboard() {
         {/* Quick Actions & Location */}
         <div className="space-y-6 md:space-y-8">
           <div className="glass p-6 md:p-8 rounded-[32px] md:rounded-[40px] border-white/5 bg-gradient-to-br from-neon-purple/5 to-transparent">
-            <h3 className="text-[10px] font-black text-white uppercase tracking-widest mb-6">Production Pipeline</h3>
+            <h3 className="text-[10px] font-black text-white uppercase tracking-widest mb-6">Project Progress</h3>
             {stats.activeProjects > 0 ? (
               <div className="space-y-4">
                 <div className="flex items-center justify-between p-4 glass rounded-2xl border-white/5">
@@ -242,7 +242,7 @@ export default function CreatorDashboard() {
               </div>
             ) : (
               <div className="space-y-4 text-center py-4 md:py-8 opacity-40">
-                <span className="text-[8px] font-black uppercase tracking-widest">No Active Work</span>
+                <span className="text-[8px] font-black uppercase tracking-widest">No Active Projects</span>
               </div>
             )}
           </div>
