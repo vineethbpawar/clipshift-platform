@@ -36,7 +36,6 @@ export const CreatorCard = ({ creator }: { creator: any }) => {
   const handleChat = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (isUnlocked) {
-      // Find direct conversation with this creator
       router.push(`/chat?id=${creator.id}`);
     } else {
       setIsModalOpen(true);
@@ -142,17 +141,17 @@ export const CreatorCard = ({ creator }: { creator: any }) => {
             </span>
             <span className="flex items-center gap-1 text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-auto">
               <MapPin size={12} />
-              {creator.city || 'Remote Node'}
+              {creator.city || 'Remote'}
             </span>
           </div>
 
           <p className="text-[10px] text-gray-400 line-clamp-2 mb-6 uppercase tracking-widest font-medium opacity-60">
-            {creator.bio || "No mission brief provided by this cinematic node."}
+            {creator.bio || "No bio provided."}
           </p>
 
           <div className="flex items-center justify-between mt-6 pt-6 border-t border-white/5">
             <div>
-              <div className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-1">Fee Structure</div>
+              <div className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-1">Pricing</div>
               <div className="text-2xl font-black text-white">{creator.price || `₹${creator.starting_price || 0}`}<span className="text-xs text-gray-500 font-normal">/project</span></div>
             </div>
             {user?.role === 'client' && (
@@ -161,7 +160,7 @@ export const CreatorCard = ({ creator }: { creator: any }) => {
                 className="px-6 py-3 rounded-xl bg-neon-purple text-white text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-[0_0_20px_rgba(168,85,247,0.3)] hover:scale-105 active:scale-95 transition-transform"
               >
                 <MessageSquare size={14} />
-                {isUnlocked ? "Signal Node" : "Unlock Node"}
+                {isUnlocked ? "Message" : "Unlock"}
               </button>
             )}
           </div>

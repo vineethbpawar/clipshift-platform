@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { PageWrapper } from "@/components/layout/PageWrapper";
 import { useAuth } from "@/context/AuthContext";
 import { useChat } from "@/context/ChatContext";
-import { Send, Image, Paperclip, ShieldCheck, MoreVertical, Search, ArrowLeft, Pin, Smile, Loader2 } from "lucide-react";
+import { Send, Image, Paperclip, ShieldCheck, MoreVertical, Search, ArrowLeft, Pin, Smile, Loader2, MessageSquare } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -23,8 +23,6 @@ export default function ChatPage() {
     setActiveConversation, 
     sendMessage, 
     markAsRead, 
-    typingStates, 
-    setTyping,
     loading 
   } = useChat();
   
@@ -54,11 +52,22 @@ export default function ChatPage() {
     
     setIsSending(true);
     try {
+      // 1. Force Session Restoration
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        const { getStoredSession } = await import("@/lib/supabase");
+        const stored = getStoredSession();
+        if (stored?.access_token) {
+          await supabase.auth.setSession({ access_token: stored.access_token, refresh_token: stored.refresh_token });
+        }
+      }
+
       const receiverId = user.id === conversation.client_id ? conversation.creator_id : conversation.client_id;
       await sendMessage(receiverId, inputText);
       setInputText("");
+      console.log("CHAT MESSAGE SENT SUCCESSFUL");
     } catch (err) {
-      console.error("Failed to send message:", err);
+      console.error("CHAT ERROR", err);
     } finally {
       setIsSending(false);
     }
@@ -69,20 +78,21 @@ export default function ChatPage() {
       <PageWrapper>
         <div className="h-screen flex items-center justify-center bg-black">
           <Loader2 className="animate-spin text-neon-purple" size={48} />
+          <span className="ml-4 text-xs font-black uppercase tracking-widest text-gray-500">Loading chat...</span>
         </div>
       </PageWrapper>
     );
   }
 
-  if (!conversation) {
+  if (!conversation && !loading) {
     return (
       <PageWrapper>
         <div className="min-h-screen flex items-center justify-center pt-20 bg-black">
           <div className="text-center">
-            <h2 className="text-2xl font-black text-white uppercase mb-4 tracking-widest">Signal Lost</h2>
+            <h2 className="text-2xl font-black text-white uppercase mb-4 tracking-widest">Chat not found</h2>
             <p className="text-gray-500 mb-8">Conversation not found or access denied.</p>
             <Link href="/chat">
-              <button className="px-8 py-4 bg-neon-purple text-white rounded-full font-black uppercase text-xs">Back to Communications</button>
+              <button className="px-8 py-4 bg-neon-purple text-white rounded-full font-black uppercase text-xs">Back to Messages</button>
             </Link>
           </div>
         </div>
@@ -116,7 +126,7 @@ export default function ChatPage() {
                 </h3>
                 <div className="flex items-center gap-1">
                   <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
-                  <span className="text-[8px] text-gray-500 uppercase font-black tracking-widest">Active Node</span>
+                  <span className="text-[8px] text-gray-500 uppercase font-black tracking-widest">Online</span>
                 </div>
               </div>
             </div>
@@ -132,14 +142,16 @@ export default function ChatPage() {
             ref={scrollRef}
             className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-6 custom-scrollbar scroll-smooth"
           >
-            <div className="flex flex-col items-center justify-center py-8 sm:py-12 text-center opacity-30">
-              <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
-                <ShieldCheck size={28} />
+            {activeChatMessages.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-8 sm:py-12 text-center opacity-30">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
+                  <MessageSquare size={28} />
+                </div>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] max-w-xs leading-relaxed">
+                  Start a conversation with {otherUser?.full_name}
+                </p>
               </div>
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] max-w-xs leading-relaxed">
-                Establishing quantum-secure channel with node ID-{otherUser?.full_name.toUpperCase()}
-              </p>
-            </div>
+            )}
 
             {activeChatMessages.map((msg) => (
               <MessageBubble 
@@ -165,7 +177,7 @@ export default function ChatPage() {
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyPress={(e) => e.key === "Enter" && handleSend()}
-                placeholder="Compose signal..."
+                placeholder="Type a message..."
                 className="bg-transparent border-none outline-none text-base text-white w-full placeholder:text-gray-600 font-medium px-2"
                 disabled={isSending}
               />

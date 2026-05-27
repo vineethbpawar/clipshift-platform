@@ -67,7 +67,7 @@ export default function CreatorEarningsPage() {
 
   return (
     <RoleGuard allowedRoles={["creator"]}>
-      <DashboardLayout title="Earnings Vault">
+      <DashboardLayout title="Earnings">
         <div className="space-y-8">
           {/* Stats Overview */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
@@ -79,14 +79,14 @@ export default function CreatorEarningsPage() {
               color="purple" 
             />
             <StatCard 
-              title="Escrow Balance" 
+              title="Current Balance" 
               value={stats.pendingPayments} 
               prefix="₹" 
               icon={Wallet} 
               color="blue" 
             />
             <StatCard 
-              title="Paid Nodes" 
+              title="Paid Projects" 
               value={stats.completedProjects} 
               icon={TrendingUp} 
               color="green" 
@@ -99,18 +99,18 @@ export default function CreatorEarningsPage() {
               <h3 className="text-xs md:text-sm font-black text-white uppercase tracking-[0.2em]">Transaction History</h3>
               <div className="flex items-center gap-2">
                 <Calendar size={14} className="text-gray-500" />
-                <span className="text-[9px] md:text-[10px] font-black text-gray-500 uppercase tracking-widest">Real-time Node Log</span>
+                <span className="text-[9px] md:text-[10px] font-black text-gray-500 uppercase tracking-widest">Real-time History</span>
               </div>
             </div>
 
             {loading ? (
               <div className="py-12 md:py-20 flex flex-col items-center gap-4">
                 <Loader2 className="animate-spin text-neon-purple" size={32} />
-                <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Querying Ledger...</span>
+                <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Loading History...</span>
               </div>
             ) : payments.length === 0 ? (
               <div className="py-12 md:py-20 text-center">
-                <div className="text-[9px] md:text-[10px] text-gray-600 font-black uppercase tracking-widest italic mb-2">No earnings history detected</div>
+                <div className="text-[9px] md:text-[10px] text-gray-600 font-black uppercase tracking-widest italic mb-2">No earnings history found</div>
                 <p className="text-xs text-gray-500">Complete projects or unlock chats to see revenue flow.</p>
               </div>
             ) : (
@@ -128,7 +128,7 @@ export default function CreatorEarningsPage() {
                       </div>
                       <div className="min-w-0">
                         <div className="text-[10px] md:text-xs font-black text-white uppercase tracking-widest truncate">
-                          {payment.status === 'completed' ? 'Node Synchronization' : 'Pending Verification'}
+                          {payment.status === 'completed' ? 'Payment Completed' : 'Pending Verification'}
                         </div>
                         <div className="text-[9px] md:text-[10px] text-gray-500 font-mono mt-1">
                           {new Date(payment.created_at).toLocaleDateString()} • ID: {payment.order_id.slice(-8)}
@@ -149,12 +149,12 @@ export default function CreatorEarningsPage() {
 
           {/* Payout Info */}
           <div className="glass p-6 md:p-8 rounded-[32px] md:rounded-[40px] border-neon-blue/20 bg-gradient-to-br from-neon-blue/5 to-transparent">
-            <h4 className="text-[10px] font-black text-white uppercase tracking-widest mb-4">Payout Protocol</h4>
+            <h4 className="text-[10px] font-black text-white uppercase tracking-widest mb-4">Payout Process</h4>
             <p className="text-[11px] md:text-xs text-gray-400 leading-relaxed mb-6">
-              Funds are held in high-fidelity escrow nodes. Synchronization to your primary bank node occurs within 48 hours of project completion.
+              Funds are held securely. Transfers to your primary bank account occur within 48 hours of project completion.
             </p>
             <button className="flex items-center gap-2 text-[10px] text-neon-blue font-black uppercase tracking-widest hover:underline">
-              Configure Payout Node <ArrowUpRight size={14} />
+              Configure Payout Account <ArrowUpRight size={14} />
             </button>
           </div>
         </div>

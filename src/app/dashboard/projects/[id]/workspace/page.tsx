@@ -14,12 +14,13 @@ import {
   User,
   DollarSign,
   AlertCircle,
-  Zap,
-  ChevronRight,
-  ShieldCheck,
-  TrendingUp
-} from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+  Zap, 
+  ChevronRight, 
+  ShieldCheck, 
+  TrendingUp,
+  ExternalLink,
+  Paperclip
+  } from "lucide-react";import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-hot-toast";
 import { PageWrapper } from "@/components/layout/PageWrapper";
 import Link from "next/link";
@@ -155,7 +156,7 @@ export default function ProjectWorkspacePage() {
     <PageWrapper>
       <div className="max-w-7xl mx-auto pt-32 pb-20 px-4">
         <button onClick={() => router.back()} className="flex items-center gap-2 text-gray-500 hover:text-white mb-8 text-[10px] uppercase tracking-widest font-black transition-colors">
-          <ArrowLeft size={16} /> Back to Dashboard
+          <ArrowLeft size={16} /> Back
         </button>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -163,7 +164,7 @@ export default function ProjectWorkspacePage() {
           <div className="lg:col-span-2 space-y-8">
             <div className="glass p-8 sm:p-10 rounded-[40px] border-white/5 relative overflow-hidden">
               <div className="absolute top-0 right-0 p-8">
-                 <Zap className={`text-neon-purple ${project.status === 'in_progress' ? 'animate-pulse' : 'opacity-20'}`} size={32} />
+                 <Zap className={`text-neon-purple ${project?.status === 'in_progress' ? 'animate-pulse' : 'opacity-20'}`} size={32} />
               </div>
 
               <div className="mb-8">
@@ -171,11 +172,37 @@ export default function ProjectWorkspacePage() {
                   Project Workspace
                 </span>
                 <h1 className="text-3xl sm:text-5xl font-black text-white uppercase tracking-tighter leading-tight mb-4">
-                  {project.title}
+                  {project?.title}
                 </h1>
-                <p className="text-xs text-gray-500 uppercase tracking-widest font-bold leading-relaxed max-w-2xl">
-                  {project.description}
+                <p className="text-xs text-gray-500 uppercase tracking-widest font-bold leading-relaxed max-w-2xl mb-8">
+                  {project?.description}
                 </p>
+
+                {project?.file_url && (
+                  <div className="mb-8">
+                    <span className="text-[10px] text-gray-600 uppercase font-black tracking-widest block mb-4">Project File</span>
+                    {project.file_type?.startsWith('image') ? (
+                      <div className="relative aspect-video rounded-3xl overflow-hidden glass border border-white/5 group max-w-md">
+                        <img src={project.file_url} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt="" />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <a href={project.file_url} target="_blank" className="p-4 rounded-full bg-white text-black hover:scale-110 transition-transform">
+                             <ExternalLink size={20} />
+                          </a>
+                        </div>
+                      </div>
+                    ) : (
+                      <a href={project.file_url} target="_blank" className="flex items-center gap-4 p-6 glass rounded-2xl border-white/5 hover:border-neon-purple/30 transition-all max-w-md">
+                        <div className="w-12 h-12 rounded-xl bg-neon-purple/10 flex items-center justify-center text-neon-purple">
+                           <Paperclip size={24} />
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-white font-black uppercase tracking-widest">View Attachment</p>
+                          <p className="text-[8px] text-gray-500 uppercase font-bold">{project.file_type || 'Document'}</p>
+                        </div>
+                      </a>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 pt-8 border-t border-white/5">
@@ -183,7 +210,7 @@ export default function ProjectWorkspacePage() {
                   <span className="text-[9px] text-gray-600 uppercase font-black tracking-widest">Status</span>
                   <div className="text-[11px] text-white font-black uppercase tracking-tighter flex items-center gap-2">
                     <div className="w-1.5 h-1.5 rounded-full bg-neon-purple animate-pulse" />
-                    {project.status.replace('_', ' ')}
+                    {project?.status?.replace('_', ' ')}
                   </div>
                 </div>
                 <div className="space-y-1">
@@ -192,11 +219,11 @@ export default function ProjectWorkspacePage() {
                 </div>
                 <div className="space-y-1">
                   <span className="text-[9px] text-gray-600 uppercase font-black tracking-widest">Agreed Budget</span>
-                  <div className="text-[11px] text-white font-black">₹{project.accepted_proposal?.proposed_budget || project.budget}</div>
+                  <div className="text-[11px] text-white font-black">₹{project?.accepted_proposal?.proposed_budget || project?.budget}</div>
                 </div>
                 <div className="space-y-1">
                   <span className="text-[9px] text-gray-600 uppercase font-black tracking-widest">ETA</span>
-                  <div className="text-[11px] text-white font-black">{project.accepted_proposal?.estimated_days || '-'} Days</div>
+                  <div className="text-[11px] text-white font-black">{project?.accepted_proposal?.estimated_days || '-'} Days</div>
                 </div>
               </div>
             </div>
@@ -204,7 +231,7 @@ export default function ProjectWorkspacePage() {
             {/* Progress Timeline */}
             <div className="glass p-8 sm:p-10 rounded-[40px] border-white/5">
               <h3 className="text-xs font-black text-white uppercase tracking-[0.2em] mb-10 flex items-center gap-2">
-                <TrendingUp size={16} className="text-neon-purple" /> Production Stream
+                <TrendingUp size={16} className="text-neon-purple" /> Project Progress
               </h3>
 
               <div className="relative">
@@ -212,7 +239,7 @@ export default function ProjectWorkspacePage() {
                 <div className="absolute top-5 left-0 w-full h-0.5 bg-white/5" />
                 <div 
                   className="absolute top-5 left-0 h-0.5 bg-neon-purple transition-all duration-1000 shadow-[0_0_10px_rgba(168,85,247,0.5)]" 
-                  style={{ width: `${project.progress}%` }}
+                  style={{ width: `${project?.progress}%` }}
                 />
 
                 <div className="relative flex justify-between items-center">
@@ -244,12 +271,12 @@ export default function ProjectWorkspacePage() {
               <div className="mt-12 p-6 glass border-white/5 rounded-2xl bg-white/[0.02]">
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Aggregate Progress</span>
-                  <span className="text-[10px] text-neon-purple font-black">{project.progress}%</span>
+                  <span className="text-[10px] text-neon-purple font-black">{project?.progress}%</span>
                 </div>
                 <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
                   <motion.div 
                     initial={{ width: 0 }}
-                    animate={{ width: `${project.progress}%` }}
+                    animate={{ width: `${project?.progress}%` }}
                     className="h-full bg-gradient-to-r from-neon-purple to-neon-blue"
                   />
                 </div>
@@ -259,22 +286,22 @@ export default function ProjectWorkspacePage() {
             {/* Proposal Details */}
             <div className="glass p-8 sm:p-10 rounded-[40px] border-white/5">
               <h3 className="text-xs font-black text-white uppercase tracking-[0.2em] mb-8 flex items-center gap-2">
-                <Briefcase size={16} className="text-neon-blue" /> Accepted Proposition
+                <Briefcase size={16} className="text-neon-blue" /> Accepted Proposal
               </h3>
               <div className="space-y-6">
                 <div className="p-6 glass border-white/5 rounded-3xl">
                   <p className="text-gray-400 text-sm italic leading-relaxed">
-                    &quot;{project.accepted_proposal?.cover_letter}&quot;
+                    &quot;{project?.accepted_proposal?.cover_letter}&quot;
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-4">
                    <div className="px-6 py-3 rounded-2xl glass border-white/5 flex flex-col">
-                     <span className="text-[8px] text-gray-600 uppercase font-black tracking-widest mb-1">Proposal Budget</span>
-                     <span className="text-sm font-black text-white uppercase tracking-tighter">₹{project.accepted_proposal?.proposed_budget}</span>
+                     <span className="text-[8px] text-gray-600 uppercase font-black tracking-widest mb-1">Proposed Budget</span>
+                     <span className="text-sm font-black text-white uppercase tracking-tighter">₹{project?.accepted_proposal?.proposed_budget}</span>
                    </div>
                    <div className="px-6 py-3 rounded-2xl glass border-white/5 flex flex-col">
                      <span className="text-[8px] text-gray-600 uppercase font-black tracking-widest mb-1">Timeline</span>
-                     <span className="text-sm font-black text-white uppercase tracking-tighter">{project.accepted_proposal?.estimated_days} Days</span>
+                     <span className="text-sm font-black text-white uppercase tracking-tighter">{project?.accepted_proposal?.estimated_days} Days</span>
                    </div>
                 </div>
               </div>
@@ -286,37 +313,37 @@ export default function ProjectWorkspacePage() {
             {/* Action Center */}
             <div className="glass p-8 rounded-[40px] border-neon-purple/20 bg-gradient-to-br from-neon-purple/5 to-transparent">
               <h3 className="text-[10px] font-black text-white uppercase tracking-widest mb-8 flex items-center gap-2">
-                <ShieldCheck size={14} className="text-neon-purple" /> Command Center
+                <ShieldCheck size={14} className="text-neon-purple" /> Project Actions
               </h3>
 
               <div className="space-y-3">
                 {isCreator && (
                   <>
-                    {project.current_stage === 'kickoff' && (
+                    {project?.current_stage === 'kickoff' && (
                       <button 
                         onClick={() => updateWorkspace({ current_stage: 'production', progress: 40, status: 'in_progress' })}
                         disabled={updating}
                         className="w-full py-4 rounded-2xl bg-white text-black text-[10px] font-black uppercase tracking-widest hover:bg-neon-purple hover:text-white transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                       >
-                        {updating ? <Loader2 size={14} className="animate-spin" /> : <>Move to Production <ChevronRight size={14} /></>}
+                        {updating ? <Loader2 size={14} className="animate-spin" /> : <>Start Work <ChevronRight size={14} /></>}
                       </button>
                     )}
-                    {(project.current_stage === 'production' || project.current_stage === 'kickoff') && (
+                    {(project?.current_stage === 'production' || project?.current_stage === 'kickoff') && (
                       <button 
                         onClick={() => updateWorkspace({ current_stage: 'review', progress: 70, status: 'in_progress' })}
                         disabled={updating}
                         className="w-full py-4 rounded-2xl glass border-white/10 text-white text-[10px] font-black uppercase tracking-widest hover:border-neon-purple transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                       >
-                        {updating ? <Loader2 size={14} className="animate-spin" /> : <>Move to Review <ChevronRight size={14} /></>}
+                        {updating ? <Loader2 size={14} className="animate-spin" /> : <>Send for Review <ChevronRight size={14} /></>}
                       </button>
                     )}
-                    {project.status !== 'delivered' && project.status !== 'completed' && (
+                    {project?.status !== 'delivered' && project?.status !== 'completed' && (
                       <button 
                         onClick={() => updateWorkspace({ current_stage: 'delivery', progress: 90, status: 'delivered' })}
                         disabled={updating}
                         className="w-full py-4 rounded-2xl bg-neon-blue text-white text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-[0_0_20px_rgba(59,130,246,0.3)]"
                       >
-                        {updating ? <Loader2 size={14} className="animate-spin" /> : <>Mark Delivered <CheckCircle2 size={14} /></>}
+                        {updating ? <Loader2 size={14} className="animate-spin" /> : <>Mark as Delivered <CheckCircle2 size={14} /></>}
                       </button>
                     )}
                     <Link href={`/chat`} className="block">
@@ -329,16 +356,16 @@ export default function ProjectWorkspacePage() {
 
                 {isClient && (
                   <>
-                    {project.status === 'delivered' && (
+                    {project?.status === 'delivered' && (
                       <button 
                         onClick={() => updateWorkspace({ current_stage: 'completed', progress: 100, status: 'completed' })}
                         disabled={updating}
                         className="w-full py-4 rounded-2xl bg-green-500 text-white text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-[0_0_20px_rgba(34,197,94,0.3)]"
                       >
-                        {updating ? <Loader2 size={14} className="animate-spin" /> : <>Mark Completed <CheckCircle2 size={14} /></>}
+                        {updating ? <Loader2 size={14} className="animate-spin" /> : <>Mark as Completed <CheckCircle2 size={14} /></>}
                       </button>
                     )}
-                    {project.status === 'delivered' && (
+                    {project?.status === 'delivered' && (
                       <button 
                         onClick={() => updateWorkspace({ current_stage: 'review', progress: 70, status: 'in_progress' })}
                         disabled={updating}
@@ -357,9 +384,9 @@ export default function ProjectWorkspacePage() {
               </div>
             </div>
 
-            {/* Stakeholder Info */}
+            {/* Project Team */}
             <div className="glass p-8 rounded-[40px] border-white/5">
-               <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-6 italic">Personnel Identified</h3>
+               <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-6 italic">Project Team</h3>
                
                <div className="space-y-8">
                  <div className="flex items-center gap-4">
@@ -367,9 +394,9 @@ export default function ProjectWorkspacePage() {
                       <User size={20} />
                     </div>
                     <div>
-                       <span className="text-[8px] text-gray-600 uppercase font-black tracking-widest block mb-1">Lead Visionary</span>
-                       <p className="text-xs font-black text-white uppercase tracking-tighter">{project.client?.full_name}</p>
-                       <p className="text-[9px] text-gray-500 font-bold">{project.client?.email}</p>
+                       <span className="text-[8px] text-gray-600 uppercase font-black tracking-widest block mb-1">Client</span>
+                       <p className="text-xs font-black text-white uppercase tracking-tighter">{project?.client?.full_name}</p>
+                       <p className="text-[9px] text-gray-500 font-bold">{project?.client?.email}</p>
                     </div>
                  </div>
 
@@ -378,9 +405,9 @@ export default function ProjectWorkspacePage() {
                       <Zap size={20} />
                     </div>
                     <div>
-                       <span className="text-[8px] text-gray-600 uppercase font-black tracking-widest block mb-1">Assigned Node</span>
-                       <p className="text-xs font-black text-white uppercase tracking-tighter">{project.assigned_creator?.full_name}</p>
-                       <p className="text-[9px] text-neon-blue font-bold uppercase tracking-widest">{project.assigned_creator?.specialization || 'Master'}</p>
+                       <span className="text-[8px] text-gray-600 uppercase font-black tracking-widest block mb-1">Creator</span>
+                       <p className="text-xs font-black text-white uppercase tracking-tighter">{project?.assigned_creator?.full_name}</p>
+                       <p className="text-[9px] text-neon-blue font-bold uppercase tracking-widest">{project?.assigned_creator?.specialization || 'Master'}</p>
                     </div>
                  </div>
                </div>

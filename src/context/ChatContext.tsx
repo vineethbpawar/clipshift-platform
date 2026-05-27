@@ -59,12 +59,22 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     try {
+      // Restore Session
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        const { getStoredSession } = await import("@/lib/supabase");
+        const stored = getStoredSession();
+        if (stored?.access_token) {
+          await supabase.auth.setSession({ access_token: stored.access_token, refresh_token: stored.refresh_token });
+        }
+      }
+
       const { data, error } = await supabase
         .from('conversations')
         .select(`
           *,
-          client:client_id (full_name, avatar_url),
-          creator:creator_id (full_name, avatar_url)
+          client:profiles!conversations_client_id_fkey (full_name, avatar_url),
+          creator:profiles!conversations_creator_id_fkey (full_name, avatar_url)
         `)
         .or(`client_id.eq.${user.id},creator_id.eq.${user.id}`)
         .order('last_message_at', { ascending: false });
@@ -104,14 +114,27 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
   }, [user]);
 
   const fetchMessages = React.useCallback(async (convId: string) => {
-    const { data, error } = await supabase
-      .from('messages')
-      .select('*')
-      .eq('conversation_id', convId)
-      .order('created_at', { ascending: true });
+    try {
+      console.log("FETCH MESSAGES START", convId);
+      
+      const { data: messages, error } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('conversation_id', convId)
+        .order('created_at', { ascending: true });
 
-    if (!error && data) {
-      setActiveChatMessages(data);
+      console.log("CHAT MESSAGES RESULT", { messages, error });
+
+      if (error) {
+        console.error("CHAT ERROR", error);
+        throw error;
+      }
+      
+      if (messages) {
+        setActiveChatMessages(messages);
+      }
+    } catch (err) {
+      console.error("FAILED TO FETCH MESSAGES:", err);
     }
   }, []);
 

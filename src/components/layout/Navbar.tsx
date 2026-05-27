@@ -93,13 +93,13 @@ export const Navbar = () => {
                       {user.name}
                     </span>
                     <span className="text-[8px] text-neon-blue font-bold uppercase tracking-widest">
-                      {user.role} Node
+                      {user.role}
                     </span>
                   </div>
                   <button 
                     onClick={() => signOut()} 
                     className="p-2 glass rounded-lg text-gray-500 hover:text-red-500 transition-colors"
-                    title="Disconnect Node"
+                    title="Logout"
                   >
                     <LogOut size={18} />
                   </button>
@@ -113,7 +113,7 @@ export const Navbar = () => {
                   </Link>
                   <Link href="/auth/signup">
                     <NeonButton variant="purple" size="sm">
-                      Join Collective
+                      Get Started
                     </NeonButton>
                   </Link>
                 </>
@@ -124,7 +124,7 @@ export const Navbar = () => {
           <div className="md:hidden flex items-center gap-4">
             {!loading && user && (
               <div className="text-[8px] font-black text-neon-purple uppercase tracking-widest px-3 py-1 border border-neon-purple/20 rounded-full">
-                Active Node
+                Online
               </div>
             )}
             <button
@@ -189,9 +189,9 @@ export const Navbar = () => {
                 ) : user ? (
                   <div className="flex flex-col gap-3">
                     <div className="text-center p-2">
-                      <div className="text-[8px] text-gray-500 uppercase font-black tracking-widest mb-1">Identified As</div>
+                      <div className="text-[8px] text-gray-500 uppercase font-black tracking-widest mb-1">User</div>
                       <div className="text-xs font-bold text-white">{user.name}</div>
-                      <div className="text-[8px] text-neon-blue font-black uppercase tracking-widest mt-1">{user.role} Node</div>
+                      <div className="text-[8px] text-neon-blue font-black uppercase tracking-widest mt-1">{user.role}</div>
                     </div>
                     <button 
                       onClick={() => {
@@ -200,19 +200,19 @@ export const Navbar = () => {
                       }}
                       className="w-full py-4 rounded-2xl glass border-red-500/20 text-red-500 text-[10px] font-black uppercase tracking-widest hover:bg-red-500/10"
                     >
-                      Disconnect Node
+                      Logout
                     </button>
                   </div>
                 ) : (
                   <>
                     <Link href="/auth/login" onClick={() => setIsOpen(false)}>
                       <button className="w-full text-gray-300 hover:text-white text-[10px] font-black uppercase tracking-widest py-4 glass rounded-2xl border-white/5">
-                        Access Node
+                        Login
                       </button>
                     </Link>
                     <Link href="/auth/signup" onClick={() => setIsOpen(false)}>
                       <NeonButton variant="purple" className="w-full py-4 text-[10px]">
-                        Join the Collective
+                        Join ClipShift
                       </NeonButton>
                     </Link>
                   </>

@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { PageWrapper } from "@/components/layout/PageWrapper";
 import { supabase, getStoredSession } from "@/lib/supabase";
 import { useParams, useRouter } from "next/navigation";
-import { Loader2, ArrowLeft, X } from "lucide-react";
+import { Loader2, ArrowLeft, X, Paperclip, ExternalLink } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "react-hot-toast";
 import { sanitizeDescription } from "@/lib/sanitizer";
@@ -67,7 +67,7 @@ export default function ProjectDetailPage() {
         if (createError) throw createError;
         console.log("CREATED CONVERSATION", newConv);
         
-        // 3. Optional: Send initial system message or placeholder
+        // 3. Send initial message
         await supabase.from('messages').insert({
           conversation_id: newConv.id,
           sender_id: user.id,
@@ -103,17 +103,11 @@ export default function ProjectDetailPage() {
       const projectId = params.id as string;
       if (!projectId) return;
 
-      console.log("PROJECT DETAIL PARAM ID:", projectId);
-      console.log("CURRENT USER:", user?.id);
-      console.log("CURRENT ROLE:", user?.role);
-
       const { data: projData, error: projErr } = await supabase
         .from('projects')
         .select('*')
         .eq('id', projectId)
         .maybeSingle();
-
-      console.log("PROJECT DETAIL QUERY RESULT:", { data: projData, error: projErr });
 
       if (projErr) {
         console.error("Supabase error fetching project:", projErr);
@@ -123,20 +117,17 @@ export default function ProjectDetailPage() {
       }
 
       if (!projData) {
-        console.error("Project not found or blocked by database policy.");
-        setProject({ error: "Project not found or blocked by database policy." });
+        setProject({ error: "Project not found." });
         setLoading(false);
         return;
       }
 
-      // Access Check in JS
       const role = user?.role;
       const isAssignedCreator = projData.assigned_creator_id === user?.id;
       const isOwner = projData.client_id === user?.id;
       const isAdmin = role === "admin";
 
       if (projData.status !== "open" && !isAssignedCreator && !isOwner && !isAdmin) {
-        console.warn("Access denied for user", user?.id, "to project", projectId);
         setProject({ error: "This project is no longer accepting proposals." });
         setLoading(false);
         return;
@@ -144,7 +135,6 @@ export default function ProjectDetailPage() {
 
       setProject(projData);
 
-      // Fetch unlock status if creator
       if (user?.role === 'creator') {
         const { data: unlockData } = await supabase
           .from('project_unlocks')
@@ -176,17 +166,7 @@ export default function ProjectDetailPage() {
 
     setSubmitting(true);
 
-    const payload = {
-      project_id: project.id,
-      freelancer_id: user.id,
-      unlock_fee: 99,
-      payment_status: "paid",
-    };
-
-    console.log("PROJECT UNLOCK PAYLOAD", payload);
-
     try {
-      // 1. Check if already unlocked
       const { data: existingUnlock } = await supabase
         .from('project_unlocks')
         .select('*')
@@ -201,35 +181,31 @@ export default function ProjectDetailPage() {
         return;
       }
 
-      // 2. Load Razorpay Script
       const res = await loadRazorpayScript();
       if (!res) throw new Error("Razorpay SDK failed to load.");
 
-      // 3. Create Order
       const orderRes = await fetch("/api/razorpay/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           amount: 99,
-          actionType: 'boost_project_7_days', // Using a valid action type from the API
+          actionType: 'boost_project_7_days',
           payload: { project_id: project.id }
         })
       });
       const orderData = await orderRes.json();
       if (orderData.error) throw new Error(orderData.error);
 
-      // 4. Open Razorpay Checkout
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
         amount: orderData.amount,
         currency: orderData.currency,
-        name: "ClipShift Collective",
+        name: "ClipShift",
         description: `Unlock contact for project: ${project.title}`,
         order_id: orderData.order_id,
         handler: async (response: any) => {
           setSubmitting(true);
           try {
-            // 5. Verify & Record Unlock via Server
             const verifyRes = await fetch("/api/razorpay/verify-payment", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -275,20 +251,16 @@ export default function ProjectDetailPage() {
 
   const handleProposalSubmit = async () => {
     if (!user || !project) return;
-    
-    // 1. Validation
     if (user.role !== "creator") {
       toast.error("Unauthorized. Only creators can submit proposals.");
       return;
     }
-
     if (project.status !== "open") {
       toast.error("This project is no longer accepting proposals.");
       return;
     }
 
     const { coverLetter, budget, days } = proposalData;
-    
     if (!coverLetter.trim()) {
       toast.error("Please provide a cover letter.");
       return;
@@ -298,34 +270,24 @@ export default function ProjectDetailPage() {
     const estimatedDays = Number(days);
 
     if (isNaN(proposedBudget) || proposedBudget <= 0) {
-      toast.error("Please enter a valid budget greater than 0.");
-      return;
-    }
-
-    if (isNaN(estimatedDays) || estimatedDays <= 0) {
-      toast.error("Please enter valid delivery days greater than 0.");
+      toast.error("Please enter a valid budget.");
       return;
     }
 
     setSubmitting(true);
 
     try {
-      // 2. Force Session Restoration
       const { data: sessionData } = await supabase.auth.getSession();
       let activeSession = sessionData.session;
 
       if (!activeSession) {
         const storedSession = getStoredSession();
-        if (storedSession?.access_token && storedSession?.refresh_token) {
+        if (storedSession?.access_token) {
           const { data, error } = await supabase.auth.setSession({
             access_token: storedSession.access_token,
             refresh_token: storedSession.refresh_token,
           });
-
-          if (error) {
-            console.error("SUPABASE SESSION RESTORE ERROR", error);
-            throw error;
-          }
+          if (error) throw error;
           activeSession = data.session;
         }
       }
@@ -340,22 +302,11 @@ export default function ProjectDetailPage() {
         project_id: project.id,
         freelancer_id: activeSession.user.id,
         cover_letter: coverLetter.trim(),
-        proposed_budget: Number(proposedBudget),
-        estimated_days: Number(estimatedDays),
+        proposed_budget: proposedBudget,
+        estimated_days: estimatedDays,
         status: "pending"
       };
 
-      console.log("PROPOSAL ACTIVE SESSION", {
-        hasSession: !!activeSession,
-        sessionUserId: activeSession?.user?.id,
-        payloadFreelancerId: payload.freelancer_id
-      });
-
-      console.log("SUBMIT PROPOSAL USER", user);
-      console.log("SUBMIT PROPOSAL ROLE", user.role);
-      console.log("FINAL PROPOSAL PAYLOAD", payload);
-
-      // 3. Check for duplicate proposal using activeSession ID
       const { data: existingProposal } = await supabase
         .from('proposals')
         .select('id')
@@ -369,27 +320,17 @@ export default function ProjectDetailPage() {
         return;
       }
 
-      const { data, error } = await supabase
-        .from('proposals')
-        .insert(payload)
-        .select()
-        .single();
+      const { data, error } = await supabase.from('proposals').insert(payload).select().single();
 
       if (error) {
-        console.error("SUBMIT PROPOSAL ERROR", error);
-        if (error.code === "23505") {
-          toast.error("You already submitted this proposal.");
-        } else {
-          toast.error(error.message || "Failed to submit proposal.");
-        }
+        toast.error(error.message || "Failed to submit proposal.");
       } else {
-        console.log("PROPOSAL SUBMITTED:", data);
         toast.success("Proposal submitted successfully!");
         setProposalData({ coverLetter: "", budget: "", days: "" });
         setShowProposalModal(false);
       }
     } catch (err: any) {
-      console.error("SUBMIT PROPOSAL UNEXPECTED ERROR", err);
+      console.error("SUBMIT PROPOSAL ERROR", err);
       toast.error(err.message || "An unexpected error occurred.");
     } finally {
       setSubmitting(false);
@@ -400,8 +341,8 @@ export default function ProjectDetailPage() {
   if (!project || project.error) return (
     <div className="text-center pt-32 px-4">
       <div className="glass p-8 rounded-3xl border-red-500/20 max-w-md mx-auto">
-        <h2 className="text-2xl font-black text-white uppercase mb-4">Access Issue</h2>
-        <p className="text-red-400 text-sm mb-8">{project?.error || "Project not found."}</p>
+        <h2 className="text-2xl font-black text-white uppercase mb-4">Notice</h2>
+        <p className="text-gray-400 text-sm mb-8">{project?.error || "Project not found."}</p>
         <button onClick={() => router.back()} className="px-8 py-3 bg-white/5 border border-white/10 text-white rounded-full font-black text-xs uppercase tracking-widest hover:bg-white/10">
           Go Back
         </button>
@@ -410,7 +351,6 @@ export default function ProjectDetailPage() {
   );
 
   const isOwner = user?.id === project.client_id && user?.role === "client";
-  console.log("Debug Auth:", { userId: user?.id, client: project.client_id, role: user?.role, isOwner });
 
   return (
     <PageWrapper>
@@ -426,25 +366,44 @@ export default function ProjectDetailPage() {
               {project.category}
             </span>
           </div>
+
+          {project.file_url && (
+            <div className="mb-8">
+              {project.file_type?.startsWith('image') ? (
+                <div className="relative aspect-video rounded-3xl overflow-hidden glass border border-white/5">
+                  <img src={project.file_url} className="w-full h-full object-cover" alt="" />
+                </div>
+              ) : (
+                <a href={project.file_url} target="_blank" className="flex items-center gap-4 p-6 glass rounded-2xl border-white/5 hover:border-neon-purple/30 transition-all max-w-md">
+                  <div className="w-12 h-12 rounded-xl bg-neon-purple/10 flex items-center justify-center text-neon-purple">
+                     <Paperclip size={24} />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-white font-black uppercase tracking-widest">View Project Attachment</p>
+                    <p className="text-[8px] text-gray-500 uppercase font-bold">{project.file_type || 'Document'}</p>
+                  </div>
+                </a>
+              )}
+            </div>
+          )}
           
-          <p className="text-sm sm:text-gray-400 mb-8 leading-relaxed">
+          <p className="text-sm sm:text-gray-400 mb-8 leading-relaxed uppercase tracking-wider font-medium opacity-60">
             {isUnlocked ? project.description : sanitizeDescription(project.description)}
           </p>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 mb-10">
             <div className="glass p-4 rounded-2xl border-white/5">
               <div className="text-[9px] text-gray-500 uppercase font-black tracking-widest mb-1">Budget</div>
-              <div className="text-xs sm:text-sm font-bold text-white">{project.budget}</div>
+              <div className="text-xs sm:text-sm font-bold text-white">₹{project.budget}</div>
             </div>
             <div className="glass p-4 rounded-2xl border-white/5">
-              <div className="text-[9px] text-gray-500 uppercase font-black tracking-widest mb-1">Service Type</div>
+              <div className="text-[9px] text-gray-500 uppercase font-black tracking-widest mb-1">Service</div>
               <div className="text-xs sm:text-sm font-bold text-white uppercase">{project.service_type?.replace('_', ' ')}</div>
             </div>
             <div className="glass p-4 rounded-2xl border-white/5">
               <div className="text-[9px] text-gray-500 uppercase font-black tracking-widest mb-1">Location</div>
-              <div className="text-xs sm:text-sm font-bold text-white uppercase">
-                {project.location_mode === 'anywhere_india' ? "Anywhere (India)" : (project.location || project.locations?.[0]?.name || "Not Set")}
-                {project.shoot_radius_km && ` (${project.shoot_radius_km}km)`}
+              <div className="text-xs sm:text-sm font-bold text-white uppercase truncate">
+                {project.location_mode === 'anywhere_india' ? "Remote" : (project.location || "Flexible")}
               </div>
             </div>
             <div className="glass p-4 rounded-2xl border-white/5">
@@ -481,9 +440,6 @@ export default function ProjectDetailPage() {
                         {messaging ? <Loader2 size={16} className="animate-spin" /> : "Message Client"}
                       </button>
                     )}
-                    <button className="w-full sm:w-auto px-8 py-4 bg-white/5 border border-white/10 text-white rounded-full font-black text-xs uppercase tracking-widest hover:bg-white/10 active:scale-95 transition-all">
-                      Save Project
-                    </button>
                   </>
                 ) : project.assigned_creator_id === user?.id ? (
                   <button 
@@ -495,7 +451,7 @@ export default function ProjectDetailPage() {
                 ) : (
                   <div className="w-full p-4 glass border-white/5 rounded-2xl text-center">
                     <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest">
-                      This project has already been assigned to another creator.
+                      Assigned to another creator.
                     </p>
                   </div>
                 )}
@@ -507,7 +463,7 @@ export default function ProjectDetailPage() {
                   <>
                     <button onClick={() => router.push(`/projects/${project.id}/edit`)} className="w-full sm:w-auto px-8 py-4 bg-white text-black rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all">Edit Project</button>
                     <button onClick={() => router.push(`/dashboard/client/proposals`)} className="w-full sm:w-auto px-8 py-4 bg-neon-purple/10 text-neon-purple border border-neon-purple/20 rounded-full font-black text-xs uppercase tracking-widest active:scale-95 transition-all">View Proposals</button>
-                    <button onClick={handleDelete} className="w-full sm:w-auto px-8 py-4 bg-red-500/10 text-red-500 border border-red-500/20 rounded-full font-black text-xs uppercase tracking-widest hover:bg-red-500/20 active:scale-95 transition-all">Delete Project</button>
+                    <button onClick={handleDelete} className="w-full sm:w-auto px-8 py-4 bg-red-500/10 text-red-500 border border-red-500/20 rounded-full font-black text-xs uppercase tracking-widest hover:bg-red-500/20 active:scale-95 transition-all">Delete</button>
                   </>
                 ) : (
                   <button 

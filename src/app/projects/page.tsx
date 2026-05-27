@@ -15,26 +15,36 @@ export default function ProjectsPage() {
   const { user, role } = useAuth();
   const router = useRouter();
 
-  useEffect(() => {
-    // Creator can stay on projects page now
-  }, [user, router]);
-
   const [projects, setProjects] = useState<any[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchProjects = async () => {
-      if (!user) return;
-      setLoading(true);
       try {
-        let query = supabase.from('projects').select('*, proposals(*)').eq('status', 'open');
+        setLoading(true);
+        console.log("OPEN PROJECTS FETCH START");
 
-        if (user.role === 'client') {
-          query = query.eq('client_id', user.id);
+        // 1. Restore Session
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (!sessionData.session) {
+          const { getStoredSession } = await import("@/lib/supabase");
+          const stored = getStoredSession();
+          if (stored?.access_token) {
+            await supabase.auth.setSession({ access_token: stored.access_token, refresh_token: stored.refresh_token });
+          }
+        }
+
+        // 2. Fetch projects directly without joins first
+        let query = supabase.from('projects').select('*').eq('status', 'open').order('created_at', { ascending: false });
+
+        if (user?.role === 'client') {
+          query = supabase.from('projects').select('*').eq('client_id', user.id).order('created_at', { ascending: false });
         }
 
         const { data, error } = await query;
+        console.log("OPEN PROJECTS FETCH RESULT", { projects: data, error });
+
         if (error) throw error;
 
         if (data) {
@@ -42,13 +52,14 @@ export default function ProjectsPage() {
           if (data.length > 0) setSelectedProjectId(data[0].id);
         }
       } catch (err) {
-        console.error("Projects fetch failed:", err);
+        console.error("PROJECTS FETCH ERROR", err);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchProjects();
+    if (user) fetchProjects();
+    else setLoading(false);
   }, [user]);
 
   const activeProject = projects.find(p => p.id === selectedProjectId);
@@ -63,10 +74,10 @@ export default function ProjectsPage() {
               <div className="p-2 bg-neon-purple/10 rounded-lg text-neon-purple">
                 <Layers size={18} />
               </div>
-              <h1 className="text-sm font-black text-white uppercase tracking-[0.2em]">Project Command Center</h1>
+              <h1 className="text-sm font-black text-white uppercase tracking-[0.2em]">Projects</h1>
             </div>
             <h2 className="text-4xl md:text-5xl font-black text-white uppercase tracking-tighter leading-none">
-              Manage <span className="text-neon-purple">Active Stream</span>
+              Manage <span className="text-neon-purple">Active Projects</span>
             </h2>
           </div>
 
@@ -83,27 +94,28 @@ export default function ProjectsPage() {
         {loading ? (
           <div className="py-20 flex flex-col items-center gap-4">
             <Loader2 className="animate-spin text-neon-purple" size={40} />
-            <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em]">Syncing Production Nodes...</span>
+            <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em]">Loading projects...</span>
           </div>
         ) : projects.length === 0 ? (
           <div className="py-32 flex flex-col items-center text-center glass rounded-[40px] border-white/5">
             <div className="w-20 h-20 bg-white/5 rounded-3xl flex items-center justify-center mb-8">
               <Inbox size={40} className="text-gray-600" />
             </div>
-            <h2 className="text-2xl font-black text-white uppercase tracking-tight mb-2">No active projects</h2>
-            <p className="text-gray-500 mb-8 max-w-md mx-auto">Your production pipeline is currently clear. Start a new project to connect with top cinematic talent.</p>
-            <Link href="/post-project">
-              <button className="px-12 py-4 rounded-full bg-neon-purple text-white font-black uppercase tracking-widest shadow-xl hover:scale-105 transition-all">
-                Initiate Project
-              </button>
-            </Link>
+            <h2 className="text-2xl font-black text-white uppercase tracking-tight mb-2">No open projects yet</h2>
+            <p className="text-gray-500 mb-8 max-w-md mx-auto">New client projects will appear here.</p>
+            <button 
+              onClick={() => window.location.reload()}
+              className="px-12 py-4 rounded-full bg-neon-purple text-white font-black uppercase tracking-widest shadow-xl hover:scale-105 transition-all"
+            >
+              Refresh
+            </button>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
             {/* Projects List */}
             <div className="lg:col-span-2 space-y-8">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Ongoing Productions ({projects.length})</h3>
+                <h3 className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Active Projects ({projects.length})</h3>
                 <div className="flex items-center gap-2 text-[10px] text-neon-blue font-bold uppercase tracking-widest cursor-pointer hover:underline">
                   View Archive
                 </div>

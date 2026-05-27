@@ -5,183 +5,135 @@ import { PageWrapper } from "@/components/layout/PageWrapper";
 import { 
   Zap, CheckCircle2, ShieldCheck, Sparkles, 
   TrendingUp, Award, Users, BarChart3, 
-  Gem, Rocket, Briefcase, Crown, Loader2
+  ChevronRight, Loader2, Info, ArrowRight,
+  Shield, Rocket, Target, Globe
 } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 import { loadRazorpayScript } from "@/lib/razorpay";
 import { toast } from "react-hot-toast";
 import { useRouter } from "next/navigation";
 
 export default function PricingPage() {
-  const { user } = useAuth();
+  const { user, activePlan } = useAuth();
   const router = useRouter();
-  const [tab, setTab] = useState<"creator" | "client">("creator");
   const [upgrading, setUpgrading] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (user?.role) {
-      console.log("PRICING ROLE:", user.role);
-      if (user.role === "client") setTab("client");
-      if (user.role === "creator") setTab("creator");
-    }
-  }, [user?.role]);
-
-  console.log("VISIBLE PRICING TAB:", tab);
 
   const creatorPlans = [
     {
       id: "free",
-      name: "Free Creator",
-      price: "₹0",
-      amount: 0,
-      icon: Gem,
-      color: "gray",
+      name: "Basic",
+      price: "0",
+      description: "Start your journey in the collective.",
       features: [
-        "Basic Profile Node",
-        "Limited Portfolio Items",
-        "Standard Ranking Score",
-        "Community Access"
-      ]
+        "Basic Profile",
+        "Community Access",
+        "Public Portfolio",
+        "Standard Support"
+      ],
+      color: "gray",
+      icon: Target
     },
     {
       id: "creator_pro",
-      name: "Creator Pro",
-      price: "₹99",
-      amount: 99,
-      period: "/mo",
-      icon: Rocket,
-      color: "blue",
-      popular: true,
+      name: "Pro",
+      price: "499",
+      description: "Level up your professional presence.",
       features: [
-        "Boosted Ranking Score (+5)",
-        "Featured Node Badge",
-        "10+ Portfolio Uploads",
-        "Basic Node Analytics",
-        "Priority Lead Discovery"
-      ]
+        "Featured Creator Badge",
+        "Basic Analytics",
+        "Priority in Searches",
+        "Advanced Portfolio Tools",
+        "Priority Support"
+      ],
+      color: "purple",
+      icon: Rocket,
+      recommended: true
     },
     {
       id: "creator_premium",
-      name: "Creator Premium",
-      price: "₹249",
-      amount: 249,
-      period: "/mo",
-      icon: Crown,
-      color: "purple",
+      name: "Premium",
+      price: "999",
+      description: "Maximum visibility and AI performance.",
       features: [
-        "Max Ranking Boost (+10)",
-        "Premium verified Badge",
-        "Unlimited Portfolio Node",
-        "Advanced Neural Analytics",
-        "0% Commission on Assets",
-        "Dedicated Node Support"
-      ]
+        "Verified Creator Badge",
+        "Advanced AI Insights",
+        "Unlimited Media Hosting",
+        "Direct Client Matching",
+        "Dedicated Account Manager"
+      ],
+      color: "blue",
+      icon: Sparkles
     }
   ];
 
-  const clientPlans = [
+  const clientActions = [
     {
       id: "unlock_creator_chat",
-      name: "Unlock Creator Chat",
-      price: "₹29 - ₹99",
-      amount: 49,
-      icon: Users,
-      color: "blue",
-      isAction: true,
+      name: "Unlock Chat",
+      price: "49",
+      description: "Direct access to one elite creator.",
       features: [
-        "Permanent node connection",
-        "Direct cinematic messaging",
-        "Secure signal encryption",
-        "One-time authorization"
-      ]
-    },
-    {
-      id: "boost_project",
-      name: "Project Boost",
-      price: "₹49 - ₹99",
-      amount: 49,
-      icon: Sparkles,
-      color: "blue",
-      isAction: true,
-      features: [
-        "Top of discovery list",
-        "3 Days: ₹49 | 7 Days: ₹99",
-        "High-priority exposure",
-        "Faster talent matching"
-      ]
-    },
-    {
-      id: "project_extras",
-      name: "Mission Upgrades",
-      price: "₹99 - ₹199",
-      amount: 99,
-      icon: Award,
+        "Direct Messaging",
+        "Permanent Connection",
+        "Proposal Access",
+        "Project Collaboration"
+      ],
       color: "purple",
-      isAction: true,
+      icon: Zap,
+      isAction: true
+    },
+    {
+      id: "boost_project_7_days",
+      name: "Boost Project",
+      price: "99",
+      description: "Maximize project visibility.",
       features: [
-        "Urgent Mission Badge: ₹99",
-        "Premium Hiring Support: ₹199",
-        "Professional quality audit",
-        "Dedicated network assistance"
-      ]
+        "Top of Feed for 7 Days",
+        "Priority Notifications",
+        "Verified Project Badge",
+        "Smart Matching"
+      ],
+      color: "blue",
+      icon: TrendingUp,
+      isAction: true
     }
   ];
 
   const handleUpgrade = async (planId: string, amount: number, isAction: boolean = false) => {
     if (!user) {
-      router.push('/auth/login');
+      router.push("/auth/login");
       return;
     }
 
-    if (planId === 'free') return;
-
-    // Role Validation
-    if (user.role === 'client' && planId.startsWith('creator_')) {
-      toast.error("Client accounts use pay-per-use actions.");
+    if (planId === activePlan && !isAction) {
+      toast.error("You are already on this plan.");
       return;
-    }
-    if (user.role === 'creator' && (planId === 'unlock_creator_chat' || planId === 'boost_project' || planId === 'project_extras')) {
-      toast.error("Creator accounts only purchase monthly plans.");
-      return;
-    }
-
-    if (isAction && (planId === 'boost_project' || planId === 'project_extras')) {
-       toast("Access this from your Project Dashboard to select a specific mission.", { icon: 'ℹ️' });
-       router.push('/dashboard/client');
-       return;
-    }
-
-    if (isAction && planId === 'unlock_creator_chat') {
-       router.push('/marketplace');
-       return;
     }
 
     setUpgrading(planId);
-    
+
     try {
+      // 1. Load Razorpay
       const res = await loadRazorpayScript();
       if (!res) throw new Error("Razorpay SDK failed to load.");
 
-      const payload = isAction ? { actionType: planId, amount } : { planType: planId, amount };
-      
+      // 2. Create Order
       const orderRes = await fetch("/api/razorpay/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({ amount, actionType: planId })
       });
       const orderData = await orderRes.json();
-      
-      if (!orderRes.ok) {
-        throw new Error(orderData.error || "Failed to create Razorpay order");
-      }
+      if (orderData.error) throw new Error(orderData.error);
 
+      // 3. Open Checkout
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
         amount: orderData.amount,
         currency: orderData.currency,
-        name: "ClipShift Network",
-        description: `Purchase: ${planId.replace(/_/g, ' ')}`,
+        name: "ClipShift",
+        description: `Purchase for ${planId}`,
         order_id: orderData.order_id,
         handler: async (response: any) => {
            try {
@@ -217,120 +169,84 @@ export default function PricingPage() {
         modal: { ondismiss: () => setUpgrading(null) }
       };
 
-      const paymentObject = new (window as any).Razorpay(options);
-      paymentObject.open();
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
     } catch (err: any) {
-      console.error("CREATE ORDER FAILED:", err);
-      toast.error(err.message || "Failed to create Razorpay order");
-    } finally {
+      toast.error(err.message || "Upgrade failed.");
       setUpgrading(null);
     }
   };
 
-  const plans = tab === "creator" ? creatorPlans : clientPlans;
+  const plansToShow = user?.role === 'creator' ? creatorPlans : clientActions;
 
   return (
     <PageWrapper>
-      <div className="min-h-screen pt-32 pb-20 px-4 md:px-8 max-w-7xl mx-auto">
-        <div className="text-center mb-16">
-          <h1 className="text-4xl md:text-6xl font-black text-white uppercase tracking-tighter mb-4">
-            Select Your <span className="text-neon-purple">Protocol</span>
+      <div className="min-h-screen pt-32 pb-20 px-4">
+        <div className="max-w-6xl mx-auto text-center mb-16">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-neon-purple/10 border border-neon-purple/20 text-neon-purple text-[10px] font-black uppercase tracking-widest mb-6"
+          >
+            <Shield size={12} /> Flexible Pricing
+          </motion.div>
+          <h1 className="text-4xl md:text-6xl font-black text-white uppercase tracking-tighter mb-6">
+            Choose Your <span className="text-neon-purple">Plan</span>
           </h1>
-          <p className="text-gray-500 text-lg max-w-2xl mx-auto uppercase tracking-widest text-[10px] font-black">
-            Elevate your cinematic workflow with premium network features
+          <p className="text-gray-500 max-w-2xl mx-auto uppercase tracking-widest text-[10px] font-bold leading-relaxed">
+            {user?.role === 'creator' ? 'Professional tools for editors and videographers.' : 'Direct access and project boosts for high-impact production.'}
           </p>
         </div>
 
-        {/* Role-based Tab Switcher */}
-        {!user?.role ? (
-          <div className="flex justify-center mb-16">
-            <div className="p-1.5 glass rounded-2xl border border-white/5 flex gap-2">
-              <button
-                onClick={() => setTab("creator")}
-                className={`px-8 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
-                  tab === "creator" ? "bg-neon-purple text-white shadow-lg" : "text-gray-500 hover:text-gray-300"
-                }`}
-              >
-                For Creators
-              </button>
-              <button
-                onClick={() => setTab("client")}
-                className={`px-8 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
-                  tab === "client" ? "bg-neon-blue text-white shadow-lg" : "text-gray-500 hover:text-gray-300"
-                }`}
-              >
-                For Clients
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="flex justify-center mb-16">
-            <h2 className="text-xl font-black text-white uppercase tracking-widest">
-              {user.role === 'creator' ? 'Creator Premium Protocols' : 'Client Pay-Per-Use Actions'}
-            </h2>
-          </div>
-        )}
-
-        {/* Plans Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {plans.map((plan, i) => (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+          {plansToShow.map((plan: any, idx) => (
             <motion.div
-              key={plan.name}
+              key={plan.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
-              className={`relative glass p-8 rounded-[40px] border-white/5 flex flex-col group ${
-                (plan as any).popular ? "border-neon-purple/30 bg-neon-purple/[0.02]" : ""
-              }`}
+              transition={{ delay: idx * 0.1 }}
+              className={`glass p-8 rounded-[40px] border border-white/5 relative flex flex-col ${plan.recommended ? "border-neon-purple/30 bg-neon-purple/[0.02]" : ""}`}
             >
-              {(plan as any).popular && (
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1.5 bg-neon-purple rounded-full text-[8px] font-black text-white uppercase tracking-widest shadow-lg">
-                  Most Optimized
+              {plan.recommended && (
+                <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-neon-purple text-white text-[8px] font-black uppercase tracking-widest rounded-full shadow-[0_0_20px_rgba(168,85,247,0.4)]">
+                  Recommended
                 </div>
               )}
-
-              <div className="mb-8">
-                <div className={`w-12 h-12 rounded-2xl mb-6 flex items-center justify-center border ${
-                  plan.color === 'purple' ? "bg-neon-purple/10 border-neon-purple/20 text-neon-purple" :
-                  plan.color === 'blue' ? "bg-neon-blue/10 border-neon-blue/20 text-neon-blue" :
-                  "bg-white/5 border-white/10 text-gray-400"
-                }`}>
-                  <plan.icon size={24} />
-                </div>
-                <h3 className="text-xl font-black text-white uppercase tracking-tight mb-2">{plan.name}</h3>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-black text-white">{plan.price}</span>
-                  {(plan as any).period && <span className="text-xs text-gray-500 font-bold uppercase tracking-widest">{(plan as any).period}</span>}
-                </div>
+              
+              <div className={`w-12 h-12 rounded-2xl mb-8 flex items-center justify-center ${plan.color === 'purple' ? 'bg-neon-purple/10 text-neon-purple' : plan.color === 'blue' ? 'bg-neon-blue/10 text-neon-blue' : 'bg-white/5 text-gray-400'}`}>
+                <plan.icon size={24} />
               </div>
 
+              <h3 className="text-2xl font-black text-white uppercase tracking-tighter mb-2">{plan.name}</h3>
+              <div className="flex items-baseline gap-1 mb-6">
+                <span className="text-3xl font-black text-white">₹{plan.price}</span>
+                <span className="text-gray-500 text-[10px] font-bold uppercase">{plan.isAction ? '/one-time' : '/month'}</span>
+              </div>
+              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-relaxed mb-8">{plan.description}</p>
+
               <div className="space-y-4 mb-10 flex-1">
-                {plan.features.map((feature) => (
-                  <div key={feature} className="flex items-start gap-3">
-                    <CheckCircle2 size={16} className={plan.color === 'purple' ? "text-neon-purple" : "text-neon-blue"} />
-                    <span className="text-[10px] md:text-xs text-gray-400 font-bold uppercase tracking-widest leading-tight">
-                      {feature}
-                    </span>
+                {plan.features.map((feature: string) => (
+                  <div key={feature} className="flex items-center gap-3">
+                    <CheckCircle2 size={14} className="text-neon-purple shrink-0" />
+                    <span className="text-[10px] text-gray-300 font-bold uppercase tracking-widest">{feature}</span>
                   </div>
                 ))}
               </div>
 
-              <button 
-                onClick={() => handleUpgrade(plan.id, plan.amount, (plan as any).isAction)}
-                disabled={upgrading !== null}
-                className={`w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all ${
-                plan.id === 'free' ? "bg-white/5 border border-white/10 text-white hover:bg-white/10 cursor-not-allowed" :
-                plan.color === 'purple' ? "bg-neon-purple text-white shadow-[0_0_20px_rgba(168,85,247,0.3)] hover:scale-105" :
-                "bg-neon-blue text-white shadow-[0_0_20px_rgba(59,130,246,0.3)] hover:scale-105"
-              }`}>
-                {upgrading === plan.id ? <Loader2 className="animate-spin mx-auto" size={16} /> : 
-                 plan.id === 'free' ? "Current Protocol" : 
-                 (plan as any).isAction ? "Initiate Action" : "Upgrade Node"}
+              <button
+                onClick={() => handleUpgrade(plan.id, Number(plan.price), plan.isAction)}
+                disabled={upgrading === plan.id || (!plan.isAction && activePlan === plan.id)}
+                className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all flex items-center justify-center gap-2 ${
+                  plan.id === activePlan && !plan.isAction ? "bg-white/5 text-gray-500 cursor-not-allowed" :
+                  plan.recommended ? "bg-neon-purple text-white shadow-lg hover:scale-105" : "bg-white text-black hover:bg-neon-purple hover:text-white"
+                }`}
+              >
+                {upgrading === plan.id ? <Loader2 className="animate-spin" size={14} /> : 
+                 plan.id === activePlan && !plan.isAction ? "Current Plan" : "Get Started"}
               </button>
             </motion.div>
           ))}
         </div>
-        {/* ... rest of the component (footer info) ... */}
       </div>
     </PageWrapper>
   );

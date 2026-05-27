@@ -18,12 +18,11 @@ export const Hero = () => {
   useEffect(() => {
     const fetchStats = async () => {
       const { count: creatorCount } = await supabase.from('creators').select('*', { count: 'exact', head: true });
-      const { count: profileCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
       
       setStats({
         creators: creatorCount || 0,
-        assets: 0, // Placeholder
-        projects: 0, // Placeholder
+        assets: 0, 
+        projects: 0,
         countries: 1
       });
     };
@@ -46,21 +45,20 @@ export const Hero = () => {
           transition={{ duration: 0.8, ease: "easeOut" }}
         >
           <span className="inline-block px-4 py-1.5 rounded-full glass border-neon-purple/20 text-neon-purple text-[10px] md:text-xs font-bold tracking-widest uppercase mb-6 md:mb-8">
-            The Future of Creator Commerce
+            The Marketplace for Visual Creators
           </span>
           <h1 className="text-4xl sm:text-6xl md:text-8xl font-black tracking-tighter text-white mb-6 md:mb-8 leading-[1] md:leading-[0.9]">
             ELEVATE YOUR <br />
-            <span className="text-gradient">CINEMATIC REIGN</span>
+            <span className="text-gradient">VISUAL QUALITY</span>
           </h1>
           <p className="text-base md:text-xl text-gray-400 max-w-2xl mx-auto mb-8 md:mb-12 leading-relaxed">
-            ClipShift is the premium marketplace where master creators trade cinematic assets, 
-            exclusive VFX, and high-fidelity 3D environments.
+            ClipShift is the premium marketplace where creators collaborate with elite editors and videographers to produce high-impact content.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 md:gap-6">
             <Link href="/marketplace" className="w-full sm:w-auto">
               <NeonButton variant="purple" size="lg" className="group w-full sm:w-auto">
-                Explore Marketplace
+                Find Creators
                 <ArrowRight className="inline-block ml-2 group-hover:translate-x-1 transition-transform" size={20} />
               </NeonButton>
             </Link>
@@ -68,7 +66,7 @@ export const Hero = () => {
               <span className="flex items-center justify-center w-10 h-10 md:w-12 md:h-12 rounded-full border border-white/10 glass-hover">
                 <Play className="w-4 h-4 md:w-5 md:h-5" fill="currentColor" />
               </span>
-              <span className="text-sm md:text-base">Watch Reel</span>
+              <span className="text-sm md:text-base">Watch Demo</span>
             </button>
           </div>
         </motion.div>
@@ -81,10 +79,10 @@ export const Hero = () => {
           className="mt-16 md:mt-24 grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-12 max-w-4xl mx-auto"
         >
           {[
-            { label: "Active Creators", value: stats.creators },
-            { label: "Premium Assets", value: stats.assets },
-            { label: "Active Projects", value: stats.projects },
-            { label: "Global Nodes", value: stats.countries },
+            { label: "Elite Creators", value: stats.creators },
+            { label: "Project Briefs", value: stats.assets },
+            { label: "Active Jobs", value: stats.projects },
+            { label: "Global Users", value: stats.countries },
           ].map((stat, i) => (
             <div key={i} className="text-center">
               <div className="text-2xl md:text-3xl font-black text-white mb-1">

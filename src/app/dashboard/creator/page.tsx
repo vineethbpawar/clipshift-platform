@@ -12,7 +12,8 @@ import {
   Zap,
   ChevronRight,
   Loader2,
-  Layers
+  Layers,
+  Crown
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { CommissionTable } from "@/components/monetization/CommissionTable";
@@ -25,7 +26,6 @@ import { useAuth } from "@/context/AuthContext";
 import { RoleGuard } from "@/components/auth/RoleGuard";
 import { canAccessAdvancedAnalytics } from "@/lib/plans";
 import Link from "next/link";
-import { Crown } from "lucide-react";
 
 // Helper for badge display
 const getPlanBadge = (plan: string) => {
@@ -137,22 +137,22 @@ export default function CreatorDashboard() {
 
   return (
     <RoleGuard allowedRoles={["creator"]}>
-      <DashboardLayout title="Creator Command">
+      <DashboardLayout title="Creator Dashboard">
       {/* Top Section: Stats & Availability */}
       <div className="space-y-6 md:space-y-8 mb-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex items-center gap-4">
              <div className="p-4 glass rounded-2xl border-neon-purple/20 flex flex-col gap-1">
-               <span className="text-[8px] text-gray-500 uppercase font-black tracking-widest">Active Protocol</span>
+               <span className="text-[8px] text-gray-500 uppercase font-black tracking-widest">Active Plan</span>
                <div className="flex items-center gap-2">
                  <Crown size={16} className={activePlan === 'free' ? "text-gray-500" : "text-neon-purple"} />
-                 <span className="text-sm font-black text-white uppercase tracking-tighter">{getPlanBadge(activePlan)} Node</span>
+                 <span className="text-sm font-black text-white uppercase tracking-tighter">{getPlanBadge(activePlan)}</span>
                </div>
              </div>
              {activePlan === 'free' && (
                <Link href="/pricing">
                  <button className="px-6 py-3 rounded-xl bg-neon-purple/10 text-neon-purple border border-neon-purple/20 text-[10px] font-black uppercase tracking-widest hover:bg-neon-purple hover:text-white transition-all">
-                   Upgrade Protocol
+                   Upgrade Plan
                  </button>
                </Link>
              )}
@@ -160,9 +160,9 @@ export default function CreatorDashboard() {
 
           <div className="glass p-4 md:p-6 rounded-3xl border-white/5 flex items-center gap-4 md:gap-6 w-full sm:w-auto">
             <div className="flex-1 sm:flex-initial">
-              <div className="text-[9px] md:text-[10px] text-gray-500 uppercase font-black tracking-widest mb-1 md:mb-2 text-right">Mission Status</div>
+              <div className="text-[9px] md:text-[10px] text-gray-500 uppercase font-black tracking-widest mb-1 md:mb-2 text-right">Work Status</div>
               <div className={`text-[10px] md:text-xs font-black uppercase tracking-widest ${isAvailable ? "text-green-500" : "text-neon-purple"}`}>
-                {isAvailable ? "Available for Discovery" : "In Production Mode"}
+                {isAvailable ? "Available for Projects" : "In Production"}
               </div>
             </div>
             <button 
@@ -179,7 +179,7 @@ export default function CreatorDashboard() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 md:gap-6 w-full">
           <StatCard title="Total Earnings" value={stats.totalEarnings} prefix="₹" icon={DollarSign} color="purple" />
-          <StatCard title="Active Work" value={stats.activeProjects} icon={Zap} color="purple" />
+          <StatCard title="Active Projects" value={stats.activeProjects} icon={Zap} color="purple" />
           <StatCard title="Open Projects" value={stats.openProjects} icon={Layers} color="blue" />
           <StatCard title="Proposals Sent" value={stats.proposalsSent} icon={TrendingUp} color="blue" />
           <StatCard title="Chat Unlocks" value={stats.chatUnlocks} icon={Users} color="green" />
@@ -190,17 +190,17 @@ export default function CreatorDashboard() {
         {/* Revenue Chart */}
         <div className="lg:col-span-2 glass p-4 md:p-8 rounded-[32px] md:rounded-[40px] border-white/5 overflow-hidden">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
-            <h3 className="text-xs md:text-sm font-black text-white uppercase tracking-[0.2em]">Revenue Flow (Real-time)</h3>
+            <h3 className="text-xs md:text-sm font-black text-white uppercase tracking-[0.2em]">Revenue (Real-time)</h3>
             <div className="flex items-center gap-2">
               <TrendingUp size={14} className="text-green-500" />
-              <span className="text-[9px] md:text-[10px] font-black text-green-500 uppercase tracking-widest">Live Node Data</span>
+              <span className="text-[9px] md:text-[10px] font-black text-green-500 uppercase tracking-widest">Live Data</span>
             </div>
           </div>
           <div className="h-[250px] md:h-[300px] w-full flex items-center justify-center">
             {loading ? (
               <Loader2 className="animate-spin text-neon-purple" size={32} />
             ) : stats.dailyData.length === 0 ? (
-              <div className="text-[9px] md:text-[10px] text-gray-600 font-black uppercase tracking-widest italic">No Transactional History Detected</div>
+              <div className="text-[9px] md:text-[10px] text-gray-600 font-black uppercase tracking-widest italic">No Earnings Recorded</div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={stats.dailyData}>
@@ -231,18 +231,18 @@ export default function CreatorDashboard() {
             {stats.activeProjects > 0 ? (
               <div className="space-y-4">
                 <div className="flex items-center justify-between p-4 glass rounded-2xl border-white/5">
-                  <span className="text-[10px] text-white font-bold uppercase tracking-widest">{stats.activeProjects} Active Streams</span>
+                  <span className="text-[10px] text-white font-bold uppercase tracking-widest">{stats.activeProjects} Active Projects</span>
                   <Link href="/dashboard/creator/active-projects">
                     <ChevronRight size={16} className="text-neon-purple" />
                   </Link>
                 </div>
                 <Link href="/dashboard/creator/active-projects" className="block text-center py-2 text-[8px] text-neon-purple font-black uppercase tracking-widest hover:underline">
-                  Enter Workspaces
+                  Manage Projects
                 </Link>
               </div>
             ) : (
               <div className="space-y-4 text-center py-4 md:py-8 opacity-40">
-                <span className="text-[8px] font-black uppercase tracking-widest">No Active Streams</span>
+                <span className="text-[8px] font-black uppercase tracking-widest">No Active Work</span>
               </div>
             )}
           </div>
@@ -250,13 +250,13 @@ export default function CreatorDashboard() {
           <div className="glass p-6 md:p-8 rounded-[32px] md:rounded-[40px] border-neon-blue/20">
             <div className="flex items-center gap-3 mb-4">
               <MapPin size={18} className="text-neon-blue" />
-              <h3 className="text-[10px] font-black text-white uppercase tracking-widest">Base Node</h3>
+              <h3 className="text-[10px] font-black text-white uppercase tracking-widest">Base Location</h3>
             </div>
             <p className="text-[11px] md:text-xs text-gray-400 mb-4 leading-relaxed break-words">
               Your location: <span className="text-white font-bold">{user?.city || "Unknown City"}</span>. 
-              Keep your node updated for local discoverability.
+              Keep your profile updated for better visibility.
             </p>
-            <button className="text-[10px] text-neon-blue font-black uppercase tracking-widest hover:underline">Update Location Map</button>
+            <button className="text-[10px] text-neon-blue font-black uppercase tracking-widest hover:underline">Update Location</button>
           </div>
         </div>
       </div>
@@ -274,7 +274,7 @@ export default function CreatorDashboard() {
           </div>
           <div className="space-y-6 opacity-30">
             <div className="text-center py-8 md:py-12 text-[9px] md:text-[10px] font-black uppercase tracking-widest italic">
-              Accumulating Engagement Data...
+              Collecting Data...
             </div>
           </div>
         </div>
@@ -289,9 +289,9 @@ export default function CreatorDashboard() {
             <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mb-6 text-gray-600 group-hover:text-neon-blue transition-colors">
                <Zap size={32} />
             </div>
-            <h3 className="text-lg font-black text-white uppercase tracking-tight mb-2">AI Neural Analyzer</h3>
+            <h3 className="text-lg font-black text-white uppercase tracking-tight mb-2">AI Analyzer</h3>
             <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest max-w-xs mb-8 leading-relaxed">
-              Unlock advanced AI diagnostics for your cinematic streams. Requires Premium Node Protocol.
+              Unlock advanced AI diagnostics for your production quality. Requires Pro or Premium Plan.
             </p>
             <Link href="/pricing">
               <button className="px-8 py-3 rounded-xl border border-neon-blue/30 text-neon-blue text-[10px] font-black uppercase tracking-widest hover:bg-neon-blue/10 transition-all">
@@ -310,7 +310,7 @@ export default function CreatorDashboard() {
            <div className="glass p-12 rounded-[40px] border-white/5 text-center">
              <TrendingUp size={48} className="text-gray-800 mx-auto mb-6" />
              <h3 className="text-xl font-black text-white uppercase tracking-tighter mb-2">Cinematic Insights</h3>
-             <p className="text-gray-500 text-sm max-w-md mx-auto uppercase tracking-widest text-[10px] font-black">Detailed engagement analytics and performance metrics are available for Premium nodes.</p>
+             <p className="text-gray-500 text-sm max-w-md mx-auto uppercase tracking-widest text-[10px] font-black">Detailed engagement analytics and performance metrics are available for Premium plans.</p>
            </div>
         )}
       </div>

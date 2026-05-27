@@ -165,7 +165,14 @@ export default function CreatorActiveProjectsPage() {
                     project.status === 'delivered' ? 'bg-neon-blue' : 'bg-neon-purple'
                   }`} />
 
-                  <div className="flex-1 space-y-6">
+                  {/* Project Thumbnail */}
+                  {project.file_url && project.file_type?.startsWith('image') && (
+                    <div className="w-full md:w-48 h-32 rounded-2xl overflow-hidden glass border border-white/5 shrink-0">
+                      <img src={project.file_url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="" />
+                    </div>
+                  )}
+
+                  <div className="flex-1 space-y-6 min-w-0">
                     <div>
                       <div className="flex items-center gap-3 mb-2">
                         <span className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest ${
@@ -179,7 +186,7 @@ export default function CreatorActiveProjectsPage() {
                           Stage: {getStageLabel(project.current_stage)}
                         </span>
                       </div>
-                      <h3 className="text-xl sm:text-2xl font-black text-white uppercase tracking-tighter mb-2 group-hover:text-neon-purple transition-colors">
+                      <h3 className="text-xl sm:text-2xl font-black text-white uppercase tracking-tighter mb-2 group-hover:text-neon-purple transition-colors truncate">
                         {project.title}
                       </h3>
                       {project.client && (
@@ -191,7 +198,7 @@ export default function CreatorActiveProjectsPage() {
 
                     <div className="space-y-3">
                       <div className="flex justify-between items-center mb-1">
-                        <span className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Progress</span>
+                        <span className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Project Progress</span>
                         <span className="text-[10px] text-neon-purple font-black">{project.progress}%</span>
                       </div>
                       <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
@@ -217,7 +224,7 @@ export default function CreatorActiveProjectsPage() {
                         onClick={() => handleMarkDelivered(project.id)}
                         className="w-full py-3 rounded-xl bg-neon-blue/10 border border-neon-blue/20 text-neon-blue text-[10px] font-black uppercase tracking-widest hover:bg-neon-blue hover:text-white transition-all"
                       >
-                        Mark Delivered
+                        Mark as Delivered
                       </button>
                     )}
                   </div>

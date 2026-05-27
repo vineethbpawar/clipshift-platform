@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { DashboardSidebar } from "../dashboard/DashboardSidebar";
+import DashboardSidebar from "../dashboard/DashboardSidebar";
 import { PageWrapper } from "@/components/layout/PageWrapper";
 import { Menu, X } from "lucide-react";
 
@@ -37,7 +37,7 @@ export const DashboardLayout = ({
           ${isSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
           ${isSidebarOpen ? "pointer-events-auto" : "pointer-events-none md:pointer-events-auto"}
         `}>
-          <DashboardSidebar onClose={() => setIsSidebarOpen(false)} />
+          <DashboardSidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
         </div>
 
         <main className="flex-1 p-4 md:p-12 overflow-y-auto custom-scrollbar relative">

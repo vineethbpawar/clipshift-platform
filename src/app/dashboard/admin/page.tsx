@@ -88,7 +88,7 @@ export default function AdminDashboard() {
     fetchAdminData();
   }, []);
 
-  const platformRevenue = [
+  const platformRevenueData = [
     { month: "Jan", amount: 0 },
     { month: "Feb", amount: 0 },
     { month: "Mar", amount: 0 },
@@ -99,13 +99,13 @@ export default function AdminDashboard() {
 
   return (
     <RoleGuard allowedRoles={["admin"]}>
-      <DashboardLayout title="Platform Control Center">
+      <DashboardLayout title="Admin Dashboard">
       {/* Platform Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         <StatCard title="Total Users" value={stats.totalUsers} icon={Users} color="blue" />
-        <StatCard title="Platform Revenue" value={stats.platformRevenue} prefix="₹" icon={DollarSign} color="purple" />
+        <StatCard title="Total Revenue" value={stats.platformRevenue} prefix="₹" icon={DollarSign} color="purple" />
         <StatCard title="Total Creators" value={stats.totalCreators} icon={Zap} color="green" />
-        <StatCard title="Fraud Alerts" value={stats.fraudAlerts} icon={AlertTriangle} color="purple" />
+        <StatCard title="Security Alerts" value={stats.fraudAlerts} icon={AlertTriangle} color="purple" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
@@ -113,19 +113,19 @@ export default function AdminDashboard() {
         <div className="lg:col-span-2 glass p-6 md:p-8 rounded-[32px] md:rounded-[40px] border-white/5 overflow-hidden">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
             <div>
-              <h3 className="text-xs md:text-sm font-black text-white uppercase tracking-[0.2em]">Global Revenue Growth</h3>
-              <p className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">Platform Commission + Transaction Volume</p>
+              <h3 className="text-xs md:text-sm font-black text-white uppercase tracking-[0.2em]">Revenue Growth</h3>
+              <p className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">Platform Commission & Volume</p>
             </div>
             <button className="px-4 py-2 glass border-white/10 rounded-xl text-[10px] font-black text-white uppercase tracking-widest hover:bg-white/5 transition-all self-start sm:self-center">
-              Export Audit
+              Export Report
             </button>
           </div>
           <div className="h-[250px] md:h-[350px] w-full flex items-center justify-center">
             {stats.platformRevenue === 0 ? (
-              <div className="text-[10px] text-gray-600 font-black uppercase tracking-widest italic">No Revenue Data Detected</div>
+              <div className="text-[10px] text-gray-600 font-black uppercase tracking-widest italic">No Revenue Data</div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={platformRevenue}>
+                <BarChart data={platformRevenueData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
                   <XAxis dataKey="month" stroke="rgba(255,255,255,0.2)" fontSize={9} axisLine={false} tickLine={false} />
                   <YAxis stroke="rgba(255,255,255,0.2)" fontSize={9} axisLine={false} tickLine={false} />
@@ -135,7 +135,7 @@ export default function AdminDashboard() {
                     cursor={{ fill: "rgba(168,85,247,0.1)" }}
                   />
                   <Bar dataKey="amount" radius={[8, 8, 0, 0]}>
-                    {platformRevenue.map((entry, index) => (
+                    {platformRevenueData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={index === 5 ? "#a855f7" : "#3b82f6"} />
                     ))}
                   </Bar>
@@ -148,7 +148,7 @@ export default function AdminDashboard() {
         {/* Verification Queue */}
         <div className="glass p-6 md:p-8 rounded-[32px] md:rounded-[40px] border-white/5 overflow-hidden">
           <div className="flex items-center justify-between mb-8 border-b border-white/5 pb-4">
-            <h3 className="text-xs md:text-sm font-black text-white uppercase tracking-[0.2em]">Verification Queue</h3>
+            <h3 className="text-xs md:text-sm font-black text-white uppercase tracking-[0.2em]">Pending Verification</h3>
             <span className="text-[10px] font-mono text-neon-purple shrink-0">({verificationQueue.length} Pending)</span>
           </div>
           
@@ -156,7 +156,7 @@ export default function AdminDashboard() {
             {loading ? (
               <div className="py-12 flex flex-col items-center gap-3">
                 <Loader2 className="animate-spin text-neon-purple" size={24} />
-                <span className="text-[8px] text-gray-500 font-black uppercase tracking-widest">Scanning Nodes...</span>
+                <span className="text-[8px] text-gray-500 font-black uppercase tracking-widest">Loading Data...</span>
               </div>
             ) : verificationQueue.length === 0 ? (
               <div className="py-12 text-center opacity-30">
@@ -194,10 +194,10 @@ export default function AdminDashboard() {
           <div>
             <div className="flex items-center gap-3 mb-4">
               <Globe size={18} className="text-neon-blue" />
-              <h3 className="text-[10px] font-black text-white uppercase tracking-widest">Global Node Distribution</h3>
+              <h3 className="text-[10px] font-black text-white uppercase tracking-widest">Global User Base</h3>
             </div>
             <p className="text-[11px] md:text-xs text-gray-400 max-w-sm leading-relaxed">
-              Platform status is <span className="text-white font-bold uppercase">Nominal</span>. Tracking {stats.totalCreators} verified cinematic nodes globally.
+              Platform status is <span className="text-white font-bold uppercase">Online</span>. Monitoring {stats.totalCreators} verified creators globally.
             </p>
           </div>
         </div>
@@ -205,11 +205,11 @@ export default function AdminDashboard() {
         <div className="glass p-6 md:p-8 rounded-[32px] md:rounded-[40px] border-white/5">
           <div className="flex items-center gap-3 mb-6">
             <Activity size={18} className="text-green-500" />
-            <h3 className="text-[10px] font-black text-white uppercase tracking-widest">Platform Pulse</h3>
+            <h3 className="text-[10px] font-black text-white uppercase tracking-widest">System Status</h3>
           </div>
           <div className="space-y-4">
             <div className="flex justify-between text-[10px] font-black uppercase tracking-widest">
-              <span className="text-gray-500 italic">Node Latency</span>
+              <span className="text-gray-500 italic">Latency</span>
               <span className="text-white font-mono">12ms</span>
             </div>
             <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">

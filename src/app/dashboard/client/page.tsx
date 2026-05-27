@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { StatCard } from "@/components/dashboard/StatCard";
-import { Wallet, Briefcase, Heart, Bell, Plus, Users, Map as MapIcon, Loader2, Info, ChevronRight } from "lucide-react";
+import { Wallet, Briefcase, Heart, Bell, Plus, Users, Map as MapIcon, Loader2, Info, ChevronRight, Percent, Crown } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
@@ -11,8 +11,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
 import { RoleGuard } from "@/components/auth/RoleGuard";
-import { getActivePlan, getClientUnlockDiscount } from "@/lib/plans";
-import { Crown, Percent } from "lucide-react";
+import { getClientUnlockDiscount } from "@/lib/plans";
 
 const getPlanBadge = (plan: string) => {
   switch (plan) {
@@ -100,21 +99,21 @@ export default function ClientDashboard() {
 
   return (
     <RoleGuard allowedRoles={["client"]}>
-      <DashboardLayout title="Client Command Center">
-      {/* ... Top Section ... */}
+      <DashboardLayout title="Client Dashboard">
+      {/* Top Section: Plan & Global Stats */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
         <div className="flex items-center gap-4">
            <div className="p-4 glass rounded-2xl border-neon-blue/20 flex flex-col gap-1">
-             <span className="text-[8px] text-gray-500 uppercase font-black tracking-widest">Active Protocol</span>
+             <span className="text-[8px] text-gray-500 uppercase font-black tracking-widest">Active Plan</span>
              <div className="flex items-center gap-2">
                <Crown size={16} className={activePlan === 'free' ? "text-gray-500" : "text-neon-blue"} />
-               <span className="text-sm font-black text-white uppercase tracking-tighter">{getPlanBadge(activePlan)} Node</span>
+               <span className="text-sm font-black text-white uppercase tracking-tighter">{getPlanBadge(activePlan)}</span>
              </div>
            </div>
            {activePlan === 'free' && (
              <Link href="/pricing">
                <button className="px-6 py-3 rounded-xl bg-neon-blue/10 text-neon-blue border border-neon-blue/20 text-[10px] font-black uppercase tracking-widest hover:bg-neon-blue hover:text-white transition-all">
-                 Upgrade Protocol
+                 Upgrade Plan
                </button>
              </Link>
            )}
@@ -123,37 +122,37 @@ export default function ClientDashboard() {
 
       {/* Stats Overview */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
-        <StatCard title="Total Investment" value={stats.totalInvestment} prefix="₹" icon={Wallet} color="purple" />
-        <StatCard title="Active Workspaces" value={projects.length} icon={Briefcase} color="blue" />
-        <StatCard title="Saved Talent" value={savedCreators.length} icon={Heart} color="green" />
+        <StatCard title="Total Spent" value={stats.totalInvestment} prefix="₹" icon={Wallet} color="purple" />
+        <StatCard title="Active Projects" value={projects.length} icon={Briefcase} color="blue" />
+        <StatCard title="Saved Creators" value={savedCreators.length} icon={Heart} color="green" />
         <StatCard title="Unlock Discount" value={discount} suffix="%" icon={Percent} color="blue" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
-        {/* ... Discovery & Projects ... */}
+        {/* Left Col: Discovery & Projects */}
         <div className="lg:col-span-2 space-y-6 md:space-y-8">
           <div className="glass p-8 rounded-[40px] border-white/5 bg-gradient-to-br from-neon-purple/10 via-transparent to-transparent group">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div>
-                <h3 className="text-xl font-black text-white uppercase tracking-tighter mb-2">Discover Elite Talent</h3>
+                <h3 className="text-xl font-black text-white uppercase tracking-tighter mb-2">Find Elite Creators</h3>
                 <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest max-w-sm leading-relaxed">
-                  Browse world-class creators ranked by neural performance metrics.
+                  Browse world-class editors and videographers for your next production.
                 </p>
               </div>
               <Link href="/marketplace">
                 <button className="px-8 py-4 rounded-2xl bg-white text-black text-[10px] font-black uppercase tracking-widest shadow-xl hover:bg-neon-purple hover:text-white transition-all">
-                  Browse Creators
+                  Browse Marketplace
                 </button>
               </Link>
             </div>
           </div>
 
           <div className="glass p-6 md:p-8 rounded-[32px] md:rounded-[40px] border-white/5 relative overflow-hidden">
-            <h3 className="text-xs md:text-sm font-black text-white uppercase tracking-[0.2em] mb-8">Capital Allocation</h3>
+            <h3 className="text-xs md:text-sm font-black text-white uppercase tracking-[0.2em] mb-8">Budget Allocation</h3>
             <div className="h-[250px] md:h-[300px] w-full flex items-center justify-center">
               {spendingData.reduce((acc, curr) => acc + curr.value, 0) === 0 ? (
                 <div className="text-center">
-                  <div className="text-[10px] text-gray-600 uppercase font-black tracking-widest italic opacity-50">No Expenditure Logs Detected</div>
+                  <div className="text-[10px] text-gray-600 uppercase font-black tracking-widest italic opacity-50">No Expenditure Data</div>
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
@@ -181,16 +180,16 @@ export default function ClientDashboard() {
 
           <div className="space-y-4">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Active Workspaces</h3>
+              <h3 className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Active Projects</h3>
               <Link href="/dashboard/client/active-projects" className="text-[10px] text-neon-blue font-black uppercase tracking-widest hover:underline">View All</Link>
             </div>
             
             {projects.length === 0 ? (
               <div className="glass p-8 md:p-12 rounded-[32px] border-white/5 text-center">
-                <p className="text-[10px] md:text-xs text-gray-500 uppercase font-black tracking-widest italic opacity-50">No Active Workspaces Detected</p>
-                <Link href="/dashboard/client/proposals" className="inline-block mt-6">
+                <p className="text-[10px] md:text-xs text-gray-500 uppercase font-black tracking-widest italic opacity-50">No Active Projects Found</p>
+                <Link href="/post-project" className="inline-block mt-6">
                   <button className="px-8 py-3 rounded-xl bg-neon-purple text-white text-[10px] font-black uppercase tracking-widest shadow-lg hover:scale-105 transition-all">
-                    Review Proposals
+                    Post a Project
                   </button>
                 </Link>
               </div>
@@ -223,7 +222,7 @@ export default function ClientDashboard() {
             <div className="absolute top-6 left-6 z-10">
               <h3 className="text-[10px] font-black text-white uppercase tracking-widest flex items-center gap-2">
                 <MapIcon size={12} className="text-neon-blue" />
-                Nearby Nodes
+                Nearby Creators
               </h3>
             </div>
             
@@ -234,7 +233,7 @@ export default function ClientDashboard() {
             ) : nearbyCreators.length === 0 ? (
               <div className="w-full h-full flex flex-col items-center justify-center bg-white/5 grayscale">
                 <MapIcon size={32} className="text-gray-600 mb-4" />
-                <span className="text-[10px] text-gray-600 font-black uppercase tracking-widest">No Nearby Nodes Found</span>
+                <span className="text-[10px] text-gray-600 font-black uppercase tracking-widest">No Nearby Creators Found</span>
               </div>
             ) : (
               <div className="w-full h-full grayscale opacity-50 md:opacity-30 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-700">
@@ -245,7 +244,7 @@ export default function ClientDashboard() {
             <div className="absolute bottom-6 left-6 right-6 z-10">
               <Link href="/explore">
                 <button className="w-full py-3 rounded-xl bg-white text-black text-[10px] font-black uppercase tracking-widest shadow-xl hover:bg-neon-blue hover:text-white transition-all">
-                  Open Discovery Map
+                  Open Creator Map
                 </button>
               </Link>
             </div>
@@ -257,7 +256,7 @@ export default function ClientDashboard() {
               <div className="text-center py-6 md:py-8">
                 <Heart size={24} className="text-gray-700 mx-auto mb-3" />
                 <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest">No saved creators yet</p>
-                <Link href="/marketplace" className="text-[8px] text-neon-purple font-black uppercase tracking-widest hover:underline mt-4 inline-block">Explore Talent</Link>
+                <Link href="/marketplace" className="text-[8px] text-neon-purple font-black uppercase tracking-widest hover:underline mt-4 inline-block">Explore Marketplace</Link>
               </div>
             ) : (
               <div className="space-y-4">
