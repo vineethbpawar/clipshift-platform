@@ -35,22 +35,36 @@ export default function ProjectWorkspacePage() {
   const fetchWorkspaceData = async () => {
     if (!params.id) return;
     try {
+      setLoading(true);
+
+      // Restore Session for Fetch
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        const stored = getStoredSession();
+        if (stored?.access_token) {
+          await supabase.auth.setSession({ access_token: stored.access_token, refresh_token: stored.refresh_token });
+        }
+      }
+
       const { data, error } = await supabase
         .from('projects')
         .select(`
           *,
-          client:profiles!projects_client_id_fkey(full_name, email),
-          assigned_creator:profiles!projects_assigned_creator_id_fkey(full_name, email, specialization),
+          client:profiles!projects_client_id_fkey(id, full_name, email),
+          assigned_creator:profiles!projects_assigned_creator_id_fkey(id, full_name, email, specialization),
           accepted_proposal:proposals!projects_accepted_proposal_id_fkey(*)
         `)
         .eq('id', params.id)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
+      if (!data) throw new Error("Project not found.");
       
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+
       // Access Control
-      const isClient = data.client_id === user?.id;
-      const isCreator = data.assigned_creator_id === user?.id;
+      const isClient = data.client_id === currentUser?.id;
+      const isCreator = data.assigned_creator_id === currentUser?.id;
       const isAdmin = user?.role === 'admin';
 
       if (!isClient && !isCreator && !isAdmin) {
@@ -58,15 +72,16 @@ export default function ProjectWorkspacePage() {
       } else {
         setProject(data);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error fetching workspace:", err);
+      toast.error(err.message || "Failed to load project.");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (user?.id) fetchWorkspaceData();
+    fetchWorkspaceData();
   }, [params.id, user?.id]);
 
   const updateWorkspace = async (payload: any) => {
@@ -127,14 +142,14 @@ export default function ProjectWorkspacePage() {
   const isClient = project.client_id === user?.id;
 
   const stages = [
-    { id: 'kickoff', label: 'Kickoff', progress: 10 },
-    { id: 'production', label: 'Production', progress: 40 },
-    { id: 'review', label: 'Review', progress: 70 },
-    { id: 'delivery', label: 'Delivery', progress: 90 },
+    { id: 'kickoff', label: 'Started', progress: 10 },
+    { id: 'production', label: 'In Progress', progress: 40 },
+    { id: 'review', label: 'Client Review', progress: 70 },
+    { id: 'delivery', label: 'Delivered', progress: 90 },
     { id: 'completed', label: 'Completed', progress: 100 }
   ];
 
-  const currentStageIndex = stages.findIndex(s => s.id === project.current_stage);
+  const currentStageIndex = stages.findIndex(s => s.id === project?.current_stage);
 
   return (
     <PageWrapper>
@@ -173,7 +188,7 @@ export default function ProjectWorkspacePage() {
                 </div>
                 <div className="space-y-1">
                   <span className="text-[9px] text-gray-600 uppercase font-black tracking-widest">Current Stage</span>
-                  <div className="text-[11px] text-neon-blue font-black uppercase tracking-tighter">{project.current_stage}</div>
+                  <div className="text-[11px] text-neon-blue font-black uppercase tracking-tighter">{stages[currentStageIndex]?.label || project?.current_stage}</div>
                 </div>
                 <div className="space-y-1">
                   <span className="text-[9px] text-gray-600 uppercase font-black tracking-widest">Agreed Budget</span>

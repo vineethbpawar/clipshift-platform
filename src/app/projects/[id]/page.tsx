@@ -490,7 +490,7 @@ export default function ProjectDetailPage() {
                     onClick={() => router.push(`/dashboard/projects/${project.id}/workspace`)}
                     className="w-full sm:w-auto px-8 py-4 bg-white text-black rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all"
                   >
-                    Open Workspace
+                    Open Project
                   </button>
                 ) : (
                   <div className="w-full p-4 glass border-white/5 rounded-2xl text-center">
@@ -514,7 +514,7 @@ export default function ProjectDetailPage() {
                     onClick={() => router.push(`/dashboard/projects/${project.id}/workspace`)}
                     className="w-full sm:w-auto px-8 py-4 bg-white text-black rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all"
                   >
-                    Open Workspace
+                    Open Project
                   </button>
                 )}
               </>
