@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
 import { Menu, X, LogOut, MessageSquare, Loader2, ChevronRight } from "lucide-react";
@@ -66,9 +67,15 @@ export const Navbar = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-20 items-center">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 group shrink-0">
-            <div className="w-9 h-9 rounded-lg bg-neon-purple flex items-center justify-center font-black text-white text-xs shadow-[0_0_15px_rgba(168,85,247,0.5)] group-hover:scale-110 transition-transform italic">CS</div>
-            <span className="font-black text-white uppercase tracking-tighter text-xl group-hover:text-neon-purple transition-colors italic">ClipShift</span>
+          <Link href="/" className="flex items-center group shrink-0">
+            <Image
+              src="/logo.png"
+              alt="ClipShift"
+              width={140}
+              height={40}
+              className="h-10 w-auto object-contain brightness-110"
+              priority
+            />
           </Link>
 
           {/* Desktop Nav */}

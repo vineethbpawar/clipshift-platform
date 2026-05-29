@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { 
@@ -85,9 +86,15 @@ const DashboardSidebar = ({ onClose }: { isOpen: boolean, onClose: () => void })
   return (
     <div className="h-full w-72 glass border-r border-white/5 flex flex-col p-6 bg-black/40 backdrop-blur-2xl">
       <div className="flex items-center justify-between mb-12 px-2">
-        <Link href="/" className="flex items-center gap-2 group">
-          <div className="w-10 h-10 rounded-xl bg-neon-purple flex items-center justify-center font-black text-white text-sm shadow-[0_0_15px_rgba(168,85,247,0.5)] group-hover:scale-110 transition-transform">CS</div>
-          <span className="font-black text-white uppercase tracking-tighter text-2xl group-hover:text-neon-purple transition-colors">ClipShift</span>
+        <Link href="/" className="flex items-center group">
+          <Image
+            src="/logo.png"
+            alt="ClipShift"
+            width={120}
+            height={36}
+            className="h-9 w-auto object-contain brightness-110"
+            priority
+          />
         </Link>
         <button onClick={onClose} className="lg:hidden text-gray-500 hover:text-white p-2 glass rounded-xl border-white/10">
           <X size={20} />
