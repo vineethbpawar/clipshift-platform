@@ -1,4 +1,5 @@
 import React from "react";
+import Link from "next/link";
 
 export const Footer = () => {
   return (
@@ -14,30 +15,30 @@ export const Footer = () => {
         <div>
           <h4 className="text-[10px] font-black text-white uppercase tracking-widest mb-6">Platform</h4>
           <ul className="space-y-4">
-            <li><a href="/marketplace" className="text-[10px] text-gray-500 font-bold uppercase tracking-widest hover:text-neon-purple transition-colors">Find Creators</a></li>
-            <li><a href="/post-project" className="text-[10px] text-gray-500 font-bold uppercase tracking-widest hover:text-neon-purple transition-colors">Post a Project</a></li>
-            <li><a href="/projects" className="text-[10px] text-gray-500 font-bold uppercase tracking-widest hover:text-neon-purple transition-colors">Browse Projects</a></li>
-            <li><a href="/pricing" className="text-[10px] text-gray-500 font-bold uppercase tracking-widest hover:text-neon-purple transition-colors">Pricing</a></li>
+            <li><Link href="/marketplace" className="text-[10px] text-gray-500 font-bold uppercase tracking-widest hover:text-neon-purple transition-colors">Find Creators</Link></li>
+            <li><Link href="/post-project" className="text-[10px] text-gray-500 font-bold uppercase tracking-widest hover:text-neon-purple transition-colors">Post a Project</Link></li>
+            <li><Link href="/projects" className="text-[10px] text-gray-500 font-bold uppercase tracking-widest hover:text-neon-purple transition-colors">Browse Projects</Link></li>
+            <li><Link href="/pricing" className="text-[10px] text-gray-500 font-bold uppercase tracking-widest hover:text-neon-purple transition-colors">Pricing</Link></li>
           </ul>
         </div>
 
         <div>
           <h4 className="text-[10px] font-black text-white uppercase tracking-widest mb-6">Resources</h4>
           <ul className="space-y-4">
-            <li><a href="/how-it-works" className="text-[10px] text-gray-500 font-bold uppercase tracking-widest hover:text-neon-purple transition-colors">How It Works</a></li>
-            <li><a href="/creator-guide" className="text-[10px] text-gray-500 font-bold uppercase tracking-widest hover:text-neon-purple transition-colors">Creator Guide</a></li>
-            <li><a href="/client-guide" className="text-[10px] text-gray-500 font-bold uppercase tracking-widest hover:text-neon-purple transition-colors">Client Guide</a></li>
-            <li><a href="/help" className="text-[10px] text-gray-500 font-bold uppercase tracking-widest hover:text-neon-purple transition-colors">Help Center</a></li>
+            <li><Link href="/how-it-works" className="text-[10px] text-gray-500 font-bold uppercase tracking-widest hover:text-neon-purple transition-colors">How It Works</Link></li>
+            <li><Link href="/creator-guide" className="text-[10px] text-gray-500 font-bold uppercase tracking-widest hover:text-neon-purple transition-colors">Creator Guide</Link></li>
+            <li><Link href="/client-guide" className="text-[10px] text-gray-500 font-bold uppercase tracking-widest hover:text-neon-purple transition-colors">Client Guide</Link></li>
+            <li><Link href="/help" className="text-[10px] text-gray-500 font-bold uppercase tracking-widest hover:text-neon-purple transition-colors">Help Center</Link></li>
           </ul>
         </div>
 
         <div>
           <h4 className="text-[10px] font-black text-white uppercase tracking-widest mb-6">Company</h4>
           <ul className="space-y-4">
-            <li><a href="/about" className="text-[10px] text-gray-500 font-bold uppercase tracking-widest hover:text-neon-purple transition-colors">About ClipShift</a></li>
-            <li><a href="/contact" className="text-[10px] text-gray-500 font-bold uppercase tracking-widest hover:text-neon-purple transition-colors">Contact</a></li>
-            <li><a href="/terms" className="text-[10px] text-gray-500 font-bold uppercase tracking-widest hover:text-neon-purple transition-colors">Terms</a></li>
-            <li><a href="/privacy" className="text-[10px] text-gray-500 font-bold uppercase tracking-widest hover:text-neon-purple transition-colors">Privacy</a></li>
+            <li><Link href="/about" className="text-[10px] text-gray-500 font-bold uppercase tracking-widest hover:text-neon-purple transition-colors">About ClipShift</Link></li>
+            <li><Link href="/contact" className="text-[10px] text-gray-500 font-bold uppercase tracking-widest hover:text-neon-purple transition-colors">Contact</Link></li>
+            <li><Link href="/terms" className="text-[10px] text-gray-500 font-bold uppercase tracking-widest hover:text-neon-purple transition-colors">Terms</Link></li>
+            <li><Link href="/privacy" className="text-[10px] text-gray-500 font-bold uppercase tracking-widest hover:text-neon-purple transition-colors">Privacy</Link></li>
           </ul>
         </div>
       </div>

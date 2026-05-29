@@ -2,55 +2,55 @@
 
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, MessageSquare, ShieldCheck, Loader2, CheckCircle2, AlertCircle, Zap, Sparkles } from "lucide-react";
+import { X, Loader2, CheckCircle2, AlertCircle, Zap, ChevronRight } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { loadRazorpayScript } from "@/lib/razorpay";
-import { getUnlockFee } from "@/lib/creators";
-import { getActivePlan, getClientUnlockDiscount } from "@/lib/plans";
-import { supabase } from "@/lib/supabase";
 import { toast } from "react-hot-toast";
+import { type Creator } from "@/data/creators";
 
-export const UnlockModal = ({ creator, isOpen, onClose }: { creator: any, isOpen: boolean, onClose: () => void }) => {
-  const [status, setStatus] = useState<"idle" | "processing" | "success" | "error">("idle");
-  const [errorMessage, setErrorMessage] = useState("");
+interface UnlockModalProps {
+  creator: Creator;
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export const UnlockModal = ({ creator, isOpen, onClose }: UnlockModalProps) => {
   const { user } = useAuth();
+  const [status, setStatus] = useState<"idle" | "loading" | "processing" | "success" | "error">("idle");
+  const [errorMessage, setErrorMessage] = useState("");
   const router = useRouter();
 
-  const baseFee = getUnlockFee(creator.tier || 'beginner');
-  const activePlan = getActivePlan(user as any);
-  const discountPercent = getClientUnlockDiscount(activePlan);
-  const discountAmount = Math.round((baseFee * discountPercent) / 100);
-  const finalFee = baseFee - discountAmount;
+  if (!isOpen) return null;
+
+  const baseFee = 49;
+  const finalFee = baseFee;
 
   const handleUnlock = async () => {
     if (!user) {
-      router.push('/auth/login');
+      router.push("/auth/login");
       return;
     }
 
-    if (user.role !== 'client') {
-      toast.error("Only clients can unlock creators.");
-      return;
-    }
-
-    setStatus("processing");
+    setStatus("loading");
     
     try {
       // 1. Load Razorpay Script
       const res = await loadRazorpayScript();
       if (!res) throw new Error("Razorpay SDK failed to load.");
 
-      // 2. Create Order via API
+      // 2. Create Order
       const orderRes = await fetch("/api/razorpay/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          amount: finalFee * 100, // to paise
-          currency: "INR",
-          receipt: `c_unlock_${creator.id}_${Date.now()}`
+          amount: finalFee,
+          actionType: 'unlock_creator_chat',
+          payload: { creator_id: creator.id }
         })
       });
+
       const orderData = await orderRes.json();
       if (orderData.error) throw new Error(orderData.error);
 
@@ -59,10 +59,10 @@ export const UnlockModal = ({ creator, isOpen, onClose }: { creator: any, isOpen
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
         amount: orderData.amount,
         currency: orderData.currency,
-        name: "ClipShift Collective",
-        description: `Establish permanent node connection with ${creator.full_name || creator.name}`,
+        name: "ClipShift",
+        description: `Unlock chat with ${creator.name}`,
         order_id: orderData.order_id,
-        handler: async (response: any) => {
+        handler: async (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
           setStatus("processing");
           
           try {
@@ -92,7 +92,6 @@ export const UnlockModal = ({ creator, isOpen, onClose }: { creator: any, isOpen
               .select('id')
               .eq('client_id', user.id)
               .eq('creator_id', creator.id)
-              .eq('conversation_type', 'direct')
               .maybeSingle();
 
             let conversationId = existingConv?.id;
@@ -103,8 +102,7 @@ export const UnlockModal = ({ creator, isOpen, onClose }: { creator: any, isOpen
                 .insert({
                   client_id: user.id,
                   creator_id: creator.id,
-                  conversation_type: 'direct',
-                  last_message: "Direct connection established.",
+                  last_message: "Project collaboration initiated.",
                   last_message_at: new Date().toISOString()
                 })
                 .select()
@@ -118,152 +116,152 @@ export const UnlockModal = ({ creator, isOpen, onClose }: { creator: any, isOpen
                 conversation_id: conversationId,
                 sender_id: user.id,
                 receiver_id: creator.id,
-                content: `Hi ${creator.full_name || creator.name}, I've unlocked your node for collaboration.`
+                content: `Hi ${creator.name}, I've unlocked your profile for project collaboration.`
               });
             }
 
             setStatus("success");
-            toast.success("Node Unlocked!");
+            toast.success("Creator Unlocked!");
             setTimeout(() => router.push(`/chat/${conversationId}`), 2000);
-          } catch (err: any) {
+          } catch (err: unknown) {
             console.error("VERIFICATION ERROR:", err);
             setStatus("error");
-            setErrorMessage(err.message || "Verification failed.");
+            const errorMsg = err instanceof Error ? err.message : "Verification failed.";
+            setErrorMessage(errorMsg);
           }
         },
         prefill: {
           name: user.name,
           email: user.email,
         },
-        theme: { color: "#a855f7" },
-        modal: { ondismiss: () => setStatus("idle") }
+        theme: {
+          color: "#a855f7",
+        },
+        modal: {
+          ondismiss: () => setStatus("idle")
+        }
       };
 
-      const paymentObject = new (window as any).Razorpay(options);
+      const paymentObject = new (window as unknown as { Razorpay: { new (options: unknown): { open: () => void } } }).Razorpay(options);
       paymentObject.open();
-    } catch (err: any) {
-      console.error(err);
+
+    } catch (err: unknown) {
+      console.error("UNLOCK ERROR:", err);
       setStatus("error");
-      setErrorMessage(err.message || "Gateway error.");
+      const errorMsg = err instanceof Error ? err.message : "Failed to initiate payment.";
+      setErrorMessage(errorMsg);
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={onClose}
-        className="absolute inset-0 bg-black/90 backdrop-blur-md"
+        className="fixed inset-0 bg-black/90 backdrop-blur-xl"
       />
       
       <motion.div
         initial={{ scale: 0.9, opacity: 0, y: 20 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.9, opacity: 0, y: 20 }}
-        className="relative w-full max-w-lg glass border-white/10 rounded-[40px] p-8 md:p-12 overflow-hidden"
+        className="relative w-full max-w-lg glass rounded-[50px] border border-white/10 overflow-hidden shadow-[0_0_100px_rgba(0,0,0,1)]"
       >
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-neon-purple via-neon-blue to-neon-purple animate-pulse" />
-
-        {(status === "idle" || status === "error") && (
-          <>
-            <button onClick={onClose} className="absolute top-6 right-6 text-gray-500 hover:text-white transition-colors">
+        {status === "idle" || status === "loading" ? (
+          <div className="p-8 sm:p-12">
+            <button 
+              onClick={onClose}
+              className="absolute top-8 right-8 p-3 glass rounded-2xl text-gray-500 hover:text-white transition-colors border border-white/5"
+            >
               <X size={20} />
             </button>
 
-            <div className="flex flex-col items-center text-center mb-8">
-              <div className="w-20 h-20 rounded-3xl bg-neon-purple/20 text-neon-purple flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(168,85,247,0.3)]">
-                <Zap size={40} className="fill-neon-purple" />
-              </div>
-              <h2 className="text-3xl font-black text-white uppercase tracking-tighter mb-2 leading-none">
-                Unlock <span className="text-neon-purple">Direct Access</span>
-              </h2>
-              <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Permanent Node ID-{creator.id?.slice(0,8)}</p>
-              
-              {status === "error" && (
-                <div className="mt-6 flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-500 text-xs font-bold uppercase tracking-widest w-full justify-center">
-                  <AlertCircle size={14} />
-                  {errorMessage}
-                </div>
-              )}
+            <div className="flex items-center gap-4 mb-10">
+               <div className="w-16 h-16 rounded-[28px] bg-neon-purple/10 border border-neon-purple/20 flex items-center justify-center text-neon-purple shadow-[0_0_30px_rgba(168,85,247,0.2)]">
+                 <Zap size={32} />
+               </div>
+               <div>
+                 <h2 className="text-3xl font-black text-white uppercase tracking-tighter italic">Unlock Creator</h2>
+                 <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Permanent access to this creator</p>
+               </div>
             </div>
 
-            <div className="space-y-6">
-              <div className="glass p-6 rounded-3xl border-white/5 bg-white/5">
-                <div className="space-y-2 mb-4 border-b border-white/5 pb-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Base Protocol Fee</span>
-                    <span className="text-sm font-bold text-gray-400 line-through">₹{baseFee}</span>
+            <div className="space-y-6 mb-12">
+              <div className="flex items-center justify-between p-6 glass rounded-3xl border-white/5 bg-black/40">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl overflow-hidden glass border border-white/10">
+                    <img src={creator.image} className="w-full h-full object-cover" alt="" />
                   </div>
-                  {discountPercent > 0 && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] text-neon-blue uppercase font-black tracking-widest">{activePlan.replace('_', ' ')} Discount</span>
-                      <span className="text-xs font-bold text-neon-blue">-{discountPercent}% (₹{discountAmount})</span>
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between pt-2">
-                    <span className="text-[10px] text-white uppercase font-black tracking-widest">Final Authorization Fee</span>
-                    <span className="text-2xl font-black text-white">₹{finalFee}</span>
+                  <div>
+                    <h4 className="text-sm font-black text-white uppercase tracking-widest">{creator.name}</h4>                    <p className="text-[9px] text-neon-blue font-bold uppercase tracking-widest">{creator.specialty?.[0] || "Visual Creator"}</p>
                   </div>
                 </div>
-                <div className="space-y-3">
-                  {[
-                    "Direct Cinematic Messaging",
-                    "Permanent Node Access",
-                    "Project Invitation Priority",
-                    "Secure Signal Encryption"
-                  ].map((f, i) => (
-                    <div key={i} className="flex items-center gap-2 text-[9px] text-gray-300 font-bold uppercase tracking-widest">
-                      <CheckCircle2 size={12} className="text-neon-blue" />
-                      {f}
-                    </div>
-                  ))}
+                <div className="text-right">
+                  <span className="text-[10px] text-gray-500 uppercase font-black tracking-widest block mb-1">One-time Fee</span>
+                  <span className="text-xl font-black text-white italic">₹{finalFee}</span>
                 </div>
               </div>
 
-              <button
-                onClick={handleUnlock}
-                className="w-full py-5 rounded-2xl bg-neon-purple text-white text-xs font-black uppercase tracking-[0.2em] shadow-[0_0_30px_rgba(168,85,247,0.4)] hover:scale-[1.02] active:scale-95 transition-all"
-              >
-                Confirm & Authorize (₹{finalFee})
-              </button>
-
-              <div className="flex items-center justify-center gap-2 text-[8px] text-gray-600 uppercase font-black tracking-widest">
-                <ShieldCheck size={10} className="text-neon-blue" />
-                Vetted Node Payment Protocol v2.4
+              <div className="grid grid-cols-1 gap-3">
+                {[
+                  "Direct Messaging Forever",
+                  "Permanent Connection",
+                  "Secure File Sharing",
+                  "Professional Collaboration"
+                ].map((item, i) => (
+                  <div key={i} className="flex items-center gap-3 px-2">
+                    <CheckCircle2 size={16} className="text-green-500 shrink-0" />
+                    <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{item}</span>
+                  </div>
+                ))}
               </div>
             </div>
-          </>
-        )}
 
-        {status === "processing" && (
-          <div className="py-20 flex flex-col items-center justify-center text-center">
-            <div className="relative mb-8">
-              <Loader2 size={64} className="text-neon-purple animate-spin" />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <Sparkles size={20} className="text-neon-blue animate-pulse" />
-              </div>
-            </div>
-            <h3 className="text-xl font-black text-white uppercase tracking-[0.2em] mb-2 italic animate-pulse">Syncing Gateway...</h3>
-            <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Verifying transaction integrity</p>
-          </div>
-        )}
-
-        {status === "success" && (
-          <div className="py-20 flex flex-col items-center justify-center text-center">
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ type: "spring", damping: 10 }}
-              className="w-24 h-24 rounded-full bg-green-500/20 text-green-500 flex items-center justify-center mb-8 shadow-[0_0_40px_rgba(34,197,94,0.4)]"
+            <button
+              onClick={handleUnlock}
+              disabled={status === "loading"}
+              className="w-full py-6 bg-white text-black rounded-[30px] font-black uppercase tracking-[0.3em] text-[11px] hover:bg-neon-purple hover:text-white active:scale-95 transition-all shadow-2xl flex items-center justify-center gap-3"
             >
-              <CheckCircle2 size={48} />
-            </motion.div>
-            <h3 className="text-3xl font-black text-white uppercase tracking-tighter mb-4">Signal <span className="text-green-500">Established</span></h3>
-            <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Node ID Access Granted. Redirecting...</p>
+              {status === "loading" ? (
+                <Loader2 className="animate-spin" size={20} />
+              ) : (
+                <>Unlock Access Now <ChevronRight size={18} /></>
+              )}
+            </button>
+            
+            <p className="text-center mt-6 text-[8px] text-gray-600 uppercase font-black tracking-widest opacity-50">
+              Payments are secured via Razorpay. Encrypted Transaction.
+            </p>
+          </div>
+        ) : status === "processing" ? (
+          <div className="p-16 text-center">
+            <Loader2 className="animate-spin text-neon-purple mx-auto mb-8" size={64} />
+            <h3 className="text-2xl font-black text-white uppercase tracking-tighter italic mb-4">Verifying Payment</h3>
+            <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest leading-relaxed">Please wait while we finalize your connection...</p>
+          </div>
+        ) : status === "success" ? (
+          <div className="p-16 text-center">
+            <div className="w-24 h-24 rounded-[40px] bg-green-500/10 border border-green-500/20 flex items-center justify-center mx-auto mb-10 shadow-[0_0_50px_rgba(34,197,94,0.2)]">
+               <CheckCircle2 size={48} className="text-green-500" />
+            </div>
+            <h3 className="text-3xl font-black text-white uppercase tracking-tighter mb-4 italic text-gradient">Access Granted</h3>
+            <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest leading-relaxed mb-8">Connection established. Redirecting to messages...</p>
+          </div>
+        ) : (
+          <div className="p-16 text-center">
+            <div className="w-24 h-24 rounded-[40px] bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto mb-10">
+               <AlertCircle size={48} className="text-red-500" />
+            </div>
+            <h3 className="text-2xl font-black text-white uppercase tracking-tighter mb-4 italic">Payment Failed</h3>
+            <p className="text-[10px] text-red-500/60 uppercase font-black tracking-widest leading-relaxed mb-10">{errorMessage}</p>
+            <button 
+              onClick={() => setStatus("idle")}
+              className="px-10 py-4 bg-white text-black rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-neon-purple hover:text-white transition-all"
+            >
+              Try Again
+            </button>
           </div>
         )}
       </motion.div>

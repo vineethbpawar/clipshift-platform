@@ -71,7 +71,7 @@ export const RoleGuard = ({ children, allowedRoles }: RoleGuardProps) => {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-black">
         <Loader2 className="animate-spin text-neon-purple" size={40} />
-        {timedOut && <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Resyncing Node...</p>}
+        {timedOut && <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Authenticating...</p>}
       </div>
     );
   }

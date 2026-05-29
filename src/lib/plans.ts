@@ -4,7 +4,7 @@ export interface Profile {
   plan_type: PlanType;
   plan_expires_at: string | Date | null;
   role?: 'creator' | 'client' | 'admin';
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export function getActivePlan(profile?: Profile): PlanType {

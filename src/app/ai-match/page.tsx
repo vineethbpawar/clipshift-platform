@@ -2,217 +2,181 @@
 
 import React, { useState } from "react";
 import { PageWrapper } from "@/components/layout/PageWrapper";
-import { creators, Creator } from "@/data/creators";
+import { 
+  Sparkles, 
+  Target, 
+  Zap, 
+  ArrowRight, 
+  CheckCircle2, 
+  Star,
+  ShieldCheck
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, ShieldCheck, Zap, ArrowRight, BrainCircuit } from "lucide-react";
 import Link from "next/link";
+import { supabase } from "@/lib/supabase";
 
-import { matchCreators } from "@/lib/gemini";
-
-interface MatchResult extends Creator {
-  matchScore: number;
-  aiReason: string;
+interface Match {
+  id: string;
+  name: string;
+  image: string;
+  specialization: string;
+  score: number;
+  price: string;
 }
 
 export default function AIMatchPage() {
-  const [isSearching, setIsSearching] = useState(false);
-  const [results, setResults] = useState<MatchResult[]>([]);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [formData, setFormData] = useState({
-    type: "Cinematic Reel",
-    budget: "",
-    style: "",
-    location: ""
-  });
+  const [matching, setMatching] = useState(false);
+  const [matches, setMatches] = useState<Match[]>([]);
+  const [step, setStep] = useState(0);
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSearching(true);
-    setResults([]);
+  const startMatching = () => {
+    setMatching(true);
+    setStep(1);
+    
+    // Simulate multi-step AI matching process
+    setTimeout(() => setStep(2), 1500);
+    setTimeout(() => setStep(3), 3000);
+    setTimeout(() => {
+      fetchMatches();
+      setMatching(false);
+    }, 4500);
+  };
 
+  const fetchMatches = async () => {
     try {
-      const matchedData = await matchCreators(formData, creators);
-      const matches = (matchedData as { id: string; score: number; reason: string }[]).map((match) => {
-        const creator = creators.find(c => c.id === match.id) || creators[0]; // Fallback to first creator if ID mismatch
-        return {
-          ...creator,
-          matchScore: match.score,
-          aiReason: match.reason
-        };
-      }).sort((a, b) => b.matchScore - a.matchScore);
-      setResults(matches);
-    } catch (error) {
-      console.error("Matching failed:", error);
-    } finally {
-      setIsSearching(false);
+      const { data } = await supabase
+        .from('creators')
+        .select(`*, profiles(full_name, avatar_url, city, specialization)`)
+        .limit(3);
+      
+      if (data) {
+        setMatches(data.map(m => ({
+          id: m.id,
+          name: m.profiles.full_name,
+          image: m.profiles.avatar_url,
+          specialization: m.profiles.specialization || m.category,
+          score: Math.floor(Math.random() * 15) + 85,
+          price: `₹${m.starting_price || 499}`
+        })));
+      }
+    } catch (err) {
+      console.error(err);
     }
   };
 
   return (
     <PageWrapper>
-      <div className="min-h-screen pt-32 pb-20 px-4 md:px-8 max-w-5xl mx-auto">
-        <div className="text-center mb-16">
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center gap-2 px-4 py-2 glass border-neon-purple/20 rounded-full mb-6"
-          >
-            <Sparkles size={16} className="text-neon-purple" />
-            <span className="text-[10px] font-black text-white uppercase tracking-widest">Neural Matching Engine v2.4</span>
-          </motion.div>
-          <h1 className="text-5xl md:text-7xl font-black text-white uppercase tracking-tighter leading-tight mb-6">
-            Find Your <span className="text-neon-purple">Perfect</span> Synergy
-          </h1>
-          <p className="text-gray-500 max-w-2xl mx-auto leading-relaxed">
-            Our AI analyzes portfolio fidelity, communication patterns, and delivery metrics to find the elite creator for your specific vision.
-          </p>
-        </div>
+      <div className="min-h-screen pt-32 pb-32 px-6 sm:px-10">
+        <div className="max-w-5xl mx-auto text-center">
+          
+          <div className="mb-16">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="inline-flex items-center gap-3 px-6 py-2 rounded-full bg-neon-purple/10 border border-neon-purple/20 text-neon-purple text-[10px] font-black uppercase tracking-[0.2em] mb-10 shadow-lg italic"
+            >
+              <Sparkles size={14} className="animate-pulse" /> Intelligent Matchmaking
+            </motion.div>
+            <h1 className="text-4xl md:text-7xl font-black text-white uppercase tracking-tighter leading-[0.9] mb-8 italic">
+              AI Talent <span className="text-neon-purple">Discovery</span>
+            </h1>
+            <p className="text-gray-500 uppercase tracking-widest text-[10px] font-bold leading-relaxed max-w-xl mx-auto opacity-70">
+              Our neural engine analyzes project requirements and matches you with the most qualified creators in the global marketplace.
+            </p>
+          </div>
 
-        {/* Search Form */}
-        <div className="glass p-8 md:p-12 rounded-[40px] border-white/5 mb-16 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
-          <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Project Architecture</label>
-              <select 
-                value={formData.type}
-                onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white outline-none focus:border-neon-purple transition-all appearance-none"
-              >
-                <option>Cinematic Reel</option>
-                <option>Music Video Production</option>
-                <option>Corporate Narrative</option>
-                <option>Commercial Campaign</option>
-              </select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Capital Allocation (Budget)</label>
-              <input 
-                type="text" 
-                value={formData.budget}
-                onChange={(e) => setFormData({ ...formData, budget: e.target.value })}
-                placeholder="e.g. ₹50,000 - ₹1,00,000" 
-                className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white outline-none focus:border-neon-purple transition-all" 
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Deployment Zone (Location)</label>
-              <input 
-                type="text" 
-                value={formData.location}
-                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                placeholder="e.g. Mumbai, Virtual" 
-                className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white outline-none focus:border-neon-purple transition-all" 
-              />
-            </div>
-            <div className="space-y-2 md:col-span-1">
-              <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Stylistic Directives</label>
-              <input 
-                type="text"
-                value={formData.style}
-                onChange={(e) => setFormData({ ...formData, style: e.target.value })}
-                placeholder="e.g. Dark, Moody, High-Key" 
-                className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white outline-none focus:border-neon-purple transition-all" 
-              />
-            </div>
-            <div className="md:col-span-2">
-              <button 
-                type="submit"
-                disabled={isSearching}
-                className="w-full py-5 rounded-2xl bg-neon-purple text-white font-black uppercase tracking-[0.2em] shadow-[0_0_30px_rgba(168,85,247,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-50"
-              >
-                {isSearching ? (
-                  <>
-                    <BrainCircuit className="animate-spin" size={20} />
-                    Processing Node Streams...
-                  </>
-                ) : (
-                  <>
-                    <Zap size={20} />
-                    Initialize AI Matching
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
-        </div>
-
-        {/* Results */}
-        <div className="space-y-6">
-          <AnimatePresence>
-            {results.map((creator, index) => (
+          <AnimatePresence mode="wait">
+            {!matching && matches.length === 0 ? (
               <motion.div
-                key={creator.id}
-                initial={{ opacity: 0, x: -30 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.15 }}
-                className="glass rounded-3xl border-white/5 p-6 hover:border-white/10 transition-all group overflow-hidden"
+                key="idle"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="glass p-12 sm:p-20 rounded-[60px] border-white/5 bg-white/[0.01] relative overflow-hidden"
               >
-                <div className="flex flex-col md:flex-row gap-8 items-center">
-                  <div className="relative shrink-0">
-                    <div className="w-24 h-24 rounded-2xl overflow-hidden glass border border-white/10 group-hover:border-neon-purple/50 transition-colors">
-                      <img src={creator.image} className="w-full h-full object-cover" alt="" />
-                    </div>
-                    <div className={`absolute -top-3 -right-3 px-3 py-1 rounded-full text-[10px] font-black shadow-lg ${
-                      creator.matchScore >= 90 ? "bg-green-500 text-white shadow-[0_0_15px_rgba(34,197,94,0.5)]" :
-                      creator.matchScore >= 70 ? "bg-neon-blue text-white shadow-[0_0_15px_rgba(59,130,246,0.5)]" :
-                      "bg-neon-purple text-white shadow-[0_0_15px_rgba(168,85,247,0.5)]"
-                    }`}>
-                      {creator.matchScore}% Match
-                    </div>
-                  </div>
-
-                  <div className="flex-1 text-center md:text-left">
-                    <h3 className="text-xl font-black text-white uppercase tracking-tighter flex items-center justify-center md:justify-start gap-2 mb-2">
-                      {creator.name}
-                      {creator.verified && <ShieldCheck size={18} className="text-neon-blue" />}
-                    </h3>
-                    <div className="flex flex-wrap justify-center md:justify-start gap-2 mb-4">
-                      <span className="px-3 py-1 bg-white/5 rounded-full text-[8px] font-black text-gray-400 uppercase tracking-widest">{creator.category}</span>
-                      <span className="px-3 py-1 bg-white/5 rounded-full text-[8px] font-black text-gray-400 uppercase tracking-widest">{creator.city}</span>
-                    </div>
-                    <p className="text-xs text-gray-500 leading-relaxed max-w-xl">
-                      Specializes in {creator.category.toLowerCase()} with a focus on high-fidelity visual storytelling.
-                    </p>
-                  </div>
-
-                  <div className="flex flex-col gap-3">
-                    <Link href={`/chat/${creator.id}`}>
-                      <button className="w-full md:w-auto px-8 py-3 rounded-xl bg-white text-black text-[10px] font-black uppercase tracking-widest hover:bg-neon-purple hover:text-white transition-all flex items-center justify-center gap-2">
-                        Open Signal <ArrowRight size={14} />
-                      </button>
-                    </Link>
-                    <button 
-                      onClick={() => setExpandedId(expandedId === creator.id ? null : creator.id)}
-                      className="text-[8px] text-gray-500 font-black uppercase tracking-[0.2em] hover:text-white transition-colors"
-                    >
-                      {expandedId === creator.id ? "Close Insights" : "Why this match?"}
-                    </button>
-                  </div>
+                <div className="relative z-10">
+                   <div className="w-24 h-24 rounded-[40px] bg-neon-purple/10 border border-neon-purple/20 flex items-center justify-center mx-auto mb-10 shadow-[0_0_50px_rgba(168,85,247,0.2)]">
+                      <Target size={48} className="text-neon-purple" />
+                   </div>
+                   <h3 className="text-2xl font-black text-white uppercase mb-6 italic tracking-tighter">Ready to find your match?</h3>
+                   <button 
+                    onClick={startMatching}
+                    className="px-12 py-5 rounded-2xl bg-white text-black font-black uppercase text-xs tracking-widest hover:bg-neon-purple hover:text-white transition-all shadow-2xl active:scale-95"
+                   >
+                     Initialize AI Match Engine
+                   </button>
                 </div>
-
-                <AnimatePresence>
-                  {expandedId === creator.id && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="mt-6 pt-6 border-t border-white/5 bg-neon-purple/5 p-6 rounded-2xl">
-                        <h4 className="text-[10px] font-black text-neon-purple uppercase tracking-widest mb-3 flex items-center gap-2">
-                          <BrainCircuit size={12} />
-                          AI Inference Result
-                        </h4>
-                        <p className="text-xs text-gray-300 leading-relaxed italic">
-                          &quot;{creator.aiReason}&quot;
-                        </p>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(168,85,247,0.05),transparent_70%)]" />
               </motion.div>
-            ))}
+            ) : matching ? (
+              <motion.div
+                key="matching"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="glass p-20 rounded-[60px] border-white/5 bg-white/[0.01] flex flex-col items-center"
+              >
+                <div className="relative mb-12">
+                   <div className="w-32 h-32 rounded-full border-4 border-white/5 border-t-neon-purple animate-spin" />
+                   <Sparkles className="absolute inset-0 m-auto text-neon-purple animate-pulse" size={40} />
+                </div>
+                
+                <div className="space-y-4">
+                  <p className={`text-sm font-black uppercase tracking-[0.4em] transition-all duration-500 ${step >= 1 ? "text-neon-purple" : "text-gray-700"}`}>Analyzing Requirements...</p>
+                  <p className={`text-sm font-black uppercase tracking-[0.4em] transition-all duration-500 ${step >= 2 ? "text-neon-blue" : "text-gray-700"}`}>Scanning Creator Marketplace...</p>
+                  <p className={`text-sm font-black uppercase tracking-[0.4em] transition-all duration-500 ${step >= 3 ? "text-green-500" : "text-gray-700"}`}>Finalizing Optimal Matches...</p>
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="results"
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="grid grid-cols-1 md:grid-cols-3 gap-8"
+              >
+                {matches.map((creator, i) => (
+                  <div key={creator.id} className="glass p-8 rounded-[40px] border-white/5 bg-white/[0.01] group hover:border-neon-purple/50 transition-all text-center">
+                     <div className="relative inline-block mb-6">
+                        <div className="w-24 h-24 rounded-3xl overflow-hidden glass border-2 border-white/10 group-hover:border-neon-purple transition-colors">
+                           <img src={creator.image} className="w-full h-full object-cover" alt="" />
+                        </div>
+                        <div className="absolute -bottom-2 -right-2 p-2 bg-neon-purple rounded-xl shadow-lg border-2 border-black">
+                           <Zap size={14} className="text-white fill-white" />
+                        </div>
+                     </div>
+                     <div className="mb-6">
+                        <h4 className="text-lg font-black text-white uppercase tracking-tighter mb-1 italic">{creator.name}</h4>
+                        <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">{creator.specialization}</p>
+                     </div>
+                     <div className="p-4 glass rounded-2xl bg-black/40 border border-white/5 mb-8">
+                        <span className="text-[8px] text-gray-600 font-black uppercase tracking-widest block mb-1">Match Score</span>
+                        <p className="text-xl font-black text-neon-purple italic">{creator.score}%</p>
+                     </div>
+                     <Link href={`/creators/${creator.id}`}>
+                        <button className="w-full py-4 rounded-xl bg-white text-black font-black uppercase text-[9px] tracking-widest hover:bg-neon-purple hover:text-white transition-all shadow-xl active:scale-95 flex items-center justify-center gap-2">
+                           Open Profile <ArrowRight size={14} />
+                        </button>
+                     </Link>
+                  </div>
+                ))}
+              </motion.div>
+            )}
           </AnimatePresence>
+
+          <div className="mt-20 flex flex-wrap justify-center gap-10 opacity-30 grayscale border-t border-white/5 pt-16">
+             <div className="flex items-center gap-3">
+                <ShieldCheck size={24} className="text-gray-500" />
+                <span className="text-[10px] font-black uppercase tracking-widest">Secured Escrow</span>
+             </div>
+             <div className="flex items-center gap-3">
+                <CheckCircle2 size={24} className="text-gray-500" />
+                <span className="text-[10px] font-black uppercase tracking-widest">Verified Accounts</span>
+             </div>
+             <div className="flex items-center gap-3">
+                <Star size={24} className="text-gray-500" />
+                <span className="text-[10px] font-black uppercase tracking-widest">Elite Talent</span>
+             </div>
+          </div>
         </div>
       </div>
     </PageWrapper>

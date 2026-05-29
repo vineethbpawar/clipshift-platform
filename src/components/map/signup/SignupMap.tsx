@@ -4,10 +4,17 @@ import React from "react";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 
+import { LeafletMouseEvent } from "leaflet";
+
 // Helper to handle map clicks
-const LocationMarker = ({ position, setPosition }: any) => {
+interface LocationMarkerProps {
+  position: [number, number] | null;
+  setPosition: (pos: [number, number]) => void;
+}
+
+const LocationMarker = ({ position, setPosition }: LocationMarkerProps) => {
   useMapEvents({
-    click(e: any) {
+    click(e: LeafletMouseEvent) {
       setPosition([e.latlng.lat, e.latlng.lng]);
     },
   });

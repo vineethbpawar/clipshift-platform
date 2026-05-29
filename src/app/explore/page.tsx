@@ -1,220 +1,156 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { MapView } from "@/components/map/MapView";
-import { LocationSearch } from "@/components/map/LocationSearch";
-import { RadiusFilter } from "@/components/map/RadiusFilter";
 import { PageWrapper } from "@/components/layout/PageWrapper";
-import { Crosshair, Filter, List, MapPinOff, Loader2 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import dynamic from "next/dynamic";
 import { supabase } from "@/lib/supabase";
-import { toast } from "react-hot-toast";
+import { Users, Loader2, Navigation, Globe, Search, Filter, ShieldCheck } from "lucide-react";
+import { type Creator } from "@/data/creators";
+
+const MapView = dynamic(() => import("@/components/map/MapView").then(mod => mod.MapView), { 
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-full flex flex-col items-center justify-center bg-black/40 backdrop-blur-xl">
+      <Loader2 className="animate-spin text-neon-blue mb-4" size={48} />
+      <span className="text-[10px] font-black text-white uppercase tracking-[0.4em] animate-pulse">Initializing Map</span>
+    </div>
+  )
+});
 
 export default function ExplorePage() {
-  const [creators, setCreators] = useState<any[]>([]);
-  const [filteredCreators, setFilteredCreators] = useState<any[]>([]);
-  const [radius, setRadius] = useState(20);
-  const [mapCenter, setMapCenter] = useState<[number, number]>([19.0760, 72.8777]);
-  const [showFilters, setShowFilters] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [timedOut, setTimedOut] = useState(false);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (loading) setTimedOut(true);
-    }, 8000);
-    return () => clearTimeout(timer);
-  }, [loading]);
+  const [creators, setCreators] = useState<Partial<Creator>[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchCreators = async () => {
-      setLoading(true);
       try {
         const { data, error } = await supabase
           .from('creators')
           .select(`
             *,
-            profiles (
-              full_name,
-              avatar_url,
-              city,
-              area,
-              pincode
-            )
+            profiles(full_name, avatar_url, city, area)
           `);
 
-        if (error) {
-          console.error("Explore fetch error:", error);
-          throw error;
-        }
-        
+        if (error) throw error;
+
         if (data) {
-          const mappedCreators = data.map(c => ({
-            id: c.id,
-            name: c.profiles?.full_name || "Unknown",
-            category: c.category,
-            image: c.profiles?.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80",
-            location: { 
-              lat: c.location_lat || 19.0760, 
-              lng: c.location_lng || 72.8777,
-              city: c.profiles?.city,
-              area: c.profiles?.area,
-              pincode: c.profiles?.pincode
-            },
-            rating: c.rating
-          }));
-          setCreators(mappedCreators);
-          setFilteredCreators(mappedCreators);
+          setCreators(data.map((n) => {
+            const typedN = n as unknown as { 
+              id: string; 
+              profiles: { full_name: string; avatar_url: string; area: string };
+              location_lat: number;
+              location_lng: number;
+              category: string;
+              specialization: string;
+              rating: number;
+              starting_price: number;
+            };
+            return {
+              id: typedN.id,
+              name: typedN.profiles?.full_name || "Unknown",
+              image: typedN.profiles?.avatar_url,
+              location: { lat: typedN.location_lat, lng: typedN.location_lng, area: typedN.profiles?.area },
+              category: typedN.category,
+              specialty: typedN.specialization ? [typedN.specialization] : [],
+              rating: typedN.rating || 4.9,
+              price: (typedN.starting_price || 499).toString()
+            };
+          }) as Partial<Creator>[]);
         }
-      } catch (err) {
-        console.error("Error fetching creators:", err);
-      } finally {
-        setLoading(false);
+      } catch (err: unknown) {
+        console.error("Map fetch failed:", err);
+        const errorMessage = err instanceof Error ? err.message : "Failed to load creators";
+        setError(errorMessage);
       }
     };
 
     fetchCreators();
   }, []);
 
-  const handleSearch = (query: string) => {
-    const q = query.toLowerCase();
-    const filtered = creators.filter(c => 
-      c.location.city?.toLowerCase().includes(q) || 
-      c.location.area?.toLowerCase().includes(q) || 
-      c.location.pincode?.includes(q)
-    );
-    setFilteredCreators(filtered);
-    
-    if (filtered.length > 0) {
-      setMapCenter([filtered[0].location.lat, filtered[0].location.lng]);
-    }
-  };
-
-  const handleLocate = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition((pos) => {
-        setMapCenter([pos.coords.latitude, pos.coords.longitude]);
-      });
-    }
-  };
-
   return (
     <PageWrapper>
-      <div className="h-screen w-full relative overflow-hidden bg-black">
-        {/* Map Background */}
-        <div className="absolute inset-0 z-0">
-          <MapView creators={filteredCreators} center={mapCenter} />
-        </div>
-
-        {/* Loading Overlay */}
-        {loading && !timedOut && (
-          <div className="absolute inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center">
-            <div className="flex flex-col items-center gap-4">
-              <Loader2 className="animate-spin text-neon-purple" size={40} />
-              <span className="text-[10px] font-black text-white uppercase tracking-[0.3em]">Scanning Global Nodes...</span>
+      <div className="h-[100dvh] pt-20 flex flex-col relative overflow-hidden bg-black">
+        {/* Map UI Overlay: Header */}
+        <div className="absolute top-24 left-6 right-6 z-20 flex flex-col md:flex-row justify-between items-start gap-4 pointer-events-none">
+          <div className="pointer-events-auto">
+            <div className="glass p-6 rounded-[32px] border-white/10 bg-black/60 backdrop-blur-xl shadow-2xl">
+               <div className="flex items-center gap-3 mb-2">
+                 <div className="w-2 h-2 rounded-full bg-neon-blue animate-pulse shadow-[0_0_10px_rgba(59,130,246,0.6)]" />
+                 <h1 className="text-[10px] font-black text-white uppercase tracking-[0.3em]">Live Discovery</h1>
+               </div>
+               <h2 className="text-3xl font-black text-white uppercase tracking-tighter italic leading-none">
+                 Global <span className="text-neon-blue">Creators</span>
+               </h2>
             </div>
           </div>
-        )}
 
-        {/* Timeout Overlay */}
-        {loading && timedOut && (
-          <div className="absolute inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center px-4">
-            <div className="glass p-8 rounded-[40px] border-red-500/20 text-center max-w-sm">
-              <h2 className="text-xl font-black text-white uppercase mb-4 tracking-tighter">Node Synchronized Error</h2>
-              <p className="text-sm text-gray-500 mb-8 leading-relaxed">The global discovery network is taking too long to respond. Please verify your connection.</p>
+          <div className="flex items-center gap-3 pointer-events-auto">
+             <div className="glass px-6 py-4 rounded-2xl border-white/10 bg-black/60 backdrop-blur-xl flex items-center gap-3">
+                <Users size={16} className="text-neon-purple" />
+                <span className="text-[10px] font-black text-white uppercase tracking-widest">{creators.length} Creators Active</span>
+             </div>
+             <button className="p-4 glass rounded-2xl border-white/10 bg-black/60 backdrop-blur-xl text-white hover:bg-white/5 transition-all">
+                <Filter size={18} />
+             </button>
+          </div>
+        </div>
+
+        {/* Search Overlay */}
+        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-20 w-full max-w-xl px-6 pointer-events-none">
+           <div className="pointer-events-auto glass p-2 rounded-[40px] border-white/10 bg-black/60 backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex items-center gap-2">
+              <div className="p-4 rounded-full bg-neon-blue/10 text-neon-blue">
+                 <Search size={20} />
+              </div>
+              <input 
+                type="text" 
+                placeholder="Search city, area or creator name..."
+                className="bg-transparent border-none outline-none text-sm text-white w-full px-4 italic placeholder:text-gray-600"
+              />
+              <button className="px-8 py-4 rounded-full bg-white text-black font-black uppercase text-[10px] tracking-widest hover:bg-neon-blue hover:text-white transition-all">
+                 Locate
+              </button>
+           </div>
+        </div>
+
+        {/* Map View */}
+        <div className="flex-1 w-full relative z-10">
+          {error ? (
+            <div className="w-full h-full flex flex-col items-center justify-center bg-black/60 backdrop-blur-xl px-6 text-center">
+              <div className="w-20 h-20 rounded-3xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-8">
+                <Globe size={32} className="text-red-500" />
+              </div>
+              <h2 className="text-2xl font-black text-white uppercase mb-4 tracking-tighter italic">Map sync failed</h2>
+              <p className="text-gray-500 mb-10 uppercase tracking-widest text-[10px] font-bold max-w-xs leading-relaxed">
+                Could not connect to the global creator database. Please check your connection.
+              </p>
               <button 
                 onClick={() => window.location.reload()}
-                className="w-full py-4 bg-neon-purple text-white rounded-full font-black uppercase text-xs tracking-widest shadow-lg"
+                className="px-10 py-4 bg-white text-black rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-neon-blue hover:text-white transition-all shadow-xl"
               >
-                Reconnect Node
+                Retry Connection
               </button>
             </div>
-          </div>
-        )}
-
-        {/* Empty State Overlay */}
-        {!loading && filteredCreators.length === 0 && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="glass p-12 rounded-[40px] border-white/5 text-center max-w-sm pointer-events-auto shadow-[0_0_50px_rgba(0,0,0,0.5)]"
-            >
-              <div className="w-16 h-16 bg-white/5 rounded-3xl flex items-center justify-center mb-6 mx-auto">
-                <MapPinOff size={32} className="text-gray-500" />
-              </div>
-              <h2 className="text-xl font-black text-white uppercase tracking-tight mb-2">Dark Zone</h2>
-              <p className="text-gray-500 text-sm mb-0">No creators in this area yet. Be the first to light up this sector.</p>
-            </motion.div>
-          </div>
-        )}
-
-        {/* Overlay UI - Top Bar */}
-        <div className="absolute top-24 md:top-28 left-0 right-0 z-20 px-4 md:px-8 flex flex-col md:flex-row items-center justify-between gap-4 pointer-events-none">
-          <div className="w-full md:max-w-sm pointer-events-auto">
-            <LocationSearch onSearch={handleSearch} />
-          </div>
-          
-          <div className="flex items-center gap-2 md:gap-3 pointer-events-auto self-end md:self-auto">
-            <button 
-              onClick={handleLocate}
-              className="p-3 md:p-4 glass border-white/10 rounded-full text-white hover:bg-neon-purple hover:text-white transition-all shadow-lg"
-              title="Current Location"
-            >
-              <Crosshair className="w-4 h-4 md:w-5 md:h-5" />
-            </button>
-            <button 
-              onClick={() => setShowFilters(!showFilters)}
-              className={`p-3 md:p-4 glass border-white/10 rounded-full transition-all shadow-lg ${showFilters ? "bg-neon-purple text-white" : "text-white"}`}
-            >
-              <Filter className="w-4 h-4 md:w-5 md:h-5" />
-            </button>
-          </div>
+          ) : (
+            <div className="w-full h-full grayscale opacity-40 hover:grayscale-0 hover:opacity-100 transition-all duration-1000">
+               <MapView creators={creators as Creator[]} />
+            </div>
+          )}
         </div>
 
-        {/* Overlay UI - Filters Pane */}
-        <AnimatePresence>
-          {showFilters && (
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              className="absolute top-44 md:top-48 right-4 md:right-8 z-20 w-[calc(100%-2rem)] sm:w-64 space-y-4"
-            >
-              <RadiusFilter radius={radius} setRadius={setRadius} />
-              
-              <div className="glass border-white/5 rounded-2xl p-4 max-h-[40vh] flex flex-col overflow-hidden">
-                <div className="text-[10px] uppercase font-bold text-gray-500 tracking-widest mb-3">Found {filteredCreators.length} Creators</div>
-                <div className="space-y-2 overflow-y-auto pr-2 custom-scrollbar flex-1">
-                  {filteredCreators.length > 0 ? filteredCreators.map(c => (
-                    <div key={c.id} className="text-xs text-white p-2 hover:bg-white/5 rounded-lg cursor-pointer transition-colors border border-transparent hover:border-white/5">
-                      {c.name} • <span className="text-neon-blue">{c.location.area || 'Unknown'}</span>
-                    </div>
-                  )) : (
-                    <div className="text-[10px] text-gray-600 uppercase font-black py-4 text-center">Empty Sector</div>
-                  )}
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Overlay UI - Bottom Info */}
-        {!loading && creators.length > 0 && (
-          <div className="absolute bottom-6 md:bottom-8 left-4 md:left-8 z-20 pointer-events-none">
-            <div className="glass px-4 md:px-6 py-3 md:py-4 rounded-2xl md:rounded-3xl border-white/5 flex items-center gap-3 md:gap-4">
-              <div className="flex -space-x-2 md:-space-x-3">
-                {creators.slice(0, 3).map(c => (
-                  <img key={c.id} src={c.image} className="w-6 h-6 md:w-8 md:h-8 rounded-full border-2 border-black" alt="" />
-                ))}
-              </div>
-              <div className="text-[10px] md:text-xs">
-                <div className="text-white font-bold">{creators.length} Premium Creators</div>
-                <div className="text-gray-500 hidden sm:block">Available in global nodes</div>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Stats & Legend Overlay */}
+        <div className="absolute right-6 top-1/2 -translate-y-1/2 z-20 hidden xl:flex flex-col gap-4 pointer-events-none">
+           {[
+             { label: "India", value: "Active", icon: Navigation },
+             { label: "Global", value: "Coming Soon", icon: Globe },
+             { label: "Elite", value: "Verified", icon: ShieldCheck }
+           ].map((item, i) => (
+             <div key={i} className="glass p-5 rounded-3xl border-white/5 bg-black/40 backdrop-blur-xl pointer-events-auto">
+                <item.icon size={18} className="text-gray-500 mb-3" />
+                <p className="text-[8px] text-gray-500 font-black uppercase tracking-widest">{item.label}</p>
+                <p className="text-[10px] text-white font-black uppercase tracking-tighter mt-0.5 italic">{item.value}</p>
+             </div>
+           ))}
+        </div>
       </div>
     </PageWrapper>
   );

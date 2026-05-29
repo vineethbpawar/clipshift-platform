@@ -35,7 +35,7 @@ export async function POST(req: Request) {
     }
 
     // 2. Record Payment
-    const { data: payment, error: paymentError } = await supabase
+    const { error: paymentError } = await supabase
       .from('payments')
       .upsert({
         order_id: razorpay_order_id,
@@ -104,10 +104,11 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ success: true, message: 'Payment verified and unlock successful' });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Razorpay Verification Error:', error);
+    const errorMessage = error instanceof Error ? error.message : "Verification process failed";
     return NextResponse.json(
-      { error: 'Verification process failed', details: error.message },
+      { error: 'Verification process failed', details: errorMessage },
       { status: 500 }
     );
   }

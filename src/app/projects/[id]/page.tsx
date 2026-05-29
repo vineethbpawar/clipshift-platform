@@ -4,19 +4,22 @@ import React, { useEffect, useState } from "react";
 import { PageWrapper } from "@/components/layout/PageWrapper";
 import { supabase, getStoredSession } from "@/lib/supabase";
 import { useParams, useRouter } from "next/navigation";
-import { Loader2, ArrowLeft, X, Paperclip, ExternalLink } from "lucide-react";
+import { Loader2, ArrowLeft, X, Paperclip, ExternalLink, Calendar, DollarSign, MapPin, CheckCircle2, ShieldCheck, Briefcase, MessageSquare, AlertCircle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "react-hot-toast";
 import { sanitizeDescription } from "@/lib/sanitizer";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { loadRazorpayScript } from "@/lib/razorpay";
+import Link from "next/link";
+import { type Project } from "@/data/projects";
 
 export default function ProjectDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { user } = useAuth();
-  const [project, setProject] = useState<any>(null);
+  const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
+  const [projectError, setProjectError] = useState<string | null>(null);
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [messaging, setMessaging] = useState(false);
@@ -29,45 +32,31 @@ export default function ProjectDetailPage() {
       toast.error("Only creators can message clients.");
       return;
     }
-    if (user.id === project.client_id) {
-      toast.error("You cannot message yourself.");
-      return;
-    }
 
     setMessaging(true);
-    console.log("MESSAGE CLIENT CLICKED", { projectId: project.id, clientId: project.client_id, userId: user.id });
-
     try {
-      // 1. Check for existing conversation
-      const { data: existingConv, error: fetchError } = await supabase
+      const { data: existingConv } = await supabase
         .from('conversations')
         .select('id')
         .eq('client_id', project.client_id)
         .eq('creator_id', user.id)
         .maybeSingle();
 
-      if (fetchError) throw fetchError;
-
       if (existingConv) {
-        console.log("EXISTING CONVERSATION FOUND", existingConv);
         router.push(`/chat/${existingConv.id}`);
       } else {
-        // 2. Create new conversation
         const { data: newConv, error: createError } = await supabase
           .from('conversations')
           .insert({
             client_id: project.client_id,
             creator_id: user.id,
-            last_message: `Initiated chat for project: ${project.title}`,
             last_message_at: new Date().toISOString()
           })
           .select()
           .single();
 
         if (createError) throw createError;
-        console.log("CREATED CONVERSATION", newConv);
         
-        // 3. Send initial message
         await supabase.from('messages').insert({
           conversation_id: newConv.id,
           sender_id: user.id,
@@ -77,25 +66,12 @@ export default function ProjectDetailPage() {
 
         router.push(`/chat/${newConv.id}`);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("MESSAGE CLIENT ERROR", err);
-      toast.error("Failed to initiate chat: " + (err.message || "Unknown error"));
+      toast.error("Failed to initiate chat.");
     } finally {
       setMessaging(false);
     }
-  };
-
-  const handleDelete = async () => {
-    if (!confirm("Are you sure you want to delete this project? This cannot be undone.")) return;
-    setSubmitting(true);
-    const { error } = await supabase.from('projects').delete().eq('id', params.id);
-    if (error) {
-      toast.error("Failed to delete project");
-    } else {
-      toast.success("Project deleted");
-      router.push("/dashboard/client");
-    }
-    setSubmitting(false);
   };
 
   useEffect(() => {
@@ -109,15 +85,8 @@ export default function ProjectDetailPage() {
         .eq('id', projectId)
         .maybeSingle();
 
-      if (projErr) {
-        console.error("Supabase error fetching project:", projErr);
-        setProject({ error: "Project error: " + projErr.message });
-        setLoading(false);
-        return;
-      }
-
-      if (!projData) {
-        setProject({ error: "Project not found." });
+      if (projErr || !projData) {
+        setProjectError(projErr?.message || "Project not found.");
         setLoading(false);
         return;
       }
@@ -128,12 +97,12 @@ export default function ProjectDetailPage() {
       const isAdmin = role === "admin";
 
       if (projData.status !== "open" && !isAssignedCreator && !isOwner && !isAdmin) {
-        setProject({ error: "This project is no longer accepting proposals." });
+        setProjectError("This project is already in progress or completed.");
         setLoading(false);
         return;
       }
 
-      setProject(projData);
+      setProject(projData as Project);
 
       if (user?.role === 'creator') {
         const { data: unlockData } = await supabase
@@ -141,57 +110,25 @@ export default function ProjectDetailPage() {
           .select('*')
           .eq('project_id', projectId)
           .eq('freelancer_id', user?.id)
-          .eq('payment_status', 'paid')
           .maybeSingle();
         setIsUnlocked(!!unlockData);
       }
       setLoading(false);
     };
     if (user?.id) fetchProject();
-  }, [params.id, user?.id, user?.role]);
+  }, [params.id, user]);
 
   const handleUnlock = async () => {
-    if (!user) return;
-    const role = user.role;
-    
-    if (role !== "creator") {
-      toast.error("Unauthorized. Only creators can unlock projects.");
-      return;
-    }
-
-    if (project?.status !== "open") {
-      toast.error("This project is no longer open for unlocks.");
-      return;
-    }
-
+    if (!user || !project) return;
     setSubmitting(true);
-
     try {
-      const { data: existingUnlock } = await supabase
-        .from('project_unlocks')
-        .select('*')
-        .eq('project_id', project.id)
-        .eq('freelancer_id', user.id)
-        .maybeSingle();
-
-      if (existingUnlock) {
-        setIsUnlocked(true);
-        toast.success("Contact already unlocked.");
-        setSubmitting(false);
-        return;
-      }
-
       const res = await loadRazorpayScript();
       if (!res) throw new Error("Razorpay SDK failed to load.");
 
       const orderRes = await fetch("/api/razorpay/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amount: 99,
-          actionType: 'boost_project_7_days',
-          payload: { project_id: project.id }
-        })
+        body: JSON.stringify({ amount: 99, actionType: 'project_unlock' })
       });
       const orderData = await orderRes.json();
       if (orderData.error) throw new Error(orderData.error);
@@ -203,7 +140,7 @@ export default function ProjectDetailPage() {
         name: "ClipShift",
         description: `Unlock contact for project: ${project.title}`,
         order_id: orderData.order_id,
-        handler: async (response: any) => {
+        handler: async (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
           setSubmitting(true);
           try {
             const verifyRes = await fetch("/api/razorpay/verify-payment", {
@@ -214,11 +151,7 @@ export default function ProjectDetailPage() {
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_signature: response.razorpay_signature,
                 type: 'project_unlock',
-                payload: {
-                  project_id: project.id,
-                  freelancer_id: user.id,
-                  amount: 99 * 100
-                }
+                payload: { project_id: project.id, freelancer_id: user.id, amount: 99 * 100 }
               })
             });
 
@@ -226,10 +159,10 @@ export default function ProjectDetailPage() {
             if (!verifyRes.ok) throw new Error(verifyData.error || "Verification failed");
 
             setIsUnlocked(true);
-            toast.success("Contact unlocked!");
-          } catch (err: any) {
+            toast.success("Contact details unlocked!");
+          } catch (err: unknown) {
             console.error("PROJECT UNLOCK ERROR", err);
-            toast.error(err.message || "Verification failed.");
+            toast.error("Verification failed.");
           } finally {
             setSubmitting(false);
           }
@@ -239,43 +172,26 @@ export default function ProjectDetailPage() {
         modal: { ondismiss: () => setSubmitting(false) }
       };
 
-      const paymentObject = new (window as any).Razorpay(options);
+      const paymentObject = new (window as unknown as { Razorpay: { new (options: unknown): { open: () => void } } }).Razorpay(options);
       paymentObject.open();
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("PROJECT UNLOCK ERROR", err);
-      toast.error(err.message || "An unexpected error occurred.");
+      const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred.";
+      toast.error(errorMessage);
       setSubmitting(false);
     }
   };
 
   const handleProposalSubmit = async () => {
     if (!user || !project) return;
-    if (user.role !== "creator") {
-      toast.error("Unauthorized. Only creators can submit proposals.");
-      return;
-    }
-    if (project.status !== "open") {
-      toast.error("This project is no longer accepting proposals.");
-      return;
-    }
-
     const { coverLetter, budget, days } = proposalData;
-    if (!coverLetter.trim()) {
-      toast.error("Please provide a cover letter.");
-      return;
-    }
-
-    const proposedBudget = Number(budget);
-    const estimatedDays = Number(days);
-
-    if (isNaN(proposedBudget) || proposedBudget <= 0) {
-      toast.error("Please enter a valid budget.");
+    if (!coverLetter.trim() || !budget || !days) {
+      toast.error("Please fill all proposal fields.");
       return;
     }
 
     setSubmitting(true);
-
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       let activeSession = sessionData.session;
@@ -283,241 +199,262 @@ export default function ProjectDetailPage() {
       if (!activeSession) {
         const storedSession = getStoredSession();
         if (storedSession?.access_token) {
-          const { data, error } = await supabase.auth.setSession({
-            access_token: storedSession.access_token,
-            refresh_token: storedSession.refresh_token,
-          });
+          const { data, error } = await supabase.auth.setSession({ access_token: storedSession.access_token, refresh_token: storedSession.refresh_token });
           if (error) throw error;
           activeSession = data.session;
         }
       }
 
-      if (!activeSession) {
-        toast.error("Your session expired. Please login again.");
-        router.push("/auth/login");
-        return;
-      }
+      if (!activeSession) throw new Error("Session expired.");
 
-      const payload = {
+      const { error } = await supabase.from('proposals').insert({
         project_id: project.id,
         freelancer_id: activeSession.user.id,
         cover_letter: coverLetter.trim(),
-        proposed_budget: proposedBudget,
-        estimated_days: estimatedDays,
+        proposed_budget: Number(budget),
+        estimated_days: Number(days),
         status: "pending"
-      };
+      });
 
-      const { data: existingProposal } = await supabase
-        .from('proposals')
-        .select('id')
-        .eq('project_id', project.id)
-        .eq('freelancer_id', activeSession.user.id)
-        .maybeSingle();
-
-      if (existingProposal) {
-        toast.error("You already submitted this proposal.");
-        setSubmitting(false);
-        return;
-      }
-
-      const { data, error } = await supabase.from('proposals').insert(payload).select().single();
-
-      if (error) {
-        toast.error(error.message || "Failed to submit proposal.");
-      } else {
-        toast.success("Proposal submitted successfully!");
-        setProposalData({ coverLetter: "", budget: "", days: "" });
-        setShowProposalModal(false);
-      }
-    } catch (err: any) {
+      if (error) throw error;
+      toast.success("Proposal submitted successfully!");
+      setShowProposalModal(false);
+    } catch (err: unknown) {
       console.error("SUBMIT PROPOSAL ERROR", err);
-      toast.error(err.message || "An unexpected error occurred.");
+      const errorMessage = err instanceof Error ? err.message : "Action failed.";
+      toast.error(errorMessage);
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (loading) return <div className="flex justify-center pt-32"><Loader2 className="animate-spin text-neon-purple" /></div>;
-  if (!project || project.error) return (
-    <div className="text-center pt-32 px-4">
-      <div className="glass p-8 rounded-3xl border-red-500/20 max-w-md mx-auto">
-        <h2 className="text-2xl font-black text-white uppercase mb-4">Notice</h2>
-        <p className="text-gray-400 text-sm mb-8">{project?.error || "Project not found."}</p>
-        <button onClick={() => router.back()} className="px-8 py-3 bg-white/5 border border-white/10 text-white rounded-full font-black text-xs uppercase tracking-widest hover:bg-white/10">
+  if (loading) return <div className="flex justify-center pt-40"><Loader2 className="animate-spin text-neon-purple" size={48} /></div>;
+  
+  if (projectError || !project) return (
+    <div className="text-center pt-40 px-6">
+      <div className="glass p-10 rounded-[40px] border-red-500/10 bg-red-500/5 max-w-lg mx-auto">
+        <AlertCircle className="mx-auto text-red-500 mb-6" size={64} />
+        <h2 className="text-2xl font-black text-white uppercase mb-4 italic">Notice</h2>
+        <p className="text-gray-400 text-sm mb-10 leading-relaxed uppercase tracking-widest">{projectError || "Project Not Found"}</p>
+        <button onClick={() => router.back()} className="px-10 py-4 bg-white text-black rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-neon-purple hover:text-white transition-all">
           Go Back
         </button>
       </div>
     </div>
   );
 
-  const isOwner = user?.id === project.client_id && user?.role === "client";
+  const isOwner = user?.id === project.client_id;
 
   return (
     <PageWrapper>
-      <div className="max-w-4xl mx-auto pt-32 pb-20 px-4">
-        <button onClick={() => router.back()} className="flex items-center gap-2 text-gray-500 hover:text-white mb-8 text-xs uppercase tracking-widest font-bold">
-          <ArrowLeft size={16} /> Back
+      <div className="max-w-5xl mx-auto pt-32 pb-32 px-6">
+        <button onClick={() => router.back()} className="flex items-center gap-2 text-gray-500 hover:text-white mb-10 text-[10px] uppercase tracking-[0.2em] font-black transition-colors group">
+          <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" /> Back to Projects
         </button>
 
-        <div className="glass rounded-[32px] sm:rounded-[40px] p-6 sm:p-10 border border-white/5">
-          <div className="flex flex-col sm:flex-row justify-between items-start mb-6 gap-4">
-            <h1 className="text-2xl sm:text-4xl font-black text-white uppercase tracking-tighter leading-tight">{project.title}</h1>
-            <span className="px-4 py-2 rounded-full bg-neon-purple/10 border border-neon-purple/20 text-[10px] font-black text-neon-purple uppercase tracking-widest whitespace-nowrap">
-              {project.category}
-            </span>
-          </div>
-
-          {project.file_url && (
-            <div className="mb-8">
-              {project.file_type?.startsWith('image') ? (
-                <div className="relative aspect-video rounded-3xl overflow-hidden glass border border-white/5">
-                  <img src={project.file_url} className="w-full h-full object-cover" alt="" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 items-start">
+          {/* Left: Main Content */}
+          <div className="lg:col-span-2 space-y-10">
+            <div className="glass rounded-[50px] p-8 sm:p-12 border border-white/5 relative overflow-hidden bg-white/[0.01]">
+              <div className="flex flex-col sm:flex-row justify-between items-start mb-10 gap-6 relative z-10">
+                <div className="max-w-xl">
+                   <div className="flex items-center gap-3 mb-4">
+                     <span className="px-3 py-1 rounded-full bg-neon-purple/10 border border-neon-purple/20 text-[9px] font-black text-neon-purple uppercase tracking-widest">
+                       {project.category}
+                     </span>
+                     <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${project.status === 'open' ? 'bg-green-500/10 text-green-500 border-green-500/20' : 'bg-neon-blue/10 text-neon-blue border-neon-blue/20'}`}>
+                        {project.status.replace('_', ' ')}
+                     </span>
+                   </div>
+                   <h1 className="text-3xl sm:text-5xl font-black text-white uppercase tracking-tighter leading-[0.9] mb-6 italic">{project.title}</h1>
+                   <p className="text-gray-400 text-sm leading-relaxed uppercase tracking-wider font-medium opacity-70">
+                     {isUnlocked || isOwner ? project.description : sanitizeDescription(project.description || "")}
+                   </p>
                 </div>
-              ) : (
-                <a href={project.file_url} target="_blank" className="flex items-center gap-4 p-6 glass rounded-2xl border-white/5 hover:border-neon-purple/30 transition-all max-w-md">
-                  <div className="w-12 h-12 rounded-xl bg-neon-purple/10 flex items-center justify-center text-neon-purple">
-                     <Paperclip size={24} />
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-white font-black uppercase tracking-widest">View Project Attachment</p>
-                    <p className="text-[8px] text-gray-500 uppercase font-bold">{project.file_type || 'Document'}</p>
-                  </div>
-                </a>
-              )}
-            </div>
-          )}
-          
-          <p className="text-sm sm:text-gray-400 mb-8 leading-relaxed uppercase tracking-wider font-medium opacity-60">
-            {isUnlocked ? project.description : sanitizeDescription(project.description)}
-          </p>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 mb-10">
-            <div className="glass p-4 rounded-2xl border-white/5">
-              <div className="text-[9px] text-gray-500 uppercase font-black tracking-widest mb-1">Budget</div>
-              <div className="text-xs sm:text-sm font-bold text-white">₹{project.budget}</div>
-            </div>
-            <div className="glass p-4 rounded-2xl border-white/5">
-              <div className="text-[9px] text-gray-500 uppercase font-black tracking-widest mb-1">Service</div>
-              <div className="text-xs sm:text-sm font-bold text-white uppercase">{project.service_type?.replace('_', ' ')}</div>
-            </div>
-            <div className="glass p-4 rounded-2xl border-white/5">
-              <div className="text-[9px] text-gray-500 uppercase font-black tracking-widest mb-1">Location</div>
-              <div className="text-xs sm:text-sm font-bold text-white uppercase truncate">
-                {project.location_mode === 'anywhere_india' ? "Remote" : (project.location || "Flexible")}
               </div>
+
+              {project.file_url && (
+                <div className="mb-12 relative z-10">
+                  <p className="text-[10px] text-gray-600 font-black uppercase tracking-[0.2em] mb-6 ml-2">Project Attachment</p>
+                  {project.file_type?.startsWith('image') ? (
+                    <div className="relative aspect-video rounded-[32px] overflow-hidden glass border border-white/10 group">
+                      <img src={project.file_url} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" alt="" />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                         <a href={project.file_url} target="_blank" className="p-5 rounded-full bg-white text-black hover:scale-110 transition-transform">
+                            <ExternalLink size={24} />
+                         </a>
+                      </div>
+                    </div>
+                  ) : (
+                    <a href={project.file_url} target="_blank" className="flex items-center gap-5 p-8 glass rounded-[32px] border-white/5 hover:border-neon-purple/30 transition-all bg-white/5">
+                      <div className="w-16 h-16 rounded-2xl bg-neon-purple/10 flex items-center justify-center text-neon-purple">
+                         <Paperclip size={32} />
+                      </div>
+                      <div>
+                        <p className="text-xs text-white font-black uppercase tracking-widest mb-1 italic">Project Document</p>
+                        <p className="text-[10px] text-gray-500 uppercase font-bold">{project.file_name || 'View File'}</p>
+                      </div>
+                      <ExternalLink size={20} className="ml-auto text-gray-600" />
+                    </a>
+                  )}
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 pt-10 border-t border-white/5 relative z-10">
+                 <div className="space-y-1">
+                   <span className="text-[9px] text-gray-500 uppercase font-black tracking-widest flex items-center gap-1"><DollarSign size={10} /> Budget</span>
+                   <p className="text-base font-black text-white italic">₹{project.budget}</p>
+                 </div>
+                 <div className="space-y-1">
+                   <span className="text-[9px] text-gray-500 uppercase font-black tracking-widest flex items-center gap-1"><Briefcase size={10} /> Service</span>
+                   <p className="text-xs font-bold text-gray-300 uppercase">{project.service_type?.replace('_', ' ')}</p>
+                 </div>
+                 <div className="space-y-1">
+                   <span className="text-[9px] text-gray-500 uppercase font-black tracking-widest flex items-center gap-1"><MapPin size={10} /> Location</span>
+                   <p className="text-xs font-bold text-gray-300 uppercase truncate">{project.location_mode === 'anywhere_india' ? 'Remote' : (project.city || 'Any')}</p>
+                 </div>
+                 <div className="space-y-1">
+                   <span className="text-[9px] text-gray-500 uppercase font-black tracking-widest flex items-center gap-1"><Calendar size={10} /> Deadline</span>
+                   <p className="text-xs font-bold text-gray-300 uppercase">{project.deadline ? new Date(project.deadline).toLocaleDateString() : '-'}</p>
+                 </div>
+              </div>
+
+              <div className="absolute top-0 right-0 w-64 h-64 bg-neon-purple/5 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/4 pointer-events-none" />
             </div>
-            <div className="glass p-4 rounded-2xl border-white/5">
-              <div className="text-[9px] text-gray-500 uppercase font-black tracking-widest mb-1">Status</div>
-              <div className="text-xs sm:text-sm font-bold text-neon-blue uppercase">{project.status}</div>
-            </div>
+
+            {/* Actions for Creator */}
+            {!isOwner && user?.role === 'creator' && project.status === 'open' && (
+              <div className="flex flex-col sm:flex-row gap-4">
+                <button 
+                  onClick={() => setShowProposalModal(true)}
+                  className="flex-1 py-5 bg-neon-purple text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-[0_0_30px_rgba(168,85,247,0.3)]"
+                >
+                  Submit Proposal
+                </button>
+                {!isUnlocked ? (
+                  <button 
+                    onClick={handleUnlock}
+                    disabled={submitting}
+                    className="flex-1 py-5 bg-white text-black rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-neon-blue hover:text-white transition-all active:scale-95 flex items-center justify-center gap-2"
+                  >
+                    {submitting ? <Loader2 size={16} className="animate-spin" /> : <>Unlock Client Contact <span className="text-[10px] opacity-60 ml-1">₹99</span></>}
+                  </button>
+                ) : (
+                  <button 
+                    onClick={handleMessageClient}
+                    disabled={messaging}
+                    className="flex-1 py-5 bg-green-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2"
+                  >
+                    {messaging ? <Loader2 size={16} className="animate-spin" /> : <><MessageSquare size={16} /> Message Client</>}
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Actions for Client */}
+            {isOwner && project.status === 'open' && (
+              <div className="flex flex-wrap gap-4">
+                 <Link href={`/projects/${project.id}/edit`} className="flex-1 min-w-[200px]">
+                   <button className="w-full py-5 bg-white text-black rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-neon-purple hover:text-white transition-all active:scale-95">Edit Project</button>
+                 </Link>
+                 <Link href="/dashboard/client/proposals" className="flex-1 min-w-[200px]">
+                   <button className="w-full py-5 glass border-white/10 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-white/5 transition-all active:scale-95">View Proposals</button>
+                 </Link>
+              </div>
+            )}
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-            {user?.role === 'creator' && (
-              <>
-                {project.status === 'open' ? (
-                  <>
-                    <button 
-                      onClick={() => setShowProposalModal(true)}
-                      className="w-full sm:w-auto px-8 py-4 bg-neon-purple text-white rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all"
-                    >
-                      Submit Proposal
-                    </button>
-                    {!isUnlocked ? (
-                      <button 
-                        onClick={handleUnlock}
-                        disabled={submitting}
-                        className="w-full sm:w-auto px-8 py-4 bg-neon-blue text-black rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all"
-                      >
-                        Unlock Contact ₹99
-                      </button>
-                    ) : (
-                      <button 
-                        onClick={handleMessageClient}
-                        disabled={messaging}
-                        className="w-full sm:w-auto px-8 py-4 bg-green-500 text-black rounded-full font-black text-xs uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2"
-                      >
-                        {messaging ? <Loader2 size={16} className="animate-spin" /> : "Message Client"}
-                      </button>
-                    )}
-                  </>
-                ) : project.assigned_creator_id === user?.id ? (
-                  <button 
-                    onClick={() => router.push(`/dashboard/projects/${project.id}/workspace`)}
-                    className="w-full sm:w-auto px-8 py-4 bg-white text-black rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all"
-                  >
-                    Open Project
-                  </button>
-                ) : (
-                  <div className="w-full p-4 glass border-white/5 rounded-2xl text-center">
-                    <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest">
-                      Assigned to another creator.
-                    </p>
-                  </div>
-                )}
-              </>
-            )}
-            {isOwner && (
-              <>
-                {project.status === 'open' ? (
-                  <>
-                    <button onClick={() => router.push(`/projects/${project.id}/edit`)} className="w-full sm:w-auto px-8 py-4 bg-white text-black rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all">Edit Project</button>
-                    <button onClick={() => router.push(`/dashboard/client/proposals`)} className="w-full sm:w-auto px-8 py-4 bg-neon-purple/10 text-neon-purple border border-neon-purple/20 rounded-full font-black text-xs uppercase tracking-widest active:scale-95 transition-all">View Proposals</button>
-                    <button onClick={handleDelete} className="w-full sm:w-auto px-8 py-4 bg-red-500/10 text-red-500 border border-red-500/20 rounded-full font-black text-xs uppercase tracking-widest hover:bg-red-500/20 active:scale-95 transition-all">Delete</button>
-                  </>
-                ) : (
-                  <button 
-                    onClick={() => router.push(`/dashboard/projects/${project.id}/workspace`)}
-                    className="w-full sm:w-auto px-8 py-4 bg-white text-black rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all"
-                  >
-                    Open Project
-                  </button>
-                )}
-              </>
-            )}
+          {/* Right: Creator/Client Info Card */}
+          <div className="space-y-8 sticky top-32">
+             <div className="glass p-8 rounded-[40px] border-white/5 bg-gradient-to-br from-neon-blue/5 to-transparent">
+               <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-8 italic flex items-center gap-2">
+                 <ShieldCheck size={14} className="text-neon-blue" /> Verified Information
+               </h3>
+               <div className="space-y-6">
+                 <div className="flex items-center gap-4">
+                   <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-gray-500 border border-white/5 italic font-black">
+                     C
+                   </div>
+                   <div>
+                     <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest mb-1">Project Client</p>
+                     <p className="text-sm font-black text-white uppercase tracking-tighter italic">ClipShift Member</p>
+                   </div>
+                 </div>
+                 
+                 <div className="p-5 glass rounded-2xl border-white/5 bg-black/40">
+                    <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest mb-3">Protection</p>
+                    <div className="flex items-center gap-2 text-green-500">
+                       <CheckCircle2 size={14} />
+                       <span className="text-[9px] font-black uppercase tracking-widest">Escrow Active</span>
+                    </div>
+                 </div>
+               </div>
+             </div>
+
+             <div className="glass p-8 rounded-[40px] border-white/5 text-center">
+                <p className="text-[9px] text-gray-500 uppercase font-black tracking-widest leading-relaxed">
+                  Collaboration on ClipShift is protected by our professional terms. Never share personal payment details.
+                </p>
+             </div>
           </div>
         </div>
 
+        {/* Proposal Modal */}
         {showProposalModal && (
-          <div className="fixed inset-0 bg-black/80 flex items-end sm:items-center justify-center p-0 sm:p-4 z-[100]">
+          <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-[100] backdrop-blur-xl">
             <motion.div 
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              className="glass p-6 sm:p-8 rounded-t-[32px] sm:rounded-[32px] w-full max-w-lg border-t sm:border border-white/10"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="glass p-8 sm:p-10 rounded-[50px] w-full max-w-xl border border-white/10 shadow-[0_0_100px_rgba(0,0,0,1)] relative"
             >
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-black text-white uppercase">Submit Proposal</h3>
-                <button onClick={() => setShowProposalModal(false)} className="p-2"><X className="text-gray-500 hover:text-white"/></button>
-              </div>
-              <textarea 
-                placeholder="Cover Letter" 
-                className="w-full h-32 bg-white/5 p-4 rounded-2xl text-base text-white mb-4 outline-none focus:border-neon-purple transition-colors resize-none" 
-                onChange={e => setProposalData({...proposalData, coverLetter: e.target.value})}
-              />
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                <input 
-                  type="number" 
-                  inputMode="numeric"
-                  placeholder="Proposed Budget (₹)" 
-                  className="w-full bg-white/5 p-4 rounded-2xl text-base text-white outline-none focus:border-neon-purple transition-colors" 
-                  onChange={e => setProposalData({...proposalData, budget: e.target.value})}
-                />
-                <input 
-                  type="number" 
-                  inputMode="numeric"
-                  placeholder="Delivery Days" 
-                  className="w-full bg-white/5 p-4 rounded-2xl text-base text-white outline-none focus:border-neon-purple transition-colors" 
-                  onChange={e => setProposalData({...proposalData, days: e.target.value})}
-                />
-              </div>
-              <button 
-                onClick={handleProposalSubmit} 
-                disabled={submitting} 
-                className="w-full py-5 bg-neon-purple text-white rounded-full font-black uppercase tracking-[0.2em] text-xs hover:opacity-90 active:scale-95 transition-all disabled:opacity-50"
-              >
-                {submitting ? <Loader2 className="animate-spin mx-auto" size={20} /> : "Send Proposal"}
+              <button onClick={() => setShowProposalModal(false)} className="absolute top-8 right-8 p-3 glass rounded-2xl text-gray-500 hover:text-white transition-colors border border-white/5">
+                <X size={20}/>
               </button>
-              <div className="h-safe-area-bottom sm:hidden" />
+              
+              <div className="mb-10">
+                <h3 className="text-3xl font-black text-white uppercase tracking-tighter italic mb-2">Send Proposal</h3>
+                <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Professional cinematic pitch</p>
+              </div>
+
+              <div className="space-y-6">
+                <div>
+                  <label className="text-[8px] text-gray-500 uppercase font-black tracking-[0.2em] ml-4 mb-2 block">Cover Letter</label>
+                  <textarea 
+                    placeholder="Describe your vision and why you are the best fit..." 
+                    className="w-full h-40 bg-white/5 p-6 rounded-[32px] text-sm text-white outline-none focus:border-neon-purple transition-all resize-none border border-white/5" 
+                    onChange={e => setProposalData({...proposalData, coverLetter: e.target.value})}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div>
+                    <label className="text-[8px] text-gray-500 uppercase font-black tracking-[0.2em] ml-4 mb-2 block">Budget (₹)</label>
+                    <input 
+                      type="number" 
+                      placeholder="Agreed Amount" 
+                      className="w-full bg-white/5 p-5 rounded-2xl text-sm font-black text-white outline-none focus:border-neon-purple transition-all border border-white/5 italic" 
+                      onChange={e => setProposalData({...proposalData, budget: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[8px] text-gray-500 uppercase font-black tracking-[0.2em] ml-4 mb-2 block">Days to Deliver</label>
+                    <input 
+                      type="number" 
+                      placeholder="Timeline" 
+                      className="w-full bg-white/5 p-5 rounded-2xl text-sm font-black text-white outline-none focus:border-neon-purple transition-all border border-white/5 italic" 
+                      onChange={e => setProposalData({...proposalData, days: e.target.value})}
+                    />
+                  </div>
+                </div>
+
+                <button 
+                  onClick={handleProposalSubmit} 
+                  disabled={submitting} 
+                  className="w-full py-6 bg-white text-black rounded-[28px] font-black uppercase tracking-[0.3em] text-[10px] hover:bg-neon-purple hover:text-white active:scale-95 transition-all disabled:opacity-50 shadow-2xl flex items-center justify-center gap-3 mt-4"
+                >
+                  {submitting ? <Loader2 className="animate-spin" size={18} /> : <><Briefcase size={18} /> Submit Proposition</>}
+                </button>
+              </div>
             </motion.div>
           </div>
         )}

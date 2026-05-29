@@ -1,78 +1,77 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
-import { motion, useSpring } from "framer-motion";
-import { AlertCircle, Sparkles } from "lucide-react";
+import React, { useState } from "react";
+import { DollarSign, Zap, TrendingUp, Info } from "lucide-react";
+import { motion } from "framer-motion";
 
-export const PriceEstimator = ({ projectType = "Cinematic Reel" }: { projectType?: string, duration?: string }) => {
-  const range = useMemo(() => {
-    const base = projectType.includes("Reel") ? 15000 : 45000;
-    const offset = 0;
-    return { min: base + offset, max: base + offset + 15000 };
-  }, [projectType]);
+export const PriceEstimator = () => {
+  const [days, setDays] = useState(3);
+  const [quality, setLevel] = useState(2); // 1: Standard, 2: Pro, 3: Elite
 
-  const marketAvg = useMemo(() => range.min + 2000, [range]);
-
-  const springMin = useSpring(range.min, { mass: 1, stiffness: 60, damping: 20 });
-  const springMax = useSpring(range.max, { mass: 1, stiffness: 60, damping: 20 });
-  
-  const [displayMin, setDisplayMin] = useState(range.min.toLocaleString());
-  const [displayMax, setDisplayMax] = useState(range.max.toLocaleString());
-
-  useEffect(() => {
-    springMin.set(range.min);
-    springMax.set(range.max);
-
-    const unMin = springMin.on("change", (v) => setDisplayMin(Math.floor(v).toLocaleString()));
-    const unMax = springMax.on("change", (v) => setDisplayMax(Math.floor(v).toLocaleString()));
-
-    return () => {
-      unMin();
-      unMax();
-    };
-  }, [range, springMin, springMax]);
+  const estimatePrice = () => {
+    const base = 499;
+    const dayFactor = days < 3 ? 1.5 : days < 7 ? 1.2 : 1;
+    const qualityFactor = quality === 3 ? 2.5 : quality === 2 ? 1.5 : 1;
+    return Math.floor(base * dayFactor * qualityFactor);
+  };
 
   return (
-    <div className="glass p-8 rounded-[40px] border-white/5 bg-gradient-to-br from-neon-purple/5 to-transparent">
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-3">
-          <Sparkles size={18} className="text-neon-purple" />
-          <h3 className="text-[10px] font-black text-white uppercase tracking-widest">AI Price Optimization</h3>
-        </div>
-        <div className="px-3 py-1 bg-green-500/10 border border-green-500/20 rounded-full text-[8px] font-black text-green-500 uppercase tracking-widest">
-          Fair Price Node
-        </div>
+    <div className="glass p-8 rounded-[40px] border-white/5 bg-white/[0.01]">
+      <div className="flex items-center gap-3 mb-8 border-b border-white/5 pb-4">
+        <DollarSign className="text-neon-blue" size={20} />
+        <h3 className="text-xs font-black text-white uppercase tracking-[0.2em] italic">Market Price Estimator</h3>
       </div>
 
-      <div className="text-center mb-8">
-        <h4 className="text-[10px] text-gray-500 uppercase font-black tracking-widest mb-2">Recommended Budget Range</h4>
-        <div className="text-4xl font-black text-white tracking-tighter flex items-center justify-center gap-3">
-          <span className="text-neon-purple">₹</span>
-          <span>{displayMin}</span>
-          <span className="text-gray-700 mx-2">—</span>
-          <span>{displayMax}</span>
+      <div className="space-y-8">
+        <div className="space-y-4">
+           <div className="flex justify-between items-center px-1">
+              <span className="text-[9px] text-gray-500 font-black uppercase tracking-widest">Target Delivery (Days)</span>
+              <span className="text-sm font-black text-white italic">{days} Days</span>
+           </div>
+           <input 
+             type="range" 
+             min="1" 
+             max="14" 
+             value={days} 
+             onChange={(e) => setDays(parseInt(e.target.value))}
+             className="w-full h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-neon-blue"
+           />
         </div>
-      </div>
 
-      <div className="space-y-4">
-        <div className="flex justify-between text-[8px] font-black text-gray-500 uppercase tracking-widest">
-          <span>Market Average Node</span>
-          <span className="text-white">₹{marketAvg.toLocaleString()}</span>
+        <div className="space-y-4">
+           <div className="flex justify-between items-center px-1">
+              <span className="text-[9px] text-gray-500 font-black uppercase tracking-widest">Visual Complexity</span>
+              <span className="text-sm font-black text-white italic">{quality === 1 ? 'Standard' : quality === 2 ? 'Professional' : 'Cinematic Elite'}</span>
+           </div>
+           <div className="flex gap-2">
+              {[1, 2, 3].map((lvl) => (
+                <button
+                  key={lvl}
+                  onClick={() => setLevel(lvl)}
+                  className={`flex-1 py-2.5 rounded-xl text-[8px] font-black uppercase tracking-widest border transition-all ${quality === lvl ? 'bg-neon-blue text-white border-neon-blue' : 'glass border-white/5 text-gray-600 hover:text-white'}`}
+                >
+                  Level {lvl}
+                </button>
+              ))}
+           </div>
         </div>
-        <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden relative">
-          <motion.div 
-            initial={{ width: 0 }}
-            animate={{ width: "65%" }}
-            className="h-full bg-gradient-to-r from-neon-purple to-neon-blue"
-          />
-          {/* Marker for market avg */}
-          <div className="absolute left-[60%] top-0 bottom-0 w-1 bg-white/30 z-10" />
-        </div>
-        <div className="flex items-center gap-2 px-4 py-3 bg-white/5 rounded-2xl border border-white/5">
-          <AlertCircle size={14} className="text-neon-blue" />
-          <p className="text-[9px] text-gray-400 font-bold leading-relaxed">
-            Estimates are based on 1.2k similar <span className="text-white uppercase">{projectType}</span> completions this month.
-          </p>
+
+        <div className="pt-8 border-t border-white/5">
+           <div className="p-6 glass rounded-3xl bg-black/40 border border-white/5 text-center relative overflow-hidden group">
+              <span className="text-[8px] text-gray-500 font-black uppercase tracking-widest block mb-1">Estimated Project Price</span>
+              <p className="text-3xl font-black text-white italic transition-all group-hover:scale-110 group-hover:text-neon-blue duration-500">₹{estimatePrice()}</p>
+              
+              <div className="mt-4 flex items-center justify-center gap-4">
+                 <div className="flex items-center gap-1.5 text-[8px] text-green-500 font-black uppercase tracking-widest">
+                    <TrendingUp size={10} /> Professional Average
+                 </div>
+                 <div className="w-1 h-1 rounded-full bg-gray-700" />
+                 <div className="text-[8px] text-gray-500 font-black uppercase tracking-widest">
+                    Based on market data
+                 </div>
+              </div>
+              <div className="absolute top-0 left-0 w-full h-full bg-neon-blue/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+           </div>
         </div>
       </div>
     </div>

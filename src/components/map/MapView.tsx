@@ -18,8 +18,10 @@ interface MapViewProps {
   zoom?: number;
 }
 
+import type LType from "leaflet";
+
 export const MapView = ({ creators, center = [19.0760, 72.8777], zoom = 12 }: MapViewProps) => {
-  const [L, setL] = useState<any>(null);
+  const [L, setL] = useState<typeof LType | null>(null);
 
   useEffect(() => {
     import("leaflet").then(mod => {

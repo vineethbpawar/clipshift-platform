@@ -15,7 +15,7 @@ export const Step5Onboarding = () => {
 
   const roleContent = {
     client: {
-      title: "Welcome, Visionary",
+      title: "Welcome to ClipShift",
       subtitle: "Your journey to premium cinema begins here.",
       features: [
         "Access to exclusive cinematic asset drops",
@@ -72,7 +72,7 @@ export const Step5Onboarding = () => {
             <div className="flex flex-col gap-2">
               <span>This email is already registered. Please login instead.</span>
               <Link href="/auth/login" className="underline font-black">Login Now</Link>
-            </div> as any
+            </div>
           );
           setLoading(false);
           return;
@@ -82,9 +82,10 @@ export const Step5Onboarding = () => {
       // 2. Proceed with signup
       await signUp(signupData.password || "");
       toast.success("Welcome to the Collective!");
-    } catch (err: any) {
+    } catch (err) {
       console.error("Signup error in component:", err);
-      let errorMessage = err.message || "Failed to create account";
+      const errorObj = err as Error;
+      let errorMessage = errorObj.message || "Failed to create account";
       
       if (errorMessage.includes("Failed to fetch")) {
         errorMessage = "Cannot connect to Supabase. Check internet/network and try again.";

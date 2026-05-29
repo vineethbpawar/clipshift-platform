@@ -4,657 +4,322 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FloatingInput } from "../ui/FloatingInput";
 import { NeonButton } from "../ui/NeonButton";
-import { MapPin, Upload, Calendar, DollarSign, Users, Info, Loader2, Sparkles } from "lucide-react";
-import { UploadProgress } from "../storage/UploadProgress";
-import { FilePreview } from "../storage/FilePreview";
-import { uploadFile } from "@/lib/storage";
+import { 
+  Plus, 
+  Trash2, 
+  Calendar, 
+  MapPin, 
+  DollarSign, 
+  Briefcase, 
+  FileText, 
+  Upload, 
+  Loader2, 
+  CheckCircle2,
+  AlertCircle
+} from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import dynamic from "next/dynamic";
-import { estimatePrice } from "@/lib/gemini";
-import { Crosshair } from "lucide-react";
-import { detectLocation } from "@/lib/geolocation";
-import { toast } from "react-hot-toast";
 import { useAuth } from "@/context/AuthContext";
-
-const ProjectLocationMap = dynamic(() => import("../map/projects/ProjectLocationMap"), { ssr: false });
-
-interface Location {
-  lat: number;
-  lng: number;
-  name?: string;
-}
-
-interface AIEstimate {
-  badge: string;
-  recommended_budget: string;
-  market_comparison: string;
-}
+import { toast } from "react-hot-toast";
+import { useRouter } from "next/navigation";
 
 export const ProjectPostForm = () => {
   const { user } = useAuth();
-  const [isDetecting, setIsDetecting] = useState(false);
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [category, setCategory] = useState("Wedding");
-  const [serviceType, setServiceType] = useState<"editing_only" | "editing_and_shoot">("editing_only");
-  const [locationMode, setLocationMode] = useState<"anywhere_india" | "preferred_location" | "shoot_location">("anywhere_india");
-  const [radius, setRadius] = useState(100);
-  const [locations, setLocations] = useState<Location[]>([]);
-
-  const handleServiceTypeChange = (val: "editing_only" | "editing_and_shoot") => {
-    setServiceType(val);
-    if (val === "editing_and_shoot") {
-      setLocationMode("shoot_location");
-    } else {
-      setLocationMode("anywhere_india");
-    }
-  };
-
-  const handleDetectLocation = async () => {
-    setIsDetecting(true);
-    try {
-      const data = await detectLocation();
-      const newLoc: Location = { 
-        lat: data.lat, 
-        lng: data.lng, 
-        name: data.area || data.city || "Current Location" 
-      };
-      setLocations([...locations, newLoc]);
-      toast.success("Location detected!");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to detect location";
-      toast.error(message);
-    } finally {
-      setIsDetecting(false);
-    }
-  };
-  
-  const [budgetType, setBudgetType] = useState<'fixed' | 'hourly' | 'negotiable'>("fixed");
-  const [minBudget, setMinBudget] = useState("");
-  const [maxBudget, setMaxBudget] = useState("");
-  const [hourlyRate, setHourlyRate] = useState("");
-  const [estimatedHours, setEstimatedHours] = useState("");
-  
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [currentFileName, setCurrentFileName] = useState("");
-  const [uploadedFiles, setUploadedFiles] = useState<{file_url: string; file_type: string; file_name: string}[]>([]);
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+    category: "Social Media",
+    budget: "",
+    deadline: "",
+    service_type: "editing_only",
+    location_mode: "anywhere_india",
+    location: "",
+    file_url: "",
+    file_name: "",
+    file_type: "",
+    file_size: 0
+  });
 
-  const [aiEstimate, setAiEstimate] = useState<AIEstimate | null>(null);
-  const [isEstimating, setIsEstimating] = useState(false);
-
-  const getEstimate = async () => {
-    if (!title || !description) return;
-    setIsEstimating(true);
-    try {
-      const result = await estimatePrice({ title, description, category });
-      setAiEstimate(result);
-    } catch (error) {
-      console.error("Estimation failed:", error);
-    } finally {
-      setIsEstimating(false);
-    }
-  };
+  const categories = ["Social Media", "Commercial", "Music Video", "Short Film", "Documentary"];
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || !user) return;
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    if (file.size > 100 * 1024 * 1024) {
+      toast.error("File exceeds 100MB limit.");
+      return;
+    }
 
     setUploading(true);
-    setError(null);
-    
     try {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        console.log("PROJECT FILE SELECTED", file);
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `projects/${user.id}/${fileName}`;
 
-        // Validation
-        const isImage = file.type.startsWith('image/');
-        const isVideo = file.type.startsWith('video/');
-        const isPDF = file.type === 'application/pdf';
-        const isZip = file.type === 'application/zip';
+      const { error: uploadError } = await supabase.storage
+        .from('assets')
+        .upload(filePath, file);
 
-        if (!isImage && !isVideo && !isPDF && !isZip) {
-          toast.error(`${file.name} has an unsupported file type.`);
-          continue;
-        }
+      if (uploadError) throw uploadError;
 
-        if (isImage && file.size > 10 * 1024 * 1024) {
-          toast.error("Image is too large. Max 10MB.");
-          continue;
-        }
-        if (isVideo && file.size > 500 * 1024 * 1024) {
-          toast.error("Video is too large. Max 500MB.");
-          continue;
-        }
-        if (!isImage && !isVideo && file.size > 100 * 1024 * 1024) {
-          toast.error("File is too large. Max 100MB.");
-          continue;
-        }
+      const { data: { publicUrl } } = supabase.storage.from('assets').getPublicUrl(filePath);
 
-        setCurrentFileName(file.name);
-        setProgress(0);
-
-        const fileData = await uploadFile(file, 'project-files', user.id, (p) => setProgress(p));
-        setUploadedFiles(prev => [...prev, fileData as {file_url: string; file_type: string; file_name: string}]);
-      }
-    } catch (error) {
-      console.error("PROJECT FILE UPLOAD ERROR", error);
-      setProgress(0);
-      const message = error instanceof Error ? error.message : "";
-      if (message.includes("timed out")) {
-        toast.error("Upload timed out. Check internet or Supabase Storage policy.");
-      } else {
-        toast.error("File upload failed. Please try again.");
-      }
+      setFormData({
+        ...formData,
+        file_url: publicUrl,
+        file_name: file.name,
+        file_type: file.type,
+        file_size: file.size
+      });
+      toast.success("File attached successfully!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Upload failed.");
     } finally {
       setUploading(false);
-      setProgress(0);
-      setCurrentFileName("");
     }
   };
 
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
 
-  const handleSubmit = async () => {
-    console.log("Submit button clicked");
-    setError(null);
-    setSuccess(false);
-
-    if (user?.role !== "client") {
-      setError("Unauthorized. Only clients can post projects.");
-      toast.error("Unauthorized access.");
+    if (!formData.title || !formData.description || !formData.budget || !formData.deadline) {
+      toast.error("Please fill all required fields.");
       return;
     }
 
-    if (!title) {
-      setError("Please provide a project title.");
-      return;
-    }
-
-    if (!description) {
-      setError("Please provide a project description.");
-      return;
-    }
-
-    setSubmitting(true);
-    
-    let budgetSummary = "Negotiable";
-    let bMin = null;
-    let bMax = null;
-
-    if (budgetType === 'fixed') {
-      budgetSummary = `₹${minBudget} - ₹${maxBudget}`;
-      bMin = parseInt(minBudget) || null;
-      bMax = parseInt(maxBudget) || null;
-    } else if (budgetType === 'hourly') {
-      budgetSummary = `₹${hourlyRate}/hr`;
-      bMin = parseInt(hourlyRate) || null;
-    }
-
-    console.log("Submitting project:", { 
-      title, 
-      description, 
-      category, 
-      locationMode,
-      radius, 
-      locations, 
-      budgetType,
-      budgetSummary,
-      uploadedFiles 
-    });
-
+    setLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        setError("You must be logged in to post a project.");
-        setSubmitting(false);
-        return;
-      }
+      const { error } = await supabase.from('projects').insert({
+        client_id: user.id,
+        title: formData.title,
+        description: formData.description,
+        category: formData.category,
+        budget: Number(formData.budget),
+        deadline: formData.deadline,
+        service_type: formData.service_type,
+        location_mode: formData.location_mode,
+        location: formData.location,
+        file_url: formData.file_url,
+        file_name: formData.file_name,
+        file_type: formData.file_type,
+        file_size: formData.file_size,
+        status: 'open'
+      });
 
-      const { data, error: insertError } = await supabase
-        .from('projects')
-        .insert({
-          client_id: session.user.id,
-          title: title,
-          description: description,
-          category: category,
-          status: 'open',
-          location_mode: locationMode,
-          shoot_radius: radius || null, // Keeping legacy for compat if any
-          shoot_radius_km: locationMode === "anywhere_india" ? null : radius,
-          latitude: locations[0]?.lat || null,
-          longitude: locations[0]?.lng || null,
-          location: locations[0]?.name || (locationMode === "anywhere_india" ? "Nationwide" : null),
-          locations: locations || [],
-          files: uploadedFiles || [],
-          service_type: serviceType,
-          budget_type: budgetType,
-          budget_min: bMin,
-          budget_max: bMax,
-          budget: budgetSummary
-        })
-        .select();
-
-      if (insertError) {
-        console.error("Supabase insert error:", insertError);
-        throw insertError;
-      }
-
-      console.log("Project submitted successfully:", data);
-      setSuccess(true);
-      // Reset form
-      setTitle("");
-      setDescription("");
-      setUploadedFiles([]);
-      setLocations([]);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to deploy project request. Please try again.";
-      console.error("Submission failed:", err);
-      setError(message);
+      if (error) throw error;
+      toast.success("Project posted successfully!");
+      router.push("/projects");
+    } catch (err: unknown) {
+      console.error(err);
+      const errorMessage = err instanceof Error ? err.message : "An unknown error occurred";
+      toast.error("Failed to post project: " + errorMessage);
     } finally {
-      setSubmitting(false);
+      setLoading(false);
     }
   };
-
-  const categories = ["Wedding", "YouTube", "Reels", "Drone", "Corporate", "Events", "Fashion", "Gaming", "Podcast", "Shoot"];
-  const isShoot = category === "Drone" || category === "Events" || category === "Shoot";
 
   return (
-    <div className="max-w-6xl mx-auto py-12 px-4">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-        {/* Left Column: Details */}
-        <div className="space-y-8">
-          <div>
-            <h1 className="text-4xl font-black text-white uppercase tracking-tighter mb-2">Post a <span className="text-neon-purple">Project</span></h1>
-            <p className="text-gray-400">Define your vision and connect with elite creators.</p>
-          </div>
-
-          <div className="space-y-6">
-            {error && (
-              <div className="bg-red-500/10 border border-red-500/50 text-red-500 p-4 rounded-2xl text-xs font-bold uppercase tracking-widest">
-                {error}
-              </div>
-            )}
-
-            {success && (
-              <div className="bg-green-500/10 border border-green-500/50 text-green-500 p-4 rounded-2xl text-xs font-bold uppercase tracking-widest">
-                Project deployed successfully! Creators will be notified soon.
-              </div>
-            )}
-
-            <div className="glass p-6 rounded-3xl border-white/5">
-              <h4 className="text-[10px] text-gray-500 uppercase font-black tracking-widest mb-4">Project Identity</h4>
-              <div className="space-y-4">
-                <FloatingInput 
-                  label="Project Title" 
-                  placeholder="e.g. Urban Night Life Music Video" 
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                />
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-[10px] text-gray-500 uppercase font-bold tracking-widest ml-4">Category</label>
-                    <select 
-                      value={category}
-                      onChange={(e) => setCategory(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-base text-white outline-none focus:border-neon-purple transition-colors appearance-none min-h-[44px]"
-                    >
-                      {categories.map(cat => <option key={cat} value={cat} className="bg-zinc-900">{cat}</option>)}
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] text-gray-500 uppercase font-bold tracking-widest ml-4">Service Type</label>
-                    <select 
-                      value={serviceType}
-                      onChange={(e) => handleServiceTypeChange(e.target.value as any)}
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-base text-white outline-none focus:border-neon-purple transition-colors appearance-none min-h-[44px]"
-                    >
-                      <option value="editing_only" className="bg-zinc-900">Editing Only</option>
-                      <option value="editing_and_shoot" className="bg-zinc-900">Editing & Shoot</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Location Mode Selection */}
-                <div className="pt-4 border-t border-white/5 space-y-4">
-                  <h4 className="text-[10px] text-gray-500 uppercase font-black tracking-widest">
-                    {serviceType === "editing_only" ? "Creator Location Preference" : "Shoot Location & Radius"}
-                  </h4>
-                  
-                  {serviceType === "editing_only" ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setLocationMode("anywhere_india")}
-                        className={`p-4 rounded-2xl border transition-all text-left ${
-                          locationMode === "anywhere_india" 
-                            ? "bg-neon-purple/10 border-neon-purple text-white shadow-[0_0_20px_rgba(168,85,247,0.1)]" 
-                            : "bg-white/5 border-white/10 text-gray-500 hover:border-white/20"
-                        }`}
-                      >
-                        <div className="text-[10px] font-black uppercase tracking-widest mb-1">Anywhere in India</div>
-                        <div className="text-[8px] opacity-60">Accept creators from across the country. Best for remote editing.</div>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setLocationMode("preferred_location")}
-                        className={`p-4 rounded-2xl border transition-all text-left ${
-                          locationMode === "preferred_location" 
-                            ? "bg-neon-blue/10 border-neon-blue text-white shadow-[0_0_20px_rgba(59,130,246,0.1)]" 
-                            : "bg-white/5 border-white/10 text-gray-500 hover:border-white/20"
-                        }`}
-                      >
-                        <div className="text-[10px] font-black uppercase tracking-widest mb-1">Preferred Location</div>
-                        <div className="text-[8px] opacity-60">Choose a specific city or region for your editor.</div>
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="p-4 rounded-2xl bg-neon-purple/5 border border-neon-purple/20">
-                      <p className="text-[10px] text-gray-400 italic">
-                        &quot;Shooting requires a physical location. Choose how far creators can be from your shoot location.&quot;
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="glass p-6 rounded-3xl border-white/5">
-              <h4 className="text-[10px] text-gray-500 uppercase font-black tracking-widest mb-4">Project Brief</h4>
-              <textarea 
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Describe your creative requirements..."
-                className="w-full h-32 bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white outline-none focus:border-neon-purple transition-colors resize-none mb-6"
-              />
-
-              {/* Budget Section */}
-              <div className="mb-8 p-6 bg-white/5 border border-white/10 rounded-2xl">
-                <div className="flex justify-between items-center mb-6">
-                  <h5 className="text-[10px] text-neon-purple uppercase font-black tracking-widest">Budget Configuration</h5>
-                  <button 
-                    onClick={getEstimate}
-                    disabled={isEstimating || !title || !description}
-                    className="text-[8px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1 hover:text-white disabled:opacity-30"
-                  >
-                    {isEstimating ? <Loader2 size={10} className="animate-spin" /> : <Sparkles size={10} />}
-                    AI Market Estimate
-                  </button>
-                </div>
-
-                <div className="flex p-1 bg-black/40 rounded-xl mb-6">
-                  {(['fixed', 'hourly', 'negotiable'] as const).map((type) => (
-                    <button
-                      key={type}
-                      onClick={() => setBudgetType(type)}
-                      className={`relative flex-1 py-2 text-[10px] font-black uppercase tracking-widest transition-colors z-10 ${
-                        budgetType === type ? 'text-white' : 'text-gray-500 hover:text-gray-300'
-                      }`}
-                    >
-                      {budgetType === type && (
-                        <motion.div
-                          layoutId="budget-tab"
-                          className="absolute inset-0 bg-neon-purple/20 border border-neon-purple/50 rounded-lg -z-10"
-                          transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                        />
-                      )}
-                      {type === 'fixed' ? 'Fixed Price' : type === 'hourly' ? 'Hourly Rate' : 'Negotiable'}
-                    </button>
-                  ))}
-                </div>
-
-                <AnimatePresence mode="wait">
-                  {budgetType === 'fixed' && (
-                    <motion.div
-                      key="fixed"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className="grid grid-cols-1 sm:grid-cols-2 gap-4"
-                    >
-                      <FloatingInput 
-                        label="Min Budget (₹)" 
-                        type="number" 
-                        inputMode="numeric"
-                        placeholder="e.g. ₹5000"
-                        value={minBudget}
-                        onChange={(e) => setMinBudget(e.target.value)}
-                      />
-                      <FloatingInput 
-                        label="Max Budget (₹)" 
-                        type="number" 
-                        inputMode="numeric"
-                        placeholder="e.g. ₹10000"
-                        value={maxBudget}
-                        onChange={(e) => setMaxBudget(e.target.value)}
-                      />
-                    </motion.div>
-                  )}
-
-                  {budgetType === 'hourly' && (
-                    <motion.div
-                      key="hourly"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className="grid grid-cols-1 sm:grid-cols-2 gap-4"
-                    >
-                      <FloatingInput 
-                        label="Rate/hr (₹)" 
-                        type="number" 
-                        inputMode="numeric"
-                        placeholder="e.g. ₹500"
-                        value={hourlyRate}
-                        onChange={(e) => setHourlyRate(e.target.value)}
-                      />
-                      <FloatingInput 
-                        label="Est. Hours" 
-                        type="number" 
-                        inputMode="numeric"
-                        placeholder="e.g. 10"
-                        value={estimatedHours}
-                        onChange={(e) => setEstimatedHours(e.target.value)}
-                      />
-                    </motion.div>
-                  )}
-
-                  {budgetType === 'negotiable' && (
-                    <motion.div
-                      key="negotiable"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className="py-4 text-center border border-dashed border-white/10 rounded-xl"
-                    >
-                      <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">
-                        Budget will be discussed with the creator
-                      </p>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                {aiEstimate && (
-                  <motion.div 
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="mt-6 p-4 bg-neon-purple/5 border border-neon-purple/20 rounded-2xl"
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <span className="text-[8px] font-black text-gray-500 uppercase tracking-widest">AI Market Pulse</span>
-                      <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase ${
-                        aiEstimate.badge === "Fair" ? "bg-green-500/20 text-green-500" :
-                        aiEstimate.badge === "Above Market" ? "bg-neon-blue/20 text-neon-blue" :
-                        "bg-neon-purple/20 text-neon-purple"
-                      }`}>
-                        {aiEstimate.badge}
-                      </span>
-                    </div>
-                    <div className="text-sm font-black text-white mb-1">{aiEstimate.recommended_budget}</div>
-                    <p className="text-[9px] text-gray-400 italic">&quot;{aiEstimate.market_comparison}&quot;</p>
-                  </motion.div>
-                )}
-              </div>
-              
-              <div className="space-y-4">
-                <input 
-                  type="file" 
-                  id="project-footage"
-                  multiple
-                  className="hidden" 
-                  onChange={handleFileUpload}
-                  accept="video/*,image/*,.pdf,.zip"
-                />
-                <label 
-                  htmlFor="project-footage"
-                  className="flex items-center gap-4 p-4 border-2 border-dashed border-white/10 rounded-2xl hover:border-neon-purple/50 transition-colors cursor-pointer group"
-                >
-                  <Upload className="text-gray-500 group-hover:text-neon-purple transition-colors" />
-                  <span className="text-xs text-gray-500 group-hover:text-gray-300 transition-colors">
-                    {uploading ? "Transmitting Node..." : "Upload Reference Videos / Footage"}
-                  </span>
-                </label>
-
-                {uploading && (
-                  <UploadProgress progress={progress} fileName={currentFileName} />
-                )}
-
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                  {uploadedFiles.map((file, i) => (
-                    <FilePreview 
-                      key={i} 
-                      url={file.file_url} 
-                      type={file.file_type.startsWith('video') ? 'video' : 
-                            file.file_type === 'application/pdf' ? 'pdf' :
-                            file.file_type === 'application/zip' || file.file_type === 'application/x-zip-compressed' ? 'zip' : 'image'} 
-                      className="aspect-square"
-                      onRemove={() => setUploadedFiles(prev => prev.filter((_, idx) => idx !== i))}
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <NeonButton 
-              variant="purple" 
-              className="w-full py-5 text-sm tracking-[0.2em] disabled:opacity-50"
-              onClick={handleSubmit}
-              disabled={submitting || uploading}
-            >
-              {submitting ? (
-                <div className="flex items-center gap-2">
-                  <Loader2 size={16} className="animate-spin" />
-                  Deploying...
-                </div>
-              ) : uploading ? (
-                <div className="flex items-center gap-2">
-                  <Loader2 size={16} className="animate-spin" />
-                  Syncing Files...
-                </div>
-              ) : "Deploy Project Request"}
-            </NeonButton>
-          </div>
+    <form onSubmit={handleSubmit} className="space-y-10">
+      {/* Basic Info */}
+      <div className="glass p-8 sm:p-10 rounded-[40px] border-white/5 bg-white/[0.01] space-y-8">
+        <div className="flex items-center gap-3 mb-2 px-2">
+           <FileText size={18} className="text-neon-purple" />
+           <h3 className="text-xs font-black text-white uppercase tracking-[0.2em]">General Information</h3>
         </div>
-
-        {/* Right Column: Location & Mapping */}
-        <div className={`space-y-8 transition-all duration-500 ${locationMode === "anywhere_india" ? "opacity-30 grayscale pointer-events-none" : "opacity-100"}`}>
-          <div className="glass rounded-[40px] overflow-hidden border border-white/5 relative h-[400px] lg:h-[600px] group">
-            <ProjectLocationMap 
-              locations={locations} 
-              setLocations={(locs) => setLocations(locs)} 
-              radius={radius} 
+        
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <label className="text-[10px] text-gray-500 font-black uppercase tracking-widest ml-4">Project Title</label>
+            <input 
+              required
+              type="text" 
+              placeholder="e.g. Cinematic Travel Reel for Instagram"
+              className="w-full bg-white/5 border border-white/10 rounded-2xl py-5 px-8 text-sm text-white outline-none focus:border-neon-purple transition-all italic shadow-inner"
+              value={formData.title}
+              onChange={(e) => setFormData({...formData, title: e.target.value})}
             />
-            
-            {/* Map Controls Overlay */}
-            <div className="absolute top-6 left-6 right-6 z-10 pointer-events-none flex flex-col gap-4">
-              <button
-                type="button"
-                onClick={handleDetectLocation}
-                disabled={isDetecting || locationMode === "anywhere_india"}
-                className="pointer-events-auto flex items-center justify-center space-x-2 px-6 py-4 rounded-xl glass border-white/10 text-neon-purple font-bold uppercase tracking-widest text-[10px] hover:bg-neon-purple/10 hover:border-neon-purple/50 transition-all group shadow-[0_0_20px_rgba(168,85,247,0)] hover:shadow-[0_0_20px_rgba(168,85,247,0.2)] max-w-xs disabled:opacity-50"
-              >
-                {isDetecting ? (
-                  <Loader2 size={14} className="animate-spin" />
-                ) : (
-                  <Crosshair size={14} className="group-hover:scale-110 transition-transform" />
-                )}
-                <span>{isDetecting ? "Detecting..." : "Detect My Location"}</span>
-              </button>
-
-              <div className="glass p-4 rounded-2xl border-white/10 pointer-events-auto max-w-xs">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-[10px] font-black text-white uppercase tracking-widest">Shoot Radius</span>
-                  <span className="text-[10px] font-mono text-neon-purple">{radius}km</span>
-                </div>
-                <input 
-                  type="range" 
-                  min="5" max="500" step="5"
-                  value={radius} 
-                  disabled={locationMode === "anywhere_india"}
-                  onChange={(e) => setRadius(parseInt(e.target.value))}
-                  className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-neon-purple disabled:opacity-30"
-                />
-                <div className="flex justify-between mt-2">
-                  <span className="text-[8px] text-gray-600 font-bold">5KM</span>
-                  <span className="text-[8px] text-gray-600 font-bold">500KM</span>
-                </div>
-              </div>
-
-              {locations.length > 0 && locationMode !== "anywhere_india" && (
-                <motion.div 
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="glass p-4 rounded-2xl border-white/10 pointer-events-auto"
-                >
-                  <h5 className="text-[10px] font-black text-white uppercase tracking-widest mb-2 flex items-center gap-2">
-                    <MapPin size={12} className="text-neon-blue" />
-                    Target Locations ({locations.length})
-                  </h5>
-                  <div className="space-y-2">
-                    {locations.map((loc, i) => (
-                      <div key={i} className="text-[10px] text-gray-400 flex items-center justify-between">
-                        <span>{loc.name}</span>
-                        <span className="text-neon-purple font-mono">{loc.lat.toFixed(4)}, {loc.lng.toFixed(4)}</span>
-                      </div>
-                    ))}
-                  </div>
-                </motion.div>
-              )}
-            </div>
-
-            {/* Nearby Creators Badge */}
-            {locationMode !== "anywhere_india" && (
-              <div className="absolute bottom-6 right-6 z-10">
-                <div className="glass px-4 py-2 rounded-full border-neon-purple/30 flex items-center gap-2 shadow-[0_0_20px_rgba(168,85,247,0.2)]">
-                  <Users size={14} className="text-neon-purple" />
-                  <span className="text-[10px] font-black text-white uppercase tracking-widest">
-                    ~12 Creators Nearby
-                  </span>
-                </div>
-              </div>
-            )}
           </div>
 
-          <div className="glass p-6 rounded-3xl border-white/5 flex gap-4">
-            <Info className="text-neon-blue shrink-0" size={20} />
-            {locationMode === "anywhere_india" ? (
-              <p className="text-[10px] text-gray-400 leading-relaxed font-bold uppercase tracking-widest">
-                This project will be visible to creators across India. Remote editing nodes will be notified regardless of location.
-              </p>
-            ) : (
-              <p className="text-[10px] text-gray-500 leading-relaxed">
-                {serviceType === "editing_and_shoot" 
-                  ? "For shoot-based projects, only verified creators within your selected radius will be notified. This ensures rapid response and local expertise."
-                  : "By selecting a preferred location, we will prioritize notifying editors in that specific region."
-                }
-              </p>
-            )}
+          <div className="space-y-2">
+            <label className="text-[10px] text-gray-500 font-black uppercase tracking-widest ml-4">Detailed Description</label>
+            <textarea 
+              required
+              placeholder="Describe your vision, specific requirements, and desired mood..."
+              className="w-full h-40 bg-white/5 border border-white/10 rounded-[32px] py-6 px-8 text-sm text-white outline-none focus:border-neon-purple transition-all resize-none italic shadow-inner"
+              value={formData.description}
+              onChange={(e) => setFormData({...formData, description: e.target.value})}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+             <div className="space-y-2">
+                <label className="text-[10px] text-gray-500 font-black uppercase tracking-widest ml-4">Category</label>
+                <select 
+                  className="w-full bg-black/40 border border-white/10 rounded-2xl py-5 px-8 text-sm text-white outline-none focus:border-neon-purple transition-all appearance-none cursor-pointer italic"
+                  value={formData.category}
+                  onChange={(e) => setFormData({...formData, category: e.target.value})}
+                >
+                  {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+             </div>
+             <div className="space-y-2">
+                <label className="text-[10px] text-gray-500 font-black uppercase tracking-widest ml-4">Service Type</label>
+                <div className="grid grid-cols-2 gap-2 bg-black/40 p-1.5 rounded-2xl border border-white/10">
+                   <button 
+                    type="button"
+                    onClick={() => setFormData({...formData, service_type: 'editing_only'})}
+                    className={`py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${formData.service_type === 'editing_only' ? 'bg-neon-purple text-white shadow-lg' : 'text-gray-500 hover:text-white'}`}
+                   >
+                     Edit Only
+                   </button>
+                   <button 
+                    type="button"
+                    onClick={() => setFormData({...formData, service_type: 'editing_and_shoot'})}
+                    className={`py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${formData.service_type === 'editing_and_shoot' ? 'bg-neon-purple text-white shadow-lg' : 'text-gray-500 hover:text-white'}`}
+                   >
+                     Shoot & Edit
+                   </button>
+                </div>
+             </div>
           </div>
         </div>
       </div>
-    </div>
+
+      {/* Budget & Timeline */}
+      <div className="glass p-8 sm:p-10 rounded-[40px] border-white/5 bg-white/[0.01] space-y-8">
+        <div className="flex items-center gap-3 mb-2 px-2">
+           <DollarSign size={18} className="text-neon-blue" />
+           <h3 className="text-xs font-black text-white uppercase tracking-[0.2em]">Budget & Timeline</h3>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="space-y-2">
+            <label className="text-[10px] text-gray-500 font-black uppercase tracking-widest ml-4">Agreed Budget (₹)</label>
+            <div className="relative">
+               <DollarSign className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-600" size={18} />
+               <input 
+                 required
+                 type="number" 
+                 placeholder="0.00"
+                 className="w-full bg-white/5 border border-white/10 rounded-2xl py-5 pl-14 pr-8 text-sm text-white outline-none focus:border-neon-blue transition-all italic shadow-inner"
+                 value={formData.budget}
+                 onChange={(e) => setFormData({...formData, budget: e.target.value})}
+               />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[10px] text-gray-500 font-black uppercase tracking-widest ml-4">Completion Deadline</label>
+            <div className="relative">
+               <Calendar className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-600" size={18} />
+               <input 
+                 required
+                 type="date" 
+                 className="w-full bg-white/5 border border-white/10 rounded-2xl py-5 pl-14 pr-8 text-sm text-white outline-none focus:border-neon-blue transition-all italic shadow-inner appearance-none"
+                 value={formData.deadline}
+                 onChange={(e) => setFormData({...formData, deadline: e.target.value})}
+               />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Location */}
+      <div className="glass p-8 sm:p-10 rounded-[40px] border-white/5 bg-white/[0.01] space-y-8">
+        <div className="flex items-center gap-3 mb-2 px-2">
+           <MapPin size={18} className="text-green-500" />
+           <h3 className="text-xs font-black text-white uppercase tracking-[0.2em]">Location Preferences</h3>
+        </div>
+
+        <div className="space-y-8">
+           <div className="flex flex-wrap gap-3">
+              {[
+                { id: 'anywhere_india', label: 'Remote / Anywhere' },
+                { id: 'preferred_location', label: 'Specific City' }
+              ].map((mode) => (
+                <button
+                  key={mode.id}
+                  type="button"
+                  onClick={() => setFormData({...formData, location_mode: mode.id})}
+                  className={`px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border ${
+                    formData.location_mode === mode.id 
+                    ? 'bg-green-500/10 border-green-500 text-green-500 shadow-lg' 
+                    : 'glass border-white/5 text-gray-500 hover:text-white'
+                  }`}
+                >
+                  {mode.label}
+                </button>
+              ))}
+           </div>
+
+           {formData.location_mode === 'preferred_location' && (
+              <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="space-y-2">
+                <label className="text-[10px] text-gray-500 font-black uppercase tracking-widest ml-4">Target City</label>
+                <input 
+                  type="text" 
+                  placeholder="e.g. Mumbai, Delhi, Bangalore"
+                  className="w-full bg-white/5 border border-white/10 rounded-2xl py-5 px-8 text-sm text-white outline-none focus:border-green-500 transition-all italic shadow-inner"
+                  value={formData.location}
+                  onChange={(e) => setFormData({...formData, location: e.target.value})}
+                />
+              </motion.div>
+           )}
+        </div>
+      </div>
+
+      {/* Assets */}
+      <div className="glass p-8 sm:p-10 rounded-[40px] border-white/5 bg-white/[0.01] space-y-8">
+        <div className="flex items-center gap-3 mb-2 px-2">
+           <Upload size={18} className="text-neon-purple" />
+           <h3 className="text-xs font-black text-white uppercase tracking-[0.2em]">Project Assets</h3>
+        </div>
+
+        <div className="border-2 border-dashed border-white/5 rounded-[32px] p-10 group hover:border-neon-purple/20 transition-all bg-black/20 text-center">
+          {uploading ? (
+            <div className="flex flex-col items-center gap-4">
+              <Loader2 className="animate-spin text-neon-purple" size={32} />
+              <p className="text-[10px] font-black uppercase tracking-widest animate-pulse">Uploading File...</p>
+            </div>
+          ) : formData.file_url ? (
+            <div className="flex flex-col items-center">
+              <div className="w-16 h-16 rounded-2xl bg-green-500/10 flex items-center justify-center text-green-500 mb-4">
+                 <CheckCircle2 size={32} />
+              </div>
+              <p className="text-xs font-black text-white uppercase tracking-widest mb-1 italic">{formData.file_name}</p>
+              <button 
+                type="button"
+                onClick={() => setFormData({...formData, file_url: "", file_name: ""})}
+                className="text-[9px] text-red-500 uppercase font-black tracking-widest hover:underline mt-4"
+              >
+                Remove File
+              </button>
+            </div>
+          ) : (
+            <label className="cursor-pointer flex flex-col items-center">
+               <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mb-6 group-hover:bg-neon-purple/10 border border-white/5 transition-all">
+                  <Plus size={24} className="text-gray-500 group-hover:text-neon-purple transition-colors" />
+               </div>
+               <input type="file" className="hidden" onChange={handleFileUpload} />
+               <span className="text-sm font-black text-white uppercase tracking-widest mb-2 italic">Attach reference file</span>
+               <p className="text-[9px] text-gray-600 uppercase font-bold tracking-widest">Images, PDFs or Videos (Max 100MB)</p>
+            </label>
+          )}
+        </div>
+      </div>
+
+      <div className="pt-6">
+        <button 
+          disabled={loading || uploading}
+          className="w-full py-6 bg-white text-black rounded-[28px] font-black uppercase tracking-[0.3em] text-[12px] hover:bg-neon-purple hover:text-white transition-all shadow-[0_0_50px_rgba(255,255,255,0.1)] active:scale-95 disabled:opacity-50 flex items-center justify-center gap-3"
+        >
+          {loading ? <Loader2 className="animate-spin" size={24} /> : <><Briefcase size={20} /> Create Project Listing</>}
+        </button>
+      </div>
+    </form>
   );
 };

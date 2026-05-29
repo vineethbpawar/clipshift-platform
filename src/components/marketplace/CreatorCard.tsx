@@ -2,13 +2,14 @@
 
 import React, { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Star, ShieldCheck, Zap, MapPin, Play, MessageSquare, Sparkles, Award } from "lucide-react";
+import { Star, ShieldCheck, Zap, MapPin, Play, MessageSquare, Award, Sparkles } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { UnlockModal } from "../monetization/UnlockModal";
 import { UnlockBadge } from "../monetization/UnlockBadge";
 import { useRouter } from "next/navigation";
+import { type Creator } from "@/data/creators";
 
-export const CreatorCard = ({ creator }: { creator: any }) => {
+export const CreatorCard = ({ creator }: { creator: Creator }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -73,7 +74,7 @@ export const CreatorCard = ({ creator }: { creator: any }) => {
             </div>
           )}
 
-          {creator.completed_projects >= 20 && (
+          {creator.completed_projects !== undefined && creator.completed_projects >= 20 && (
              <div className="glass px-3 py-1.5 rounded-full border-green-500/30 flex items-center gap-2">
                <Award size={10} className="text-green-500" />
                <span className="text-[8px] font-black text-white uppercase tracking-widest">Top Rated</span>
@@ -123,8 +124,8 @@ export const CreatorCard = ({ creator }: { creator: any }) => {
         <div className="p-6 relative">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <h3 className="text-xl font-black text-white tracking-tighter uppercase">{creator.full_name || creator.name}</h3>
-              {creator.verified_creator && <ShieldCheck size={18} className="text-neon-blue" />}
+              <h3 className="text-xl font-black text-white tracking-tighter uppercase">{creator.name}</h3>
+              {creator.verified && <ShieldCheck size={18} className="text-neon-blue" />}
             </div>
             <div className="flex items-center gap-1">
               <Star size={14} className="text-yellow-500 fill-yellow-500" />
@@ -134,10 +135,10 @@ export const CreatorCard = ({ creator }: { creator: any }) => {
 
           <div className="flex flex-wrap items-center gap-2 mb-4">
             <span className="px-3 py-1 rounded-full bg-neon-purple/10 border border-neon-purple/20 text-[9px] font-black text-neon-purple uppercase tracking-widest">
-              {creator.specialization || creator.category || "Creative"}
+              {creator.specialty?.[0] || creator.category || "Creative"}
             </span>
             <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[9px] font-black text-gray-400 uppercase tracking-widest">
-              {creator.tier || 'Beginner'}
+              {creator.level || 'Beginner'}
             </span>
             <span className="flex items-center gap-1 text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-auto">
               <MapPin size={12} />
@@ -152,7 +153,7 @@ export const CreatorCard = ({ creator }: { creator: any }) => {
           <div className="flex items-center justify-between mt-6 pt-6 border-t border-white/5">
             <div>
               <div className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-1">Pricing</div>
-              <div className="text-2xl font-black text-white">{creator.price || `₹${creator.starting_price || 0}`}<span className="text-xs text-gray-500 font-normal">/project</span></div>
+              <div className="text-xl font-black text-white">₹{creator.price}<span className="text-[10px] text-gray-600 ml-1">/project</span></div>
             </div>
             {user?.role === 'client' && (
               <button

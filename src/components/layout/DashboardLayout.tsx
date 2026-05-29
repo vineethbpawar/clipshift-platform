@@ -17,56 +17,60 @@ export const DashboardLayout = ({
 
   return (
     <PageWrapper>
-      <div className="flex pt-20 h-[100dvh] overflow-hidden relative">
-        {/* Mobile Sidebar Overlay */}
-        <AnimatePresence>
-          {isSidebarOpen && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsSidebarOpen(false)}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"
-            />
-          )}
-        </AnimatePresence>
+      <div className="min-h-screen bg-black flex flex-col pt-20">
+        <div className="flex flex-1 relative overflow-hidden">
+          {/* Mobile Sidebar Overlay */}
+          <AnimatePresence>
+            {isSidebarOpen && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsSidebarOpen(false)}
+                className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] lg:hidden"
+              />
+            )}
+          </AnimatePresence>
 
-        {/* Sidebar Wrapper */}
-        <div className={`
-          fixed lg:sticky top-20 z-50 lg:z-30 h-[calc(100dvh-80px)] transition-transform duration-300 w-72 shrink-0
-          ${isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
-          ${isSidebarOpen ? "pointer-events-auto" : "pointer-events-none lg:pointer-events-auto"}
-        `}>
-          <DashboardSidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
-        </div>
+          {/* Sidebar Wrapper */}
+          <div className={`
+            fixed lg:sticky top-0 z-[70] lg:z-30 h-[calc(100vh-80px)] transition-transform duration-300 w-72 shrink-0
+            ${isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
+          `}>
+            <DashboardSidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+          </div>
 
-        <main className="flex-1 p-4 lg:p-12 overflow-y-auto custom-scrollbar relative min-w-0">
-          {/* Mobile Header Toggle */}
-          <div className="flex items-center justify-between mb-8 lg:hidden">
-            <button 
-              onClick={() => setIsSidebarOpen(true)}
-              className="p-2 glass rounded-xl text-neon-purple active:scale-95 transition-transform"
-            >
-              <Menu size={24} />
-            </button>
-            <div className="text-[10px] font-black text-gray-500 uppercase tracking-widest">
-              ClipShift / Dashboard
+          {/* Main Content Area */}
+          <main className="flex-1 min-w-0 overflow-y-auto custom-scrollbar relative px-6 lg:px-10 py-8 lg:py-12 pb-32">
+            {/* Mobile Header Toggle */}
+            <div className="flex items-center justify-between mb-8 lg:hidden">
+              <button 
+                onClick={() => setIsSidebarOpen(true)}
+                className="p-3 glass rounded-2xl text-neon-purple active:scale-95 transition-transform border border-white/10"
+              >
+                <Menu size={24} />
+              </button>
+              <div className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">
+                Dashboard / {title}
+              </div>
             </div>
-          </div>
 
-          <div className="max-w-6xl mx-auto space-y-8 md:space-y-12 pb-32 md:pb-20">
-            <motion.div 
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-            >
-              <h1 className="text-3xl md:text-5xl font-black text-white uppercase tracking-tighter leading-tight mb-4 break-words">
-                {title}
-              </h1>
-              <div className="w-16 md:w-24 h-1 bg-gradient-to-r from-neon-purple to-neon-blue rounded-full" />
-            </motion.div>
-            {children}
-          </div>
-        </main>
+            <div className="max-w-7xl mx-auto space-y-8 lg:space-y-12">
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+              >
+                <h1 className="text-3xl md:text-5xl font-black text-white uppercase tracking-tighter leading-tight mb-4">
+                  {title}
+                </h1>
+                <div className="w-16 md:w-24 h-1.5 bg-gradient-to-r from-neon-purple to-neon-blue rounded-full" />
+              </motion.div>
+
+              {children}
+            </div>
+          </main>
+        </div>
       </div>
     </PageWrapper>
   );

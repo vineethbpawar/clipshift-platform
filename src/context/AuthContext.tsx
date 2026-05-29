@@ -48,7 +48,7 @@ interface AuthContextType {
   signupData: Partial<User>;
   unlockedCreators: string[];
   setRole: (role: Role) => void;
-  signIn: (email: string, password: string) => Promise<{ user: any; role: Role }>;
+  signIn: (email: string, password: string) => Promise<{ user: unknown; role: Role }>;
   signUp: (password: string) => Promise<void>;
   signOut: () => Promise<void>;
   updateSignupData: (data: Partial<User>) => void;
@@ -64,11 +64,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [role, setRole] = useState<Role>(null);
   const [activePlan, setActivePlan] = useState<PlanType>("free");
   const [loading, setLoading] = useState(true);
-  const [signupData, setSignupData] = useState<any>({});
+  const [signupData, setSignupData] = useState<Partial<User>>({});
   const [unlockedCreators, setUnlockedCreators] = useState<string[]>([]);
   const router = useRouter();
-
-  const [authError, setAuthError] = useState<string | null>(null);
 
   const fetchUnlocks = async (userId: string) => {
     try {
@@ -92,7 +90,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.log("AUTH INIT START");
       try {
         setLoading(true);
-        setAuthError(null);
 
         let session = null;
         let source = "none";
@@ -135,7 +132,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         if (profileError) {
           console.error("AUTH PROFILE FETCH ERROR", profileError);
-          setAuthError("Failed to load profile data.");
         }
 
         if (mounted) {
@@ -168,14 +164,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             fetchUnlocks(userId);
           } else {
             console.warn("AUTH INIT: Profile not found for", userId);
-            setAuthError("Profile not found.");
             setUser(null);
             setRole(null);
           }
         }
       } catch (error) {
         console.error("AUTH INIT ERROR:", error);
-        setAuthError("An unexpected error occurred during sync.");
       } finally {
         if (mounted) {
           setLoading(false);
@@ -314,8 +308,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       const targetRole = role || "client";
       const { data, error } = await supabase.auth.signUp({
-        email: signupData.email,
-        password,
+        email: signupData.email || "",
+        password: password || "",
         options: {
           data: {
             full_name: signupData.name,
@@ -368,26 +362,36 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       await supabase.auth.signOut();
       
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-      const projectRef = new URL(supabaseUrl).hostname.split(".")[0];
-      const storageKey = `sb-${projectRef}-auth-token`;
-      
-      localStorage.removeItem(storageKey);
-      localStorage.removeItem("clipshift_session");
-      localStorage.removeItem("clipshift_unlocks");
-      
+      // Clear all potential local storage keys
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("clipshift_session");
+        localStorage.removeItem("clipshift_user");
+        localStorage.removeItem("clipshift_profile");
+        localStorage.removeItem("clipshift_unlocks");
+        
+        // Clear all Supabase specific keys
+        Object.keys(localStorage).forEach(key => {
+          if (key.startsWith('sb-') || key.includes('auth-token')) {
+            localStorage.removeItem(key);
+          }
+        });
+      }
+
       setUser(null);
       setRole(null);
+      setActivePlan("free");
       setUnlockedCreators([]);
+      
       console.log("AUTH SIGNOUT SUCCESS");
       window.location.replace("/auth/login");
-    } catch (error) {
-      console.error("Logout failed:", error);
+    } catch (err) {
+      console.error("Logout failed:", err);
+      window.location.replace("/auth/login");
     }
   };
 
-  const updateSignupData = (data: any) => {
-    setSignupData((prev: any) => ({ ...prev, ...data }));
+  const updateSignupData = (data: Partial<User>) => {
+    setSignupData((prev: Partial<User>) => ({ ...prev, ...data }));
   };
 
   const unlockCreator = (id: string) => {

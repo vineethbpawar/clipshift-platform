@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { StatCard } from "@/components/dashboard/StatCard";
-import { Wallet, Briefcase, Heart, Bell, Plus, Users, Map as MapIcon, Loader2, Info, ChevronRight, Percent, Crown } from "lucide-react";
+import { Wallet, Briefcase, Heart, Plus, Users, Map as MapIcon, ChevronRight, Layers, Zap, Send } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
@@ -11,80 +11,105 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
 import { RoleGuard } from "@/components/auth/RoleGuard";
-import { getClientUnlockDiscount } from "@/lib/plans";
-
-const getPlanBadge = (plan: string) => {
-  switch (plan) {
-    case 'client_business': return 'Business';
-    case 'client_pro': return 'Pro';
-    default: return 'Basic';
-  }
-};
 
 const MapView = dynamic(() => import("@/components/map/MapView").then(mod => mod.MapView), { ssr: false });
 
+import { type Project } from "@/data/projects";
+import { type Creator } from "@/data/creators";
+
 export default function ClientDashboard() {
-  const { user, activePlan } = useAuth();
-  const [projects, setProjects] = useState<any[]>([]);
-  const [savedCreators, setSavedCreators] = useState<any[]>([]);
-  const [nearbyCreators, setNearbyCreators] = useState<any[]>([]);
+  const { user } = useAuth();
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [savedCreators] = useState<Creator[]>([]);
+  const [nearbyCreators, setNearbyCreators] = useState<Creator[]>([]);
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    totalSpent: 0,
+    activeProjects: 0,
+    myProjects: 0,
+    proposalsReceived: 0,
+    unlockedChats: 0
+  });
 
   const spendingData = [
-    { name: "Post-Production", value: 0 },
-    { name: "Shoots", value: 0 },
-    { name: "Asset Licenses", value: 0 },
+    { name: "Production", value: 0 },
+    { name: "Consultation", value: 0 },
+    { name: "Unlocks", value: 0 },
   ];
 
   const COLORS = ["#a855f7", "#3b82f6", "#10b981"];
 
   useEffect(() => {
     const fetchData = async () => {
+      if (!user) return;
       setLoading(true);
       try {
-        const { data: nearby, error: nearbyError } = await supabase
+        // 1. Fetch Nearby Creators
+        const { data: nearby } = await supabase
           .from('creators')
           .select(`*, profiles(full_name, avatar_url, city, area)`)
           .limit(5);
         
-        if (nearbyError) console.error("Error fetching nearby creators:", nearbyError);
-
         if (nearby) {
-          setNearbyCreators(nearby.map(n => ({
-            id: n.id,
-            name: n.profiles?.full_name || "Unknown",
-            image: n.profiles?.avatar_url,
-            location: { lat: n.location_lat, lng: n.location_lng, area: n.profiles?.area }
-          })));
+          setNearbyCreators((nearby as unknown[]).map((n) => {
+            const typedN = n as { 
+              id: string; 
+              profiles: { full_name: string; avatar_url: string; area: string };
+              location_lat: number;
+              location_lng: number;
+            };
+            return {
+              id: typedN.id,
+              name: typedN.profiles?.full_name || "Unknown",
+              image: typedN.profiles?.avatar_url,
+              location: { lat: typedN.location_lat, lng: typedN.location_lng, area: typedN.profiles?.area }
+            };
+          }) as Creator[]);
         }
 
-        // Fetch actual client projects (active ones)
-        if (user) {
-          const { data: projData, error: projError } = await supabase
-            .from('projects')
-            .select('*')
-            .eq('client_id', user.id)
-            .in('status', ['in_progress', 'delivered', 'completed'])
-            .order('updated_at', { ascending: false })
-            .limit(5);
+        // 2. Fetch Projects
+        const { data: projData } = await supabase
+          .from('projects')
+          .select('*')
+          .eq('client_id', user.id)
+          .order('updated_at', { ascending: false });
 
-          if (projError) console.error("Error fetching client projects:", projError);
-          if (projData) setProjects(projData);
+        if (projData) {
+          setProjects((projData as unknown as Project[]).slice(0, 5));
+          const activeCount = projData.filter(p => ['in_progress', 'delivered'].includes(p.status)).length;
+          
+          // 3. Fetch Proposals Received
+          const projectIds = projData.map(p => p.id);
+          const { count: proposalsCount } = await supabase
+            .from('proposals')
+            .select('*', { count: 'exact', head: true })
+            .in('project_id', projectIds);
 
-          // Fetch total investment
+          // 4. Fetch Unlocked Chats
+          const { count: unlockCount } = await supabase
+            .from('creator_unlocks')
+            .select('*', { count: 'exact', head: true })
+            .eq('client_id', user.id);
+
+          // 5. Fetch Total Spent
           const { data: payments } = await supabase
             .from('payments')
             .select('amount')
             .eq('client_id', user.id)
             .eq('status', 'completed');
           
-          if (payments) {
-            const total = payments.reduce((acc, curr) => acc + curr.amount, 0) / 100;
-            setStats(prev => ({ ...prev, totalInvestment: total }));
-          }
+          const total = (payments?.reduce((acc, curr) => acc + curr.amount, 0) || 0) / 100;
+
+          setStats({
+            totalSpent: total,
+            activeProjects: activeCount,
+            myProjects: projData.length,
+            proposalsReceived: proposalsCount || 0,
+            unlockedChats: unlockCount || 0
+          });
         }
 
-      } catch (err) {
+      } catch (err: unknown) {
         console.error("Client dashboard fetch failed:", err);
       } finally {
         setLoading(false);
@@ -94,179 +119,186 @@ export default function ClientDashboard() {
     fetchData();
   }, [user]);
 
-  const [stats, setStats] = useState({ totalInvestment: 0 });
-  const discount = getClientUnlockDiscount(activePlan);
-
   return (
     <RoleGuard allowedRoles={["client"]}>
       <DashboardLayout title="Client Dashboard">
-      {/* Top Section: Plan & Global Stats */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
-        <div className="flex items-center gap-4">
-           <div className="p-4 glass rounded-2xl border-neon-blue/20 flex flex-col gap-1">
-             <span className="text-[8px] text-gray-500 uppercase font-black tracking-widest">Active Plan</span>
-             <div className="flex items-center gap-2">
-               <Crown size={16} className={activePlan === 'free' ? "text-gray-500" : "text-neon-blue"} />
-               <span className="text-sm font-black text-white uppercase tracking-tighter">{getPlanBadge(activePlan)}</span>
-             </div>
-           </div>
-           {activePlan === 'free' && (
-             <Link href="/pricing">
-               <button className="px-6 py-3 rounded-xl bg-neon-blue/10 text-neon-blue border border-neon-blue/20 text-[10px] font-black uppercase tracking-widest hover:bg-neon-blue hover:text-white transition-all">
-                 Upgrade Plan
-               </button>
-             </Link>
-           )}
+        {/* Header Subtitle */}
+        <div className="mb-10">
+          <p className="text-gray-500 uppercase tracking-widest text-[10px] font-black mb-1 opacity-60">Control Center</p>
+          <p className="text-sm text-gray-400 font-medium max-w-2xl">
+            Post projects, review proposals, and manage your active productions.
+          </p>
         </div>
-      </div>
 
-      {/* Stats Overview */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
-        <StatCard title="Total Spent" value={stats.totalInvestment} prefix="₹" icon={Wallet} color="purple" />
-        <StatCard title="Active Projects" value={projects.length} icon={Briefcase} color="blue" />
-        <StatCard title="Saved Creators" value={savedCreators.length} icon={Heart} color="green" />
-        <StatCard title="Unlock Discount" value={discount} suffix="%" icon={Percent} color="blue" />
-      </div>
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 lg:gap-6 mb-12">
+          <StatCard title="Total Spent" value={stats.totalSpent} prefix="₹" icon={Wallet} color="purple" />
+          <StatCard title="Active Projects" value={stats.activeProjects} icon={Zap} color="purple" />
+          <StatCard title="My Projects" value={stats.myProjects} icon={Layers} color="blue" />
+          <StatCard title="Proposals Received" value={stats.proposalsReceived} icon={Send} color="blue" />
+          <StatCard title="Unlocked Chats" value={stats.unlockedChats} icon={Users} color="green" />
+        </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
-        {/* Left Col: Discovery & Projects */}
-        <div className="lg:col-span-2 space-y-6 md:space-y-8">
-          <div className="glass p-8 rounded-[40px] border-white/5 bg-gradient-to-br from-neon-purple/10 via-transparent to-transparent group">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-              <div>
-                <h3 className="text-xl font-black text-white uppercase tracking-tighter mb-2">Find Elite Creators</h3>
-                <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest max-w-sm leading-relaxed">
-                  Browse world-class editors and videographers for your next production.
-                </p>
+        {/* Action Bar */}
+        <div className="flex flex-wrap gap-4 mb-12">
+          <Link href="/post-project">
+            <button className="px-8 py-4 rounded-2xl bg-neon-purple text-white text-xs font-black uppercase tracking-widest hover:scale-105 transition-all shadow-[0_0_30px_rgba(168,85,247,0.3)] active:scale-95 flex items-center gap-2">
+              <Plus size={18} /> Post New Project
+            </button>
+          </Link>
+          <Link href="/dashboard/client/proposals">
+            <button className="px-8 py-4 rounded-2xl glass border-white/10 text-white text-xs font-black uppercase tracking-widest hover:bg-white/5 transition-all active:scale-95 flex items-center gap-2">
+              <Send size={18} /> View Proposals
+            </button>
+          </Link>
+          <Link href="/dashboard/client/active-projects">
+            <button className="px-8 py-4 rounded-2xl glass border-white/10 text-white text-xs font-black uppercase tracking-widest hover:bg-white/5 transition-all active:scale-95 flex items-center gap-2">
+              <Briefcase size={18} /> Active Projects
+            </button>
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+          {/* Main List */}
+          <div className="lg:col-span-2 space-y-10">
+            <div className="glass p-8 rounded-[40px] border-white/5 bg-gradient-to-br from-neon-purple/10 to-transparent group overflow-hidden relative">
+              <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
+                <div className="max-w-md">
+                  <h3 className="text-2xl font-black text-white uppercase tracking-tighter mb-3 group-hover:text-neon-purple transition-colors">Find Elite Creators</h3>
+                  <p className="text-xs text-gray-400 uppercase font-bold tracking-widest leading-relaxed opacity-60">
+                    Browse world-class editors and videographers ranked by AI performance metrics.
+                  </p>
+                </div>
+                <Link href="/marketplace">
+                  <button className="px-10 py-5 rounded-2xl bg-white text-black text-xs font-black uppercase tracking-widest shadow-2xl hover:bg-neon-purple hover:text-white transition-all active:scale-95">
+                    Browse Marketplace
+                  </button>
+                </Link>
               </div>
-              <Link href="/marketplace">
-                <button className="px-8 py-4 rounded-2xl bg-white text-black text-[10px] font-black uppercase tracking-widest shadow-xl hover:bg-neon-purple hover:text-white transition-all">
-                  Browse Marketplace
-                </button>
-              </Link>
+              <div className="absolute -right-20 -bottom-20 w-64 h-64 bg-neon-purple/10 rounded-full blur-[80px] group-hover:bg-neon-purple/20 transition-all duration-700" />
             </div>
-          </div>
 
-          <div className="glass p-6 md:p-8 rounded-[32px] md:rounded-[40px] border-white/5 relative overflow-hidden">
-            <h3 className="text-xs md:text-sm font-black text-white uppercase tracking-[0.2em] mb-8">Budget Allocation</h3>
-            <div className="h-[250px] md:h-[300px] w-full flex items-center justify-center">
-              {spendingData.reduce((acc, curr) => acc + curr.value, 0) === 0 ? (
-                <div className="text-center">
-                  <div className="text-[10px] text-gray-600 uppercase font-black tracking-widest italic opacity-50">No Expenditure Data</div>
+            <div className="space-y-6">
+              <div className="flex items-center justify-between mb-2 px-2">
+                <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] flex items-center gap-2">
+                  <Briefcase size={14} className="text-neon-blue" /> Recent Projects
+                </h3>
+                <Link href="/projects" className="text-[10px] text-neon-blue font-black uppercase tracking-widest hover:underline">Manage All</Link>
+              </div>
+              
+              {projects.length === 0 ? (
+                <div className="glass p-12 rounded-[40px] border-white/5 text-center bg-white/[0.01]">
+                  <Briefcase size={40} className="mx-auto text-gray-800 mb-4" />
+                  <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest italic">No active projects found</p>
                 </div>
               ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={spendingData}
-                      innerRadius={window.innerWidth < 768 ? 60 : 80}
-                      outerRadius={window.innerWidth < 768 ? 90 : 120}
-                      paddingAngle={5}
-                      dataKey="value"
-                    >
-                      {spendingData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip 
-                      contentStyle={{ backgroundColor: "#000", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "12px" }}
-                      itemStyle={{ color: "#fff", fontSize: "10px", fontWeight: "bold", textTransform: "uppercase" }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
+                <div className="grid grid-cols-1 gap-4">
+                  {projects.map((proj) => (
+                    <Link key={proj.id} href={`/dashboard/projects/${proj.id}/workspace`} className="block group">
+                      <div className="glass p-6 rounded-3xl border-white/5 flex items-center justify-between hover:border-neon-purple/30 transition-all bg-white/[0.01] hover:bg-white/[0.03]">
+                        <div className="flex items-center gap-5 min-w-0">
+                          <div className="w-14 h-14 rounded-2xl bg-neon-purple/10 border border-neon-purple/20 flex items-center justify-center text-neon-purple shrink-0 group-hover:scale-110 transition-transform">
+                            <Briefcase size={24} />
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="text-sm md:text-base font-black text-white uppercase tracking-tighter truncate mb-1">{proj.title}</h4>
+                            <div className="flex items-center gap-3">
+                               <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest border ${
+                                 proj.status === 'open' ? 'bg-green-500/10 text-green-500 border-green-500/20' : 'bg-neon-blue/10 text-neon-blue border-neon-blue/20'
+                               }`}>
+                                 {proj.status.replace('_', ' ')}
+                               </span>
+                               <span className="text-[9px] text-gray-600 font-bold uppercase tracking-widest">
+                                 {proj.created_at ? new Date(proj.created_at).toLocaleDateString() : ''}
+                               </span>
+                            </div>
+                          </div>
+                        </div>
+                        <ChevronRight size={20} className="text-gray-700 group-hover:text-neon-purple transition-colors" />
+                      </div>
+                    </Link>
+                  ))}
+                </div>
               )}
             </div>
           </div>
 
-          <div className="space-y-4">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Active Projects</h3>
-              <Link href="/dashboard/client/active-projects" className="text-[10px] text-neon-blue font-black uppercase tracking-widest hover:underline">View All</Link>
+          {/* Right Sidebar */}
+          <div className="space-y-10">
+            <div className="glass p-6 rounded-[40px] border-white/5 relative overflow-hidden bg-white/[0.01]">
+              <h3 className="text-[10px] font-black text-white uppercase tracking-[0.2em] mb-8 border-b border-white/5 pb-4">Spending Analysis</h3>
+              <div className="h-[220px] w-full relative">
+                {stats.totalSpent === 0 ? (
+                  <div className="h-full flex items-center justify-center text-center">
+                    <p className="text-[9px] text-gray-600 uppercase font-black tracking-widest italic opacity-50">No Data Logs Found</p>
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={spendingData}
+                        innerRadius={60}
+                        outerRadius={85}
+                        paddingAngle={8}
+                        dataKey="value"
+                        stroke="none"
+                      >
+                        {spendingData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: "rgba(0,0,0,0.9)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "16px", backdropFilter: "blur(10px)" }}
+                        itemStyle={{ color: "#fff", fontSize: "10px", fontWeight: "black", textTransform: "uppercase" }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                )}
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                   <span className="text-[8px] text-gray-500 uppercase font-black tracking-widest">Total</span>
+                   <span className="text-lg font-black text-white uppercase tracking-tighter">₹{stats.totalSpent}</span>
+                </div>
+              </div>
             </div>
-            
-            {projects.length === 0 ? (
-              <div className="glass p-8 md:p-12 rounded-[32px] border-white/5 text-center">
-                <p className="text-[10px] md:text-xs text-gray-500 uppercase font-black tracking-widest italic opacity-50">No Active Projects Found</p>
-                <Link href="/post-project" className="inline-block mt-6">
-                  <button className="px-8 py-3 rounded-xl bg-neon-purple text-white text-[10px] font-black uppercase tracking-widest shadow-lg hover:scale-105 transition-all">
-                    Post a Project
+
+            <div className="glass p-4 rounded-[40px] border-white/5 h-[380px] relative overflow-hidden group bg-white/[0.01]">
+              <div className="absolute top-6 left-6 z-10">
+                <h3 className="text-[10px] font-black text-white uppercase tracking-widest flex items-center gap-2">
+                  <MapIcon size={12} className="text-neon-blue" /> Nearby Creators
+                </h3>
+              </div>
+              
+              <div className="w-full h-full grayscale opacity-40 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-1000">
+                <MapView creators={nearbyCreators} />
+              </div>
+
+              <div className="absolute bottom-6 left-6 right-6 z-10">
+                <Link href="/explore">
+                  <button className="w-full py-4 rounded-2xl bg-white text-black text-[10px] font-black uppercase tracking-widest shadow-2xl hover:bg-neon-blue hover:text-white transition-all active:scale-95">
+                    Open Global Map
                   </button>
                 </Link>
               </div>
-            ) : (
-              <div className="space-y-4">
-                {projects.map((proj) => (
-                  <Link key={proj.id} href={`/dashboard/projects/${proj.id}/workspace`} className="block">
-                    <div className="glass p-4 md:p-6 rounded-2xl md:rounded-3xl border-white/5 flex items-center justify-between group hover:border-neon-purple/30 transition-all gap-4">
-                      <div className="flex items-center gap-4 min-w-0">
-                        <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-neon-purple/10 border border-neon-purple/20 flex items-center justify-center text-neon-purple shrink-0">
-                          <Briefcase size={18} />
-                        </div>
-                        <div className="min-w-0">
-                          <h4 className="text-xs md:text-sm font-black text-white uppercase tracking-tighter truncate">{proj.title}</h4>
-                          <p className="text-[9px] md:text-[10px] text-gray-500 uppercase font-bold tracking-widest">{proj.status}</p>
-                        </div>
-                      </div>
-                      <ChevronRight size={16} className="text-gray-600 group-hover:text-neon-purple transition-colors shrink-0" />
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+            </div>
 
-        {/* Right Col: Map & Notifications */}
-        <div className="space-y-6 md:space-y-8">
-          <div className="glass p-4 md:p-6 rounded-[32px] md:rounded-[40px] border-white/5 h-[350px] md:h-[400px] relative overflow-hidden group">
-            <div className="absolute top-6 left-6 z-10">
-              <h3 className="text-[10px] font-black text-white uppercase tracking-widest flex items-center gap-2">
-                <MapIcon size={12} className="text-neon-blue" />
-                Nearby Creators
+            <div className="glass p-8 rounded-[40px] border-white/5 bg-white/[0.01]">
+              <h3 className="text-[10px] font-black text-white uppercase tracking-widest mb-6 flex items-center gap-2">
+                <Heart size={14} className="text-neon-purple" /> Saved Talent
               </h3>
+              {savedCreators.length === 0 ? (
+                <div className="text-center py-6">
+                  <Heart size={24} className="text-gray-800 mx-auto mb-3 opacity-30" />
+                  <p className="text-[9px] text-gray-600 font-black uppercase tracking-widest">No saved creators</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* List creators */}
+                </div>
+              )}
             </div>
-            
-            {loading ? (
-              <div className="w-full h-full flex items-center justify-center">
-                <Loader2 className="animate-spin text-neon-blue" size={24} />
-              </div>
-            ) : nearbyCreators.length === 0 ? (
-              <div className="w-full h-full flex flex-col items-center justify-center bg-white/5 grayscale">
-                <MapIcon size={32} className="text-gray-600 mb-4" />
-                <span className="text-[10px] text-gray-600 font-black uppercase tracking-widest">No Nearby Creators Found</span>
-              </div>
-            ) : (
-              <div className="w-full h-full grayscale opacity-50 md:opacity-30 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-700">
-                <MapView creators={nearbyCreators} />
-              </div>
-            )}
-
-            <div className="absolute bottom-6 left-6 right-6 z-10">
-              <Link href="/explore">
-                <button className="w-full py-3 rounded-xl bg-white text-black text-[10px] font-black uppercase tracking-widest shadow-xl hover:bg-neon-blue hover:text-white transition-all">
-                  Open Creator Map
-                </button>
-              </Link>
-            </div>
-          </div>
-
-          <div className="glass p-6 md:p-8 rounded-[32px] md:rounded-[40px] border-white/5">
-            <h3 className="text-[10px] font-black text-white uppercase tracking-widest mb-6 border-b border-white/5 pb-4">Saved Creators</h3>
-            {savedCreators.length === 0 ? (
-              <div className="text-center py-6 md:py-8">
-                <Heart size={24} className="text-gray-700 mx-auto mb-3" />
-                <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest">No saved creators yet</p>
-                <Link href="/marketplace" className="text-[8px] text-neon-purple font-black uppercase tracking-widest hover:underline mt-4 inline-block">Explore Marketplace</Link>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {/* List saved creators */}
-              </div>
-            )}
           </div>
         </div>
-      </div>
-    </DashboardLayout>
+      </DashboardLayout>
     </RoleGuard>
   );
 }

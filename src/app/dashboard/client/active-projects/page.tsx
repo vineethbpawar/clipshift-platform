@@ -13,16 +13,18 @@ import {
   MessageSquare,
   ExternalLink,
   DollarSign,
-  User
+  User,
+  AlertCircle
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "react-hot-toast";
 import { RoleGuard } from "@/components/auth/RoleGuard";
 import { motion } from "framer-motion";
+import { type Project } from "@/data/projects";
 
 export default function ClientActiveProjectsPage() {
   const { user } = useAuth();
-  const [projects, setProjects] = useState<any[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
@@ -54,7 +56,6 @@ export default function ClientActiveProjectsPage() {
       }
 
       const userId = activeSession.user.id;
-      console.log("CLIENT ACTIVE PROJECTS USER ID", userId);
 
       // 2. Fetch projects directly
       const { data: projData, error: projErr } = await supabase
@@ -62,61 +63,56 @@ export default function ClientActiveProjectsPage() {
         .select('*')
         .eq('client_id', userId)
         .in('status', ['in_progress', 'delivered', 'completed'])
-        .order('created_at', { ascending: false });
-
-      console.log("CLIENT ACTIVE PROJECTS RESULT", { projects: projData, error: projErr });
+        .order('updated_at', { ascending: false });
 
       if (projErr) throw projErr;
       
       const initialProjects = projData || [];
-      setProjects(initialProjects);
-
-      // 3. Fetch details separately
+      
+      // 3. Fetch details separately to avoid join issues
       if (initialProjects.length > 0) {
         const creatorIds = initialProjects.map(p => p.assigned_creator_id).filter(Boolean);
-        const proposalIds = initialProjects.map(p => p.accepted_proposal_id).filter(Boolean);
-
-        const [creatorsRes, proposalsRes] = await Promise.all([
-          creatorIds.length > 0 ? supabase.from('profiles').select('id, full_name, email').in('id', creatorIds) : Promise.resolve({ data: [] }),
-          proposalIds.length > 0 ? supabase.from('proposals').select('*').in('id', proposalIds) : Promise.resolve({ data: [] })
+        const [creatorsRes] = await Promise.all([
+          creatorIds.length > 0 ? supabase.from('profiles').select('id, full_name, email').in('id', creatorIds) : Promise.resolve({ data: [] })
         ]);
 
         const enriched = initialProjects.map(p => ({
           ...p,
-          assigned_creator: creatorsRes.data?.find(c => c.id === p.assigned_creator_id),
-          accepted_proposal: proposalsRes.data?.find(pr => pr.id === p.accepted_proposal_id)
+          assigned_creator: creatorsRes.data?.find(c => c.id === p.assigned_creator_id)
         }));
 
         setProjects(enriched);
+      } else {
+        setProjects([]);
       }
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("ACTIVE PROJECTS FETCH ERROR", err);
-      setFetchError(err.message || "Failed to load projects.");
+      const errorMessage = err instanceof Error ? err.message : "Failed to load projects.";
+      setFetchError(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchActiveProjects();
+    if (user?.id) {
+      Promise.resolve().then(() => fetchActiveProjects());
+    }
   }, [user?.id]);
 
   const handleMarkCompleted = async (projectId: string) => {
     try {
-      const { error } = await supabase
+      const { error: updateErr } = await supabase
         .from('projects')
-        .update({ 
-          status: 'completed',
-          progress: 100,
-          current_stage: 'completed'
-        })
+        .update({ status: 'completed', progress: 100, current_stage: 'completed' })
         .eq('id', projectId);
 
-      if (error) throw error;
+      if (updateErr) throw updateErr;
       toast.success("Project marked as completed!");
       fetchActiveProjects();
-    } catch (err) {
+    } catch (err: unknown) {
+      console.error(err);
       toast.error("Failed to update project.");
     }
   };
@@ -132,98 +128,129 @@ export default function ClientActiveProjectsPage() {
     }
   };
 
-  if (loading) return <div className="flex justify-center pt-32"><Loader2 className="animate-spin text-neon-purple" /></div>;
+  if (loading) return <div className="flex justify-center pt-32"><Loader2 className="animate-spin text-neon-purple" size={40} /></div>;
 
   return (
     <RoleGuard allowedRoles={["client"]}>
-      <DashboardLayout title="ACTIVE PROJECTS">
-        <div className="max-w-6xl mx-auto px-4 py-8">
+      <DashboardLayout title="Active Projects">
+        <div className="space-y-10">
+          <div className="mb-4">
+             <p className="text-sm text-gray-400 font-medium max-w-2xl">
+               Manage your ongoing productions and monitor real-time progress.
+             </p>
+          </div>
+
           {fetchError && (
-            <div className="mb-8 p-4 glass border-red-500/20 text-red-400 text-xs font-black uppercase tracking-widest text-center">
-              Error: {fetchError}
+            <div className="p-6 glass border-red-500/20 bg-red-500/5 rounded-3xl flex items-center gap-4 text-red-400">
+              <AlertCircle size={20} />
+              <p className="text-xs font-black uppercase tracking-widest">{fetchError}</p>
             </div>
           )}
 
           {projects.length === 0 ? (
-            <div className="glass p-12 rounded-[40px] text-center border-white/5">
-              <Briefcase className="mx-auto text-gray-700 mb-4" size={48} />
-              <h3 className="text-xl font-black text-white uppercase tracking-tighter mb-2">No active projects yet</h3>
-              <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest max-w-xs mx-auto mb-8">
-                Accept a creator proposal and your project will appear here.
+            <div className="glass p-16 rounded-[50px] text-center border-white/5 bg-white/[0.01]">
+              <Briefcase className="mx-auto text-gray-800 mb-6" size={56} />
+              <h3 className="text-2xl font-black text-white uppercase tracking-tighter mb-3 italic">No active projects</h3>
+              <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest max-w-xs mx-auto mb-10 leading-relaxed opacity-60">
+                Accept a creator proposal and your active production will appear here.
               </p>
               <Link href="/dashboard/client/proposals">
-                <button className="px-8 py-4 rounded-2xl bg-neon-purple text-white text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-[0_0_20px_rgba(168,85,247,0.3)]">
+                <button className="px-10 py-4 rounded-2xl bg-neon-purple text-white text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-[0_0_40px_rgba(168,85,247,0.3)]">
                   View Proposals
                 </button>
               </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-6">
+            <div className="grid grid-cols-1 gap-8">
               {projects.map((project) => (
-                <div key={project.id} className="glass p-6 sm:p-8 rounded-[32px] border-white/5 flex flex-col md:flex-row gap-8 relative overflow-hidden group">
-                  <div className={`absolute top-0 left-0 w-1 h-full ${
-                    project.status === 'completed' ? 'bg-green-500' : 
-                    project.status === 'delivered' ? 'bg-neon-blue' : 'bg-neon-purple'
+                <div key={project.id} className="glass p-8 sm:p-10 rounded-[40px] border-white/5 flex flex-col lg:flex-row gap-10 relative overflow-hidden group hover:border-neon-purple/20 transition-all bg-white/[0.01]">
+                  <div className={`absolute top-0 left-0 w-1.5 h-full ${
+                    project.status === 'completed' ? 'bg-green-500 shadow-[0_0_15px_rgba(34,197,94,0.5)]' : 
+                    project.status === 'delivered' ? 'bg-neon-blue shadow-[0_0_15px_rgba(59,130,246,0.5)]' : 'bg-neon-purple shadow-[0_0_15px_rgba(168,85,247,0.5)]'
                   }`} />
 
-                  {/* Project Thumbnail */}
-                  {project.file_url && project.file_type?.startsWith('image') && (
-                    <div className="w-full md:w-48 h-32 rounded-2xl overflow-hidden glass border border-white/5 shrink-0">
-                      <img src={project.file_url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="" />
-                    </div>
-                  )}
+                  {/* Thumbnail */}
+                  <div className="lg:w-64 shrink-0">
+                    {project.file_url && project.file_type?.startsWith('image') ? (
+                      <div className="aspect-video lg:aspect-square rounded-[32px] overflow-hidden glass border border-white/10 group-hover:scale-[1.02] transition-transform duration-700">
+                        <img src={project.file_url} className="w-full h-full object-cover" alt="" />
+                      </div>
+                    ) : (
+                      <div className="aspect-video lg:aspect-square rounded-[32px] glass border border-white/5 flex flex-col items-center justify-center gap-3 text-gray-700 bg-white/5">
+                        <Briefcase size={40} />
+                        <span className="text-[8px] font-black uppercase tracking-widest">Project Visual</span>
+                      </div>
+                    )}
+                  </div>
 
-                  <div className="flex-1 space-y-6 min-w-0">
+                  <div className="flex-1 space-y-8 min-w-0">
                     <div>
-                      <div className="flex items-center gap-3 mb-2">
-                        <span className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest ${
+                      <div className="flex flex-wrap items-center gap-3 mb-4">
+                        <span className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border ${
                           project.status === 'completed' ? 'bg-green-500/10 text-green-500 border-green-500/20' : 
                           project.status === 'delivered' ? 'bg-neon-blue/10 text-neon-blue border-neon-blue/20' : 
                           'bg-neon-purple/10 text-neon-purple border-neon-purple/20'
-                        } border`}>
+                        }`}>
                           {project.status.replace('_', ' ')}
                         </span>
-                        <span className="text-[10px] text-gray-500 uppercase font-black tracking-widest">
-                          Stage: {getStageLabel(project.current_stage)}
+                        <span className="text-[10px] text-gray-500 uppercase font-black tracking-widest opacity-60 italic">
+                          Stage: {getStageLabel(project.current_stage || 'briefing')}
                         </span>
                       </div>
-                      <h3 className="text-xl sm:text-2xl font-black text-white uppercase tracking-tighter mb-2 group-hover:text-neon-purple transition-colors truncate">
+                      <h3 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-tighter mb-3 group-hover:text-neon-purple transition-colors truncate">
                         {project.title}
                       </h3>
                       {project.assigned_creator && (
-                        <p className="text-[10px] text-gray-400 uppercase tracking-widest font-black">
-                          Assigned to: {project.assigned_creator.full_name}
-                        </p>
+                        <div className="flex items-center gap-2 text-[10px] text-gray-400 font-black uppercase tracking-widest">
+                          <User size={12} className="text-neon-blue" />
+                          Creator: <span className="text-white">{project.assigned_creator.full_name}</span>
+                        </div>
                       )}
                     </div>
 
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center mb-1">
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-end mb-1">
                         <span className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Project Progress</span>
-                        <span className="text-[10px] text-neon-purple font-black">{project.progress}%</span>
+                        <span className="text-sm font-black text-white italic">{project.progress}%</span>
                       </div>
-                      <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
+                      <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden border border-white/5 shadow-inner p-[1px]">
                         <motion.div 
                           initial={{ width: 0 }}
                           animate={{ width: `${project.progress}%` }}
-                          className={`h-full ${
-                            project.status === 'completed' ? 'bg-green-500' : 'bg-neon-purple'
+                          className={`h-full rounded-full transition-all duration-1000 ${
+                            project.status === 'completed' ? 'bg-green-500' : 'bg-gradient-to-r from-neon-purple to-neon-blue'
                           }`}
                         />
                       </div>
                     </div>
+
+                    <div className="flex flex-wrap items-center gap-6 pt-6 border-t border-white/5">
+                       <div className="flex items-center gap-2">
+                          <DollarSign size={14} className="text-neon-purple" />
+                          <span className="text-xs font-black text-white italic">₹{project.budget}</span>
+                       </div>
+                       <div className="flex items-center gap-2 text-gray-500">
+                          <Clock size={14} />
+                          <span className="text-[10px] font-bold uppercase tracking-widest">Active Projects</span>
+                       </div>
+                    </div>
                   </div>
 
-                  <div className="md:w-64 flex flex-col justify-center gap-3">
+                  <div className="lg:w-72 flex flex-col justify-center gap-4 border-t lg:border-t-0 lg:border-l border-white/5 pt-8 lg:pt-0 lg:pl-10">
                     <Link href={`/dashboard/projects/${project.id}/workspace`}>
-                      <button className="w-full py-4 rounded-xl bg-white text-black text-[10px] font-black uppercase tracking-widest hover:bg-neon-purple hover:text-white transition-all flex items-center justify-center gap-2">
-                        Open Project <ArrowRight size={14} />
+                      <button className="w-full py-5 rounded-2xl bg-white text-black text-[10px] font-black uppercase tracking-widest hover:bg-neon-purple hover:text-white transition-all flex items-center justify-center gap-2 shadow-xl active:scale-95 group/btn">
+                        Open Project <ArrowRight size={16} className="group-hover/btn:translate-x-1 transition-transform" />
                       </button>
                     </Link>
+                    
+                    <button className="w-full py-4 rounded-2xl glass border-white/10 text-white text-[10px] font-black uppercase tracking-widest hover:bg-white/5 transition-all flex items-center justify-center gap-2 active:scale-95">
+                      <MessageSquare size={16} /> Message Creator
+                    </button>
+
                     {project.status === 'delivered' && (
                       <button 
                         onClick={() => handleMarkCompleted(project.id)}
-                        className="w-full py-3 rounded-xl bg-green-500/10 border border-green-500/20 text-green-500 text-[10px] font-black uppercase tracking-widest hover:bg-green-500 hover:text-white transition-all"
+                        className="w-full py-5 rounded-2xl bg-green-500 text-white text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-[0_0_30px_rgba(34,197,94,0.3)]"
                       >
                         Mark as Completed
                       </button>

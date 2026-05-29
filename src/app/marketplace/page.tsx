@@ -1,59 +1,88 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { supabase } from "@/lib/supabase";
+import React, { useState, useEffect } from "react";
+import { PageWrapper } from "@/components/layout/PageWrapper";
 import { CreatorCard } from "@/components/marketplace/CreatorCard";
 import { FilterSidebar } from "@/components/marketplace/FilterSidebar";
-import { FeaturedRow } from "@/components/marketplace/FeaturedRow";
-import { PageWrapper } from "@/components/layout/PageWrapper";
-import { LayoutGrid, Map as MapIcon, TrendingUp, Sparkles, UserPlus, Loader2, SlidersHorizontal, X } from "lucide-react";
-import Link from "next/link";
-import { calculateCreatorRank, type CreatorProfile } from "@/lib/creators";
+import { 
+  Users, 
+  Search, 
+  Filter, 
+  Target
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { supabase } from "@/lib/supabase";
+import { type Creator } from "@/data/creators";
 
 export default function MarketplacePage() {
-  const [view, setView] = useState<"grid" | "map">("grid");
-  const [showMobileFilters, setShowMobileFilters] = useState(false);
-  
-  // Filters
-  const [selectedSpecialization, setSelectedSpecialization] = useState("");
-  const [selectedTier, setSelectedTier] = useState("");
-  const [minRating, setMinRating] = useState(0);
-  const [sortBy, setSortBy] = useState("rank");
-
-  const [creators, setCreators] = useState<any[]>([]);
+  const [creators, setCreators] = useState<Creator[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [filters, setFilters] = useState({
+    search: '',
+    category: '',
+    sortBy: 'popular',
+    verifiedOnly: false
+  });
 
   useEffect(() => {
     const fetchCreators = async () => {
       setLoading(true);
       try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('role', 'creator');
+        let query = supabase
+          .from('creators')
+          .select(`
+            *,
+            profiles!inner(full_name, avatar_url, city, area, bio, role)
+          `);
 
-        if (error) {
-          console.error("Error fetching creators:", error);
-          throw error;
+        if (filters.search) {
+          query = query.ilike('profiles.full_name', `%${filters.search}%`);
         }
 
+        if (filters.category) {
+          query = query.eq('category', filters.category);
+        }
+
+        if (filters.verifiedOnly) {
+          query = query.eq('verified_creator', true);
+        }
+
+        const { data, error } = await query;
+
+        if (error) throw error;
+
         if (data) {
-          const mappedCreators = data.map(c => ({
-            ...c,
-            rank_score: calculateCreatorRank(c as CreatorProfile),
-            // Legacy mapping for CreatorCard/FeaturedRow compat
+          const mapped = data.map((c: any) => ({
             id: c.id,
-            name: c.full_name,
-            image: c.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80",
-            category: c.specialization || "Creative",
-            price: `₹${c.starting_price || 0}`,
+            name: c.profiles.full_name,
+            image: c.profiles.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80",
+            category: c.category,
+            specialization: c.specialization,
+            rating: c.rating || 4.9,
+            price: (c.starting_price || 499).toString(),
+            city: c.profiles.city || "Remote",
+            area: c.profiles.area || "",
+            bio: c.profiles.bio,
             verified: c.verified_creator || false,
-            city: c.city,
-            area: c.area,
-            location: { lat: 0, lng: 0 } // Placeholder if not used in card
+            rank_score: c.rank_score || 85,
+            plan_type: c.plan_type,
+            completed_projects: c.completed_projects || 0,
+            role: "creator",
+            delivery: "3-5 Days",
+            location: {
+              lat: c.location_lat,
+              lng: c.location_lng,
+              city: c.profiles.city
+            }
           }));
-          setCreators(mappedCreators);
+
+          // Manual Sort for demo (Popularity based on projects/rating)
+          if (filters.sortBy === 'popular') {
+            mapped.sort((a, b) => (b.completed_projects * b.rating) - (a.completed_projects * a.rating));
+          }
+
+          setCreators(mapped as Creator[]);
         }
       } catch (err) {
         console.error("Marketplace fetch failed:", err);
@@ -63,214 +92,109 @@ export default function MarketplacePage() {
     };
 
     fetchCreators();
-  }, []);
-
-  const filteredCreators = useMemo(() => {
-    let result = creators.filter(c => {
-      const matchesSpec = !selectedSpecialization || c.specialization === selectedSpecialization;
-      const matchesTier = !selectedTier || c.tier === selectedTier;
-      const matchesRating = c.rating >= minRating;
-      return matchesSpec && matchesTier && matchesRating;
-    });
-
-    // Sorting logic
-    result.sort((a, b) => {
-      if (sortBy === "rank") {
-        // Premium first, then rank score
-        if (a.plan_type === 'creator_premium' && b.plan_type !== 'creator_premium') return -1;
-        if (b.plan_type === 'creator_premium' && a.plan_type !== 'creator_premium') return 1;
-        return b.rank_score - a.rank_score;
-      }
-      if (sortBy === "rating") return b.rating - a.rating;
-      if (sortBy === "completed") return b.completed_projects - a.completed_projects;
-      if (sortBy === "newest") return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-      return 0;
-    });
-
-    return result;
-  }, [creators, selectedSpecialization, selectedTier, minRating, sortBy]);
-
-  const featuredCreators = creators.filter(c => c.featured_creator || c.verified_creator).slice(0, 4);
-  const trendingCreators = [...creators].sort((a, b) => b.rank_score - a.rank_score).slice(0, 3);
+  }, [filters]);
 
   return (
     <PageWrapper>
-      <div className="min-h-screen pt-32 pb-20 px-4 md:px-8 max-w-7xl mx-auto">
-        {/* Header Section */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-8">
+      <div className="min-h-screen pt-32 pb-32 px-6 sm:px-10 max-w-screen-2xl mx-auto">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-16 gap-8">
           <div className="max-w-2xl">
-            <h1 className="text-4xl md:text-6xl font-black text-white tracking-tighter uppercase mb-4 leading-none">
-              Discover <span className="text-neon-purple">Elite Talent</span>
-            </h1>
-            <p className="text-gray-400 text-lg">
-              The collective of world-class cinematic creators, ranked by performance and quality.
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2.5 bg-neon-purple/10 rounded-xl text-neon-purple border border-neon-purple/20">
+                <Users size={20} />
+              </div>
+              <h1 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em]">Talent Marketplace</h1>
+            </div>
+            <h2 className="text-4xl md:text-7xl font-black text-white uppercase tracking-tighter leading-[0.9] mb-8">
+              Hire Elite <span className="text-neon-purple italic">Creators</span>
+            </h2>
+            <p className="text-gray-500 uppercase tracking-widest text-[10px] font-bold leading-relaxed max-w-md opacity-60">
+              Browse world-class editors, videographers and visual artists vetted for cinematic excellence.
             </p>
           </div>
 
-          <div className="flex items-center gap-2 p-1.5 bg-white/5 rounded-2xl border border-white/5 self-start">
-            <button 
-              onClick={() => setShowMobileFilters(true)}
-              className="md:hidden flex items-center gap-2 px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest text-gray-500 hover:text-gray-300"
-            >
-              <SlidersHorizontal size={16} />
-              Filters
-            </button>
-            <button
-              onClick={() => setView("grid")}
-              className={`hidden md:flex items-center gap-2 px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
-                view === "grid" ? "bg-neon-purple text-white shadow-lg" : "text-gray-500 hover:text-gray-300"
-              }`}
-            >
-              <LayoutGrid size={16} />
-              Grid View
-            </button>
-            <Link href="/explore">
-              <button
-                className="hidden md:flex items-center gap-2 px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest text-gray-500 hover:text-gray-300 transition-all"
-              >
-                <MapIcon size={16} />
-                Map View
-              </button>
-            </Link>
+          <div className="flex items-center gap-4 w-full md:w-auto">
+             <button 
+               onClick={() => setShowMobileFilters(true)}
+               className="lg:hidden flex-1 flex items-center justify-center gap-3 px-8 py-5 rounded-2xl glass border-white/10 text-white font-black uppercase text-[10px] tracking-widest active:scale-95"
+             >
+               <Filter size={18} /> Filters
+             </button>
+             <div className="hidden lg:flex items-center gap-2 px-6 py-3 rounded-full glass border-white/5 text-[9px] font-black text-gray-500 uppercase tracking-widest">
+                <Target size={12} className="text-neon-blue" /> {creators.length} Professional Creators Online
+             </div>
           </div>
         </div>
 
-        {loading ? (
-          <div className="py-20 flex flex-col items-center gap-4">
-            <Loader2 className="animate-spin text-neon-purple" size={40} />
-            <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em]">Syncing Collective Node...</span>
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-12 items-start">
+          {/* Desktop Sidebar */}
+          <aside className="hidden lg:block sticky top-32">
+            <FilterSidebar filters={filters} setFilters={setFilters} />
+          </aside>
+
+          {/* Main Grid */}
+          <div className="lg:col-span-3">
+            {loading ? (
+              <div className="py-40 flex flex-col items-center gap-8">
+                <div className="relative">
+                  <div className="w-20 h-20 rounded-full border-2 border-white/5 border-t-neon-purple animate-spin" />
+                  <Users className="absolute inset-0 m-auto text-neon-purple/40" size={32} />
+                </div>
+                <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.4em] animate-pulse italic">Synchronizing Marketplace</span>
+              </div>
+            ) : creators.length === 0 ? (
+              <div className="py-40 text-center glass rounded-[50px] border-white/5 bg-white/[0.01]">
+                 <Search size={48} className="mx-auto text-gray-800 mb-6" />
+                 <h3 className="text-2xl font-black text-white uppercase mb-4 italic">No creators found</h3>
+                 <p className="text-gray-500 uppercase tracking-widest text-[10px] font-bold">Try adjusting your filters to find more talent.</p>
+                 <button 
+                  onClick={() => setFilters({ search: '', category: '', sortBy: 'popular', verifiedOnly: false })}
+                  className="mt-10 px-10 py-4 bg-white text-black rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-neon-purple hover:text-white transition-all shadow-xl"
+                >
+                  Reset Search
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+                <AnimatePresence mode="popLayout">
+                  {creators.map((creator) => (
+                    <CreatorCard key={creator.id} creator={creator} />
+                  ))}
+                </AnimatePresence>
+              </div>
+            )}
           </div>
-        ) : creators.length === 0 ? (
-          <div className="py-32 flex flex-col items-center text-center glass rounded-[40px] border-white/5">
-            <div className="w-20 h-20 bg-neon-purple/20 rounded-3xl flex items-center justify-center mb-8 shadow-[0_0_30px_rgba(168,85,247,0.3)]">
-              <UserPlus size={40} className="text-neon-purple" />
-            </div>
-            <h2 className="text-2xl font-black text-white uppercase tracking-tight mb-2">No creators yet</h2>
-            <p className="text-gray-500 mb-8">Be the first to join the collective and showcase your talent.</p>
-            <Link href="/auth/signup">
-              <button className="px-12 py-4 rounded-full bg-neon-purple text-white font-black uppercase tracking-widest shadow-xl hover:scale-105 transition-all">
-                Join Now
-              </button>
-            </Link>
-          </div>
-        ) : (
+        </div>
+      </div>
+
+      {/* Mobile Filters Drawer */}
+      <AnimatePresence>
+        {showMobileFilters && (
           <>
-            {/* Featured Section */}
-            {featuredCreators.length > 0 && <FeaturedRow creators={featuredCreators} />}
-
-            {/* Main Content Area */}
-            <div className="flex flex-col md:flex-row gap-12 relative">
-              {/* Desktop Sidebar */}
-              <div className="hidden md:block">
-                <FilterSidebar 
-                  selectedSpecialization={selectedSpecialization}
-                  setSelectedSpecialization={setSelectedSpecialization}
-                  selectedTier={selectedTier}
-                  setSelectedTier={setSelectedTier}
-                  minRating={minRating}
-                  setMinRating={setMinRating}
-                  sortBy={sortBy}
-                  setSortBy={setSortBy}
-                />
-              </div>
-
-              {/* Mobile Filter Bottom Sheet Overlay */}
-              <AnimatePresence>
-                {showMobileFilters && (
-                  <>
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      onClick={() => setShowMobileFilters(false)}
-                      className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] md:hidden"
-                    />
-                    <motion.div
-                      initial={{ y: "100%" }}
-                      animate={{ y: 0 }}
-                      exit={{ y: "100%" }}
-                      className="fixed bottom-0 left-0 right-0 glass p-8 rounded-t-[40px] z-[101] md:hidden border-t border-white/10"
-                    >
-                      <div className="flex justify-between items-center mb-8">
-                        <h3 className="text-xl font-black text-white uppercase">Filters</h3>
-                        <button onClick={() => setShowMobileFilters(false)} className="p-2 glass rounded-full">
-                          <X size={20} className="text-gray-500" />
-                        </button>
-                      </div>
-                      <FilterSidebar 
-                        selectedSpecialization={selectedSpecialization}
-                        setSelectedSpecialization={setSelectedSpecialization}
-                        selectedTier={selectedTier}
-                        setSelectedTier={setSelectedTier}
-                        minRating={minRating}
-                        setMinRating={setMinRating}
-                        sortBy={sortBy}
-                        setSortBy={setSortBy}
-                      />
-                    </motion.div>
-                  </>
-                )}
-              </AnimatePresence>
-
-              {/* Grid Area */}
-              <div className="flex-1">
-                <div className="flex items-center justify-between mb-8">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-neon-blue/10 rounded-lg text-neon-blue">
-                      <Sparkles size={16} />
-                    </div>
-                    <h2 className="text-sm font-black text-white uppercase tracking-[0.2em]">
-                      {sortBy === "rank" ? "Top Ranked Creators" : "Vetted Collective"}
-                    </h2>
-                  </div>
-                  <div className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">
-                    Showing {filteredCreators.length} results
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                  <AnimatePresence mode="popLayout">
-                    {filteredCreators.map((creator) => (
-                      <CreatorCard key={creator.id} creator={creator} />
-                    ))}
-                  </AnimatePresence>
-                </div>
-
-                {filteredCreators.length === 0 && (
-                  <div className="py-20 text-center glass rounded-3xl border-white/5">
-                    <div className="text-gray-600 mb-4 font-black uppercase tracking-[0.2em]">No Creators Found</div>
-                    <p className="text-gray-500 text-sm">Try adjusting your filters.</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Trending Panel */}
-              {trendingCreators.length > 0 && (
-                <div className="hidden xl:block w-64 space-y-8">
-                  <div className="flex items-center gap-2 mb-6">
-                    <TrendingUp size={16} className="text-neon-blue" />
-                    <h3 className="text-white font-black uppercase tracking-widest text-sm">High Performance</h3>
-                  </div>
-                  
-                  <div className="space-y-4">
-                    {trendingCreators.map((c) => (
-                      <div key={c.id} className="flex items-center gap-4 group cursor-pointer">
-                        <div className="w-12 h-12 rounded-xl overflow-hidden glass border border-white/10 shrink-0">
-                          <img src={c.image} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all" alt="" />
-                        </div>
-                        <div>
-                          <div className="text-xs font-bold text-white group-hover:text-neon-purple transition-colors">{c.name}</div>
-                          <div className="text-[10px] text-gray-500 uppercase tracking-widest">Rank: {c.rank_score}</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowMobileFilters(false)}
+              className="fixed inset-0 bg-black/90 backdrop-blur-md z-[100]"
+            />
+            <motion.div 
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="fixed inset-y-0 right-0 w-full max-w-sm glass z-[110] border-l border-white/10 p-8 flex flex-col"
+            >
+              <FilterSidebar 
+                filters={filters} 
+                setFilters={setFilters} 
+                onClose={() => setShowMobileFilters(false)} 
+              />
+            </motion.div>
           </>
         )}
-      </div>
+      </AnimatePresence>
     </PageWrapper>
   );
 }

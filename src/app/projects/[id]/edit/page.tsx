@@ -9,11 +9,12 @@ import { toast } from "react-hot-toast";
 import { useAuth } from "@/context/AuthContext";
 import { RoleGuard } from "@/components/auth/RoleGuard";
 
+import { type Project } from "@/data/projects";
+
 export default function EditProjectPage() {
   const params = useParams();
   const router = useRouter();
   const { user } = useAuth();
-  const [project, setProject] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({ title: "", description: "", category: "", budget: "" });
 
@@ -30,13 +31,12 @@ export default function EditProjectPage() {
         router.push("/projects");
         return;
       }
-      setProject(data);
       setFormData({ title: data.title, description: data.description, category: data.category, budget: data.budget });
       setLoading(false);
     };
 
     if (user?.id) fetchProject();
-  }, [params.id, user?.id]);
+  }, [params.id, user?.id, router]);
 
   const handleSave = async () => {
     setLoading(true);

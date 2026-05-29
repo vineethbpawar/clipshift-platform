@@ -29,6 +29,12 @@ export interface Creator {
   delivery: string;
   videoPreview?: string;
   aiScore?: number;
+  rank_score?: number;
+  plan_type?: string;
+  completed_projects?: number;
+  instagram?: string;
+  portfolio_link?: string;
+  bio?: string;
   specialty?: string[];
   location: {
     lat: number;

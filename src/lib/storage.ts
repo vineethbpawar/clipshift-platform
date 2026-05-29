@@ -50,10 +50,10 @@ export const uploadFile = async (
   );
 
   try {
-    const response = await Promise.race([
+    const response = (await Promise.race([
       uploadPromise,
       timeoutPromise
-    ]) as any;
+    ])) as { data: { path: string } | null; error: Error | null };
 
     const { data, error } = response;
     console.log("SUPABASE STORAGE UPLOAD RESPONSE", { data, error });
@@ -81,7 +81,7 @@ export const uploadFile = async (
     console.log("PROJECT FILE UPLOAD SUCCESS", uploadedFile);
     return uploadedFile;
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("PROJECT FILE UPLOAD ERROR", error);
     onProgress(0);
     throw error;

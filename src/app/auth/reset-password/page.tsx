@@ -1,17 +1,16 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import React, { useState } from "react";
 import { FloatingInput } from "@/components/ui/FloatingInput";
 import { NeonButton } from "@/components/ui/NeonButton";
 import { PageWrapper } from "@/components/layout/PageWrapper";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
-import { Loader2, ShieldCheck, Lock, Eye, EyeOff } from "lucide-react";
+import { Loader2, Lock, Eye, EyeOff } from "lucide-react";
 import { toast } from "react-hot-toast";
 
 export default function ResetPasswordPage() {
-  const { updatePassword, user } = useAuth();
+  const { updatePassword } = useAuth();
   const router = useRouter();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -30,8 +29,9 @@ export default function ResetPasswordPage() {
       await updatePassword(password);
       toast.success("Password updated successfully");
       router.push("/auth/login");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to update password");
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to update password";
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -54,7 +54,7 @@ export default function ResetPasswordPage() {
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="flex items-center gap-3 p-4 bg-white/5 rounded-2xl border border-white/5 mb-8">
                 <Lock className="text-neon-purple" size={20} />
-                <span className="text-[10px] font-black text-white uppercase tracking-widest">Security Protocol Active</span>
+                <span className="text-[10px] font-black text-white uppercase tracking-widest">Secured Connection</span>
               </div>
 
               <div className="relative">

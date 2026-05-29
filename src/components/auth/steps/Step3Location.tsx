@@ -42,8 +42,9 @@ export const Step3Location = ({ onNext, onBack }: { onNext: () => void, onBack: 
       });
       setPosition([data.lat, data.lng]);
       toast.success("Location detected!");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to detect location");
+    } catch (error) {
+      const err = error as Error;
+      toast.error(err.message || "Failed to detect location");
     } finally {
       setIsDetecting(false);
     }
@@ -63,7 +64,7 @@ export const Step3Location = ({ onNext, onBack }: { onNext: () => void, onBack: 
   // Fix for Leaflet icon issues in Next.js
   useEffect(() => {
     import("leaflet").then(L => {
-      // @ts-ignore
+      // @ts-expect-error - Internal Leaflet property not in types
       delete L.Icon.Default.prototype._getIconUrl;
       L.Icon.Default.mergeOptions({
         iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",

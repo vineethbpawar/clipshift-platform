@@ -59,9 +59,8 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     try {
-      // Restore Session
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData.session) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
         const { getStoredSession } = await import("@/lib/supabase");
         const stored = getStoredSession();
         if (stored?.access_token) {
@@ -79,18 +78,20 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
         .or(`client_id.eq.${user.id},creator_id.eq.${user.id}`)
         .order('last_message_at', { ascending: false });
 
-      if (error) {
-        console.error("Error fetching conversations:", error);
-        throw error;
-      }
+      if (error) throw error;
 
       if (data) {
-        // Map to include other user info
         const mapped = await Promise.all(data.map(async (c) => {
-          const isClient = c.client_id === user.id;
-          const otherUser = isClient ? c.creator : c.client;
+          const typedC = c as { 
+            id: string; 
+            client_id: string; 
+            creator_id: string; 
+            client: { full_name: string; avatar_url: string }; 
+            creator: { full_name: string; avatar_url: string };
+          };
+          const isClient = typedC.client_id === user.id;
+          const otherUser = isClient ? typedC.creator : typedC.client;
           
-          // Fetch unread count
           const { count } = await supabase
             .from('messages')
             .select('*', { count: 'exact', head: true })
@@ -100,14 +101,14 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
 
           return {
             ...c,
-            other_user: otherUser as any,
+            other_user: otherUser as { full_name: string; avatar_url: string },
             unreadCount: count || 0
           };
         }));
         setConversations(mapped);
       }
     } catch (err) {
-      console.error("Chat conversations fetch failed:", err);
+      console.error("Chat fetch failed:", err);
     } finally {
       setLoading(false);
     }
@@ -115,24 +116,14 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
 
   const fetchMessages = React.useCallback(async (convId: string) => {
     try {
-      console.log("FETCH MESSAGES START", convId);
-      
       const { data: messages, error } = await supabase
         .from('messages')
         .select('*')
         .eq('conversation_id', convId)
         .order('created_at', { ascending: true });
 
-      console.log("CHAT MESSAGES RESULT", { messages, error });
-
-      if (error) {
-        console.error("CHAT ERROR", error);
-        throw error;
-      }
-      
-      if (messages) {
-        setActiveChatMessages(messages);
-      }
+      if (error) throw error;
+      if (messages) setActiveChatMessages(messages);
     } catch (err) {
       console.error("FAILED TO FETCH MESSAGES:", err);
     }
@@ -140,27 +131,17 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     if (!user) return;
+    // Use a microtask to avoid synchronous setState during render/effect initialization
+    Promise.resolve().then(() => fetchConversations());
 
-    const initChat = async () => {
-      await fetchConversations();
-    };
-    initChat();
-
-    // Subscribe to new messages for unread counts and conversation updates
     const messageSub = supabase
       .channel('public:messages')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
         const newMessage = payload.new as Message;
         if (newMessage.receiver_id === user.id || newMessage.sender_id === user.id) {
-          // Update conversation list
           fetchConversations();
-          
-          // If active chat, add to messages
           if (activeConversationId && newMessage.conversation_id === activeConversationId) {
-            setActiveChatMessages(prev => {
-              if (prev.some(m => m.id === newMessage.id)) return prev;
-              return [...prev, newMessage];
-            });
+            setActiveChatMessages(prev => [...prev.filter(m => m.id !== newMessage.id), newMessage]);
           }
         }
       })
@@ -172,51 +153,21 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
   }, [user, activeConversationId, fetchConversations]);
 
   useEffect(() => {
-    const syncMessages = async () => {
-      if (activeConversationId) {
-        await fetchMessages(activeConversationId);
-      } else {
-        setActiveChatMessages([]);
-      }
-    };
-    syncMessages();
+    if (activeConversationId) {
+      // Use a microtask to avoid synchronous setState during render/effect initialization
+      Promise.resolve().then(() => fetchMessages(activeConversationId));
+    } else {
+      Promise.resolve().then(() => setActiveChatMessages([]));
+    }
   }, [activeConversationId, fetchMessages]);
 
   const sendMessage = async (receiverId: string, content: string, type: string = "text", mediaUrl?: string) => {
-    if (!user) return;
+    if (!user || !activeConversationId) return;
 
-    // 1. Get or create conversation
-    let convId: string;
-    const { data: existingConv } = await supabase
-      .from('conversations')
-      .select('id')
-      .or(`and(client_id.eq.${user.id},creator_id.eq.${receiverId}),and(client_id.eq.${receiverId},creator_id.eq.${user.id})`)
-      .single();
-
-    if (existingConv) {
-      convId = existingConv.id;
-    } else {
-      const isUserClient = user.role === 'client';
-      const { data: newConv, error: convError } = await supabase
-        .from('conversations')
-        .insert({
-          client_id: isUserClient ? user.id : receiverId,
-          creator_id: isUserClient ? receiverId : user.id,
-          last_message: content,
-          last_message_at: new Date().toISOString()
-        })
-        .select()
-        .single();
-      
-      if (convError) throw convError;
-      convId = newConv.id;
-    }
-
-    // 2. Insert message
     const { error: msgError } = await supabase
       .from('messages')
       .insert({
-        conversation_id: convId,
+        conversation_id: activeConversationId,
         sender_id: user.id,
         receiver_id: receiverId,
         content,
@@ -226,14 +177,10 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
 
     if (msgError) throw msgError;
 
-    // 3. Update conversation last message
     await supabase
       .from('conversations')
-      .update({
-        last_message: content,
-        last_message_at: new Date().toISOString()
-      })
-      .eq('id', convId);
+      .update({ last_message: content, last_message_at: new Date().toISOString() })
+      .eq('id', activeConversationId);
   };
 
   const markAsRead = async (convId: string) => {

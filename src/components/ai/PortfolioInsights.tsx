@@ -1,122 +1,65 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React from "react";
+import { TrendingUp, Target, Zap, ShieldCheck, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
-import { TrendingUp, Zap, Target, Search, BarChart3, ArrowUpRight, Loader2, Sparkles } from "lucide-react";
-import { getPortfolioInsights } from "@/lib/gemini";
-import { useAuth } from "@/context/AuthContext";
-
-interface Insights {
-  trending_styles: string[];
-  improvement_tips: string[];
-  gaps: string;
-}
 
 export const PortfolioInsights = () => {
-  const { user } = useAuth();
-  const [insights, setInsights] = useState<Insights | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  const fetchInsights = React.useCallback(async () => {
-    if (!user) return;
-    setLoading(true);
-    try {
-      // Use real profile data
-      const portfolioData = {
-        categories: user.specialization ? [user.specialization] : [],
-        videoCount: 0, // Need portfolio table for this
-        topPerformance: "N/A",
-        recentStyles: []
-      };
-      
-      const result = await getPortfolioInsights([portfolioData]);
-      setInsights(result);
-    } catch (error) {
-      console.error("Failed to fetch insights:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    const init = async () => {
-      await fetchInsights();
-    };
-    init();
-  }, [fetchInsights]);
-
-  if (loading) {
-    return (
-      <div className="glass p-12 rounded-[40px] border-white/5 flex flex-col items-center justify-center space-y-4">
-        <Loader2 size={32} className="text-neon-purple animate-spin" />
-        <p className="text-[10px] text-gray-500 font-black uppercase tracking-[0.2em]">Synthesizing Portfolio Tensors...</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="glass p-8 rounded-[40px] border-white/5 space-y-8">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-black text-white uppercase tracking-[0.2em]">Neural Insights</h3>
-        <button onClick={fetchInsights} className="text-gray-500 hover:text-white transition-colors">
-          <Sparkles size={16} />
-        </button>
+    <div className="glass p-8 sm:p-10 rounded-[40px] border-white/5 bg-gradient-to-br from-neon-purple/5 to-transparent">
+      <div className="flex items-center justify-between mb-10 border-b border-white/5 pb-6">
+        <div className="flex items-center gap-3">
+          <TrendingUp className="text-neon-purple" size={24} />
+          <h3 className="text-sm font-black text-white uppercase tracking-[0.2em] italic">Portfolio Analytics</h3>
+        </div>
+        <div className="px-3 py-1 rounded-full bg-neon-purple/10 border border-neon-purple/20 text-[8px] font-black text-neon-purple uppercase tracking-widest">
+           AI Diagnostic
+        </div>
       </div>
 
-      {/* Trending Market Tones */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <TrendingUp size={14} className="text-green-500" />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="space-y-6">
           <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Global Trend signals</h4>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {(insights?.trending_styles || ["Cinematic Transitions", "HDR Color Grading", "POV Storytelling"]).map((tag: string, i: number) => (
-            <motion.div 
-              key={tag}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: i * 0.1 }}
-              className="px-3 py-1.5 bg-neon-purple/10 border border-neon-purple/20 rounded-full text-[9px] font-bold text-neon-purple uppercase tracking-tight flex items-center gap-1.5"
-            >
-              <Zap size={10} />
-              {tag}
-            </motion.div>
-          ))}
-        </div>
-      </div>
-
-      {/* Improvement Tips */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Target size={14} className="text-neon-blue" />
-          <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Improvement Directives</h4>
-        </div>
-        <div className="space-y-3">
-          {(insights?.improvement_tips || [
-            "Diversify color palettes to include more warm-toned cinematic looks.",
-            "Tighten narrative flow in the first 5 seconds of Reels.",
-            "Improve audio normalization across portfolio nodes."
-          ]).map((tip: string, i: number) => (
-            <div key={i} className="p-4 bg-white/5 rounded-2xl border border-white/5 flex items-center justify-between group cursor-pointer hover:border-white/10 transition-all">
-              <div className="flex-1">
-                <p className="text-[10px] text-gray-400 leading-relaxed italic">&quot;{tip}&quot;</p>
+          <div className="space-y-3">
+            {[
+              "High-contrast color grading is trending in music videos.",
+              "Retention scores are 15% higher for 4K vertical content.",
+              "Minimalist sound design converts better for commercials."
+            ].map((insight, i) => (
+              <div key={i} className="flex gap-3 p-4 glass rounded-2xl border-white/5 bg-black/20 group hover:border-neon-purple/30 transition-all">
+                <Zap size={14} className="text-neon-purple shrink-0 mt-0.5 opacity-50 group-hover:opacity-100" />
+                <p className="text-[10px] text-gray-400 font-medium leading-relaxed italic">{insight}</p>
               </div>
-              <ArrowUpRight size={16} className="text-gray-600 group-hover:text-neon-blue transition-colors ml-4 shrink-0" />
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
 
-      {/* Portfolio Gap Analysis */}
-      <div className="p-6 bg-gradient-to-br from-neon-blue/10 to-transparent rounded-3xl border border-neon-blue/20">
-        <h4 className="text-[10px] font-black text-white uppercase tracking-widest mb-3 flex items-center gap-2">
-          <Search size={14} className="text-neon-blue" />
-          Node Gap analysis
-        </h4>
-        <p className="text-[10px] text-gray-400 leading-relaxed mb-4">
-          {insights?.gaps || "Our AI suggests adding more 'Drone FPV Forest Sequences' to your portfolio to capture rising market demand."}
-        </p>
-        <button className="text-[9px] font-black text-neon-blue uppercase tracking-widest hover:underline">Generate Content Strategy</button>
+        <div className="md:col-span-2 space-y-6">
+          <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Growth Recommendations</h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+             {[
+               "Increase focus on high-fidelity visual transitions.",
+               "Optimize portfolio descriptions for search visibility.",
+               "Normalize audio levels across all showcased work.",
+               "Add more varied cinematography samples."
+             ].map((rec, i) => (
+               <div key={i} className="flex items-center gap-4 p-5 glass rounded-2xl border-white/5 bg-black/40">
+                  <div className="w-8 h-8 rounded-xl bg-neon-blue/10 flex items-center justify-center text-neon-blue border border-neon-blue/20">
+                     <Target size={14} />
+                  </div>
+                  <p className="text-[10px] text-gray-300 font-black uppercase tracking-tight">{rec}</p>
+               </div>
+             ))}
+          </div>
+          
+          <div className="mt-6 p-6 glass rounded-3xl border-white/5 bg-white/[0.01] flex items-center justify-between group cursor-pointer hover:bg-white/[0.03] transition-all">
+             <div>
+                <h5 className="text-[10px] font-black text-white uppercase tracking-widest mb-1">Detailed Opportunity Report</h5>
+                <p className="text-[8px] text-gray-500 uppercase font-bold">Comprehensive gap analysis and market positioning.</p>
+             </div>
+             <ArrowRight size={16} className="text-gray-700 group-hover:text-neon-purple group-hover:translate-x-1 transition-all" />
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -16,10 +16,18 @@ import { useAuth } from "@/context/AuthContext";
 import { RoleGuard } from "@/components/auth/RoleGuard";
 import { motion } from "framer-motion";
 
+interface Payment {
+  id: string;
+  amount: number;
+  status: string;
+  created_at: string;
+  order_id: string;
+}
+
 export default function CreatorEarningsPage() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [payments, setPayments] = useState<any[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
   const [stats, setStats] = useState({
     totalEarnings: 0,
     pendingPayments: 0,

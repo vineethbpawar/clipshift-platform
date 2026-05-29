@@ -4,7 +4,7 @@ import React, { useState, useRef } from "react";
 import { FloatingInput } from "../../ui/FloatingInput";
 import { useAuth } from "@/context/AuthContext";
 import { motion } from "framer-motion";
-import { Camera, Link2, Languages, User, Loader2 } from "lucide-react";
+import { Camera, Link2, Languages } from "lucide-react";
 import { UploadProgress } from "../../storage/UploadProgress";
 
 export const Step4Profile = ({ onNext, onBack }: { onNext: () => void, onBack: () => void }) => {
@@ -43,8 +43,9 @@ export const Step4Profile = ({ onNext, onBack }: { onNext: () => void, onBack: (
       const { uploadFile } = await import("@/lib/storage");
       const fileData = await uploadFile(file, 'avatars', signupData.email || 'guest', (p) => setProgress(p));
       setImagePreview(fileData.file_url);
-    } catch (error: any) {
-      alert("Transmission failed: " + error.message);
+    } catch (error) {
+      const err = error as Error;
+      alert("Transmission failed: " + err.message);
     } finally {
       setUploading(false);
     }
