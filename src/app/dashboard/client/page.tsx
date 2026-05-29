@@ -171,7 +171,7 @@ export default function ClientDashboard() {
                 </div>
                 <Link href="/marketplace">
                   <button className="px-10 py-5 rounded-2xl bg-white text-black text-xs font-black uppercase tracking-widest shadow-2xl hover:bg-neon-purple hover:text-white transition-all active:scale-95">
-                    Browse Marketplace
+                    Browse Creators
                   </button>
                 </Link>
               </div>

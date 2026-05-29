@@ -129,7 +129,7 @@ export default function CreatorDashboard() {
                </div>
                <div>
                  <span className="text-[10px] text-gray-500 uppercase font-black tracking-widest block mb-1">Current Plan</span>
-                 <p className="text-lg font-black text-white uppercase tracking-tighter">{activePlan.replace('creator_', '')} Node</p>
+                 <p className="text-lg font-black text-white uppercase tracking-tighter">{activePlan.replace('creator_', '')} Plan</p>
                </div>
             </div>
             <Link href="/pricing">

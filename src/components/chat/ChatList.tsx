@@ -96,7 +96,7 @@ export const ChatList = () => {
 
       <div className="p-8 border-t border-white/5 bg-black/40">
          <div className="flex items-center justify-center gap-3 py-3 glass rounded-2xl border border-white/5 text-[8px] font-black text-gray-600 uppercase tracking-[0.3em]">
-            <ShieldCheck size={12} className="text-neon-blue" /> Secure Messaging Node
+            <ShieldCheck size={12} className="text-neon-blue" /> Secure Messaging
          </div>
       </div>
     </div>

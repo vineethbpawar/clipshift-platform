@@ -36,8 +36,7 @@ export default function PostProjectPage() {
           <div className="space-y-10 lg:sticky lg:top-32">
             <div className="glass p-8 rounded-[40px] border-white/5 bg-gradient-to-br from-neon-purple/5 to-transparent">
               <h3 className="text-[10px] font-black text-white uppercase tracking-widest mb-10 italic flex items-center gap-2">
-                 <ShieldCheck size={16} className="text-neon-purple" /> Protection Protocol
-              </h3>
+                 <ShieldCheck size={16} className="text-neon-purple" /> Protection Shield              </h3>
               <div className="space-y-8">
                  {[
                    { title: "Escrow Secured", desc: "Payments are held safely until you approve the final delivery.", icon: Zap },

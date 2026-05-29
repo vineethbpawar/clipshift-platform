@@ -45,7 +45,7 @@ export const Hero = () => {
           transition={{ duration: 0.8, ease: "easeOut" }}
         >
           <div className="inline-flex items-center gap-3 px-5 py-2 rounded-full glass border-white/10 bg-white/5 text-neon-purple text-[10px] md:text-xs font-black tracking-widest uppercase mb-10 shadow-lg italic">
-            <Zap size={14} className="fill-neon-purple" /> Professional Visual Marketplace
+            <Zap size={14} className="fill-neon-purple" /> Professional Visual Platform
           </div>
           
           <h1 className="text-4xl sm:text-6xl md:text-8xl font-black tracking-tighter text-white mb-8 leading-[1] md:leading-[0.85] italic">
@@ -54,7 +54,7 @@ export const Hero = () => {
           </h1>
           
           <p className="text-base md:text-xl text-gray-400 max-w-2xl mx-auto mb-12 md:mb-16 leading-relaxed uppercase tracking-widest font-medium opacity-70">
-            ClipShift connects high-impact creators with world-class editors and videographers to produce professional cinematic content.
+            ClipShift connects high-impact brands with world-class editors and videographers to produce professional cinematic content.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
@@ -65,7 +65,7 @@ export const Hero = () => {
             </Link>
             <Link href="/auth/signup" className="w-full sm:w-auto">
               <button className="w-full sm:w-auto px-10 py-5 rounded-2xl glass border-white/10 text-white font-black uppercase tracking-[0.2em] text-[11px] hover:bg-white/5 transition-all active:scale-95 flex items-center justify-center gap-3">
-                Join Marketplace
+                Join Platform
               </button>
             </Link>
           </div>

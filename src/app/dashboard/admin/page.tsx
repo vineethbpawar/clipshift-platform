@@ -89,7 +89,7 @@ export default function AdminDashboard() {
       <DashboardLayout title="Admin Dashboard">
         {/* Header Subtitle */}
         <div className="mb-10">
-          <p className="text-gray-500 uppercase tracking-widest text-[10px] font-black mb-1 opacity-60">Master Command</p>
+          <p className="text-gray-500 uppercase tracking-widest text-[10px] font-black mb-1 opacity-60">Admin Overview</p>
           <p className="text-sm text-gray-400 font-medium max-w-2xl">
             Monitor platform growth, verify creators, and manage financial volume.
           </p>

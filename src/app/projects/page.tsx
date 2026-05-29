@@ -84,11 +84,11 @@ export default function ProjectsPage() {
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-16 gap-8">
           <div>
-            <div className="flex items-center gap-3 mb-4">
+            <div className="flex items-center gap-3 mb-6">
               <div className="p-2.5 bg-neon-purple/10 rounded-xl text-neon-purple border border-neon-purple/20">
                 <Layers size={20} />
               </div>
-              <h1 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em]">Project Marketplace</h1>
+              <h1 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em]">Open Projects</h1>
             </div>
             <h2 className="text-4xl md:text-6xl font-black text-white uppercase tracking-tighter leading-[0.9]">
               Explore <span className="text-neon-purple">Open Projects</span>
@@ -131,15 +131,15 @@ export default function ProjectsPage() {
             <div className="w-24 h-24 bg-white/5 rounded-[32px] flex items-center justify-center mb-10 border border-white/5 shadow-inner">
               <Inbox size={48} className="text-gray-700" />
             </div>
-            <h2 className="text-3xl font-black text-white uppercase tracking-tight mb-3 italic">No open projects found</h2>
+            <h2 className="text-3xl font-black text-white uppercase tracking-tight mb-3 italic">No open projects available</h2>
             <p className="text-gray-500 mb-10 max-w-sm mx-auto uppercase tracking-widest text-[10px] font-bold leading-relaxed">
-              The marketplace is currently quiet. New client projects will appear here in real-time.
+              New client projects will appear here in real-time.
             </p>
             <button 
               onClick={fetchProjects}
               className="px-12 py-5 rounded-2xl bg-neon-purple text-white font-black uppercase tracking-widest text-[10px] shadow-[0_0_40px_rgba(168,85,247,0.3)] hover:scale-105 active:scale-95 transition-all"
             >
-              Refresh Marketplace
+              Refresh Projects
             </button>
           </div>
         ) : (

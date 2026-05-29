@@ -82,7 +82,7 @@ export default function CreatorDetailPage() {
     <PageWrapper>
       <div className="max-w-7xl mx-auto pt-32 pb-32 px-6 sm:px-10">
         <button onClick={() => router.back()} className="flex items-center gap-2 text-gray-500 hover:text-white mb-10 text-[10px] uppercase tracking-[0.2em] font-black transition-colors group">
-          <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" /> Back to Marketplace
+          <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" /> Back to Creators
         </button>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 items-start">

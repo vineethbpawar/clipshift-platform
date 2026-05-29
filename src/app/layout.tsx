@@ -12,8 +12,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "ClipShift | Premium Cinematic Creator Marketplace",
-  description: "The ultimate platform for cinematic creators to showcase and trade premium assets.",
+  title: "ClipShift | Premium Cinematic Creator Platform",
+  description: "The ultimate platform for cinematic creators to showcase and collaborate on professional visual projects.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,

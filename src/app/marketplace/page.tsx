@@ -104,7 +104,7 @@ export default function MarketplacePage() {
               <div className="p-2.5 bg-neon-purple/10 rounded-xl text-neon-purple border border-neon-purple/20">
                 <Users size={20} />
               </div>
-              <h1 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em]">Talent Marketplace</h1>
+              <h1 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em]">Professional Creators</h1>
             </div>
             <h2 className="text-4xl md:text-7xl font-black text-white uppercase tracking-tighter leading-[0.9] mb-8">
               Hire Elite <span className="text-neon-purple italic">Creators</span>
@@ -141,7 +141,7 @@ export default function MarketplacePage() {
                   <div className="w-20 h-20 rounded-full border-2 border-white/5 border-t-neon-purple animate-spin" />
                   <Users className="absolute inset-0 m-auto text-neon-purple/40" size={32} />
                 </div>
-                <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.4em] animate-pulse italic">Synchronizing Marketplace</span>
+                <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.4em] animate-pulse italic">Synchronizing Creators</span>
               </div>
             ) : creators.length === 0 ? (
               <div className="py-40 text-center glass rounded-[50px] border-white/5 bg-white/[0.01]">
