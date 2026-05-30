@@ -50,45 +50,65 @@ export default function CreatorActiveProjectsPage() {
 
       if (!activeSession) {
         setFetchError("Your session expired. Please login again.");
-        setLoading(false);
         return;
       }
 
       const userId = activeSession.user.id;
+      console.log("CREATOR ACTIVE PROJECTS USER ID", userId);
 
       // 2. Fetch projects directly
-      const { data: projData, error: projErr } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('assigned_creator_id', userId)
-        .in('status', ['in_progress', 'delivered', 'completed'])
-        .order('updated_at', { ascending: false });
+      const { data: projects, error } = await supabase
+        .from("projects")
+        .select("*")
+        .eq("assigned_creator_id", userId)
+        .in("status", ["in_progress", "delivered", "completed"])
+        .order("created_at", { ascending: false });
 
-      if (projErr) throw projErr;
+      console.log("CREATOR ACTIVE PROJECTS RESULT", { projects, error });
+
+      if (error) {
+        console.error("CREATOR ACTIVE PROJECTS FETCH ERROR", {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+        throw error;
+      }
       
-      const initialProjects = projData || [];
+      const initialProjects = projects || [];
+      setProjects(initialProjects);
       
       // 3. Fetch client details separately
       if (initialProjects.length > 0) {
-        const clientIds = initialProjects.map(p => p.client_id).filter(Boolean);
-        const [clientsRes] = await Promise.all([
-          clientIds.length > 0 ? supabase.from('profiles').select('id, full_name, email').in('id', clientIds) : Promise.resolve({ data: [] })
-        ]);
+        try {
+          const clientIds = initialProjects.map(p => p.client_id).filter(Boolean);
+          if (clientIds.length > 0) {
+            const { data: clientsData } = await supabase
+              .from('profiles')
+              .select('id, full_name, email')
+              .in('id', clientIds);
 
-        const enriched = initialProjects.map(p => ({
-          ...p,
-          client: clientsRes.data?.find(c => c.id === p.client_id)
-        }));
-
-        setProjects(enriched);
-      } else {
-        setProjects([]);
+            if (clientsData) {
+              setProjects(prev => prev.map(p => ({
+                ...p,
+                client: clientsData.find(c => c.id === p.client_id)
+              })));
+            }
+          }
+        } catch (detailErr) {
+          console.warn("Could not load client details, but projects are loaded.", detailErr);
+        }
       }
 
-    } catch (err: unknown) {
+    } catch (err: any) {
       console.error("ACTIVE PROJECTS FETCH ERROR", err);
-      const errorMessage = err instanceof Error ? err.message : "Failed to load projects.";
-      setFetchError(errorMessage);
+      setFetchError("Could not load active projects. Please refresh.");
+      
+      // Show debug text only in development
+      if (process.env.NODE_ENV === 'development') {
+        setFetchError(`Could not load active projects. Please refresh. (${err.message})`);
+      }
     } finally {
       setLoading(false);
     }
@@ -149,7 +169,7 @@ export default function CreatorActiveProjectsPage() {
           {projects.length === 0 ? (
             <div className="glass p-16 rounded-[50px] text-center border-white/5 bg-white/[0.01]">
               <TrendingUp className="mx-auto text-gray-800 mb-6" size={56} />
-              <h3 className="text-2xl font-black text-white uppercase tracking-tighter mb-3 italic">No active projects</h3>
+              <h3 className="text-2xl font-black text-white uppercase tracking-tighter mb-3 italic">No active projects yet</h3>
               <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest max-w-xs mx-auto mb-10 leading-relaxed opacity-60">
                 When a client accepts your proposal, the project will appear here for management.
               </p>

@@ -51,45 +51,65 @@ export default function ClientActiveProjectsPage() {
 
       if (!activeSession) {
         setFetchError("Your session expired. Please login again.");
-        setLoading(false);
         return;
       }
 
       const userId = activeSession.user.id;
+      console.log("CLIENT ACTIVE PROJECTS USER ID", userId);
 
       // 2. Fetch projects directly
-      const { data: projData, error: projErr } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('client_id', userId)
-        .in('status', ['in_progress', 'delivered', 'completed'])
-        .order('updated_at', { ascending: false });
+      const { data: projects, error } = await supabase
+        .from("projects")
+        .select("*")
+        .eq("client_id", userId)
+        .in("status", ["in_progress", "delivered", "completed"])
+        .order("created_at", { ascending: false });
 
-      if (projErr) throw projErr;
+      console.log("CLIENT ACTIVE PROJECTS RESULT", { projects, error });
+
+      if (error) {
+        console.error("CLIENT ACTIVE PROJECTS FETCH ERROR", {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+        throw error;
+      }
       
-      const initialProjects = projData || [];
+      const initialProjects = projects || [];
+      setProjects(initialProjects);
       
       // 3. Fetch details separately to avoid join issues
       if (initialProjects.length > 0) {
-        const creatorIds = initialProjects.map(p => p.assigned_creator_id).filter(Boolean);
-        const [creatorsRes] = await Promise.all([
-          creatorIds.length > 0 ? supabase.from('profiles').select('id, full_name, email').in('id', creatorIds) : Promise.resolve({ data: [] })
-        ]);
+        try {
+          const creatorIds = initialProjects.map(p => p.assigned_creator_id).filter(Boolean);
+          if (creatorIds.length > 0) {
+            const { data: creatorsData } = await supabase
+              .from('profiles')
+              .select('id, full_name, email')
+              .in('id', creatorIds);
 
-        const enriched = initialProjects.map(p => ({
-          ...p,
-          assigned_creator: creatorsRes.data?.find(c => c.id === p.assigned_creator_id)
-        }));
-
-        setProjects(enriched);
-      } else {
-        setProjects([]);
+            if (creatorsData) {
+              setProjects(prev => prev.map(p => ({
+                ...p,
+                assigned_creator: creatorsData.find(c => c.id === p.assigned_creator_id)
+              })));
+            }
+          }
+        } catch (detailErr) {
+          console.warn("Could not load creator details, but projects are loaded.", detailErr);
+        }
       }
 
-    } catch (err: unknown) {
+    } catch (err: any) {
       console.error("ACTIVE PROJECTS FETCH ERROR", err);
-      const errorMessage = err instanceof Error ? err.message : "Failed to load projects.";
-      setFetchError(errorMessage);
+      setFetchError("Could not load active projects. Please refresh.");
+      
+      // Show debug text only in development
+      if (process.env.NODE_ENV === 'development') {
+        setFetchError(`Could not load active projects. Please refresh. (${err.message})`);
+      }
     } finally {
       setLoading(false);
     }
@@ -136,7 +156,7 @@ export default function ClientActiveProjectsPage() {
         <div className="space-y-10">
           <div className="mb-4">
              <p className="text-sm text-gray-400 font-medium max-w-2xl">
-               Manage your ongoing productions and monitor real-time progress.
+               Manage your ongoing projects and progress.
              </p>
           </div>
 
@@ -150,7 +170,7 @@ export default function ClientActiveProjectsPage() {
           {projects.length === 0 ? (
             <div className="glass p-16 rounded-[50px] text-center border-white/5 bg-white/[0.01]">
               <Briefcase className="mx-auto text-gray-800 mb-6" size={56} />
-              <h3 className="text-2xl font-black text-white uppercase tracking-tighter mb-3 italic">No active projects</h3>
+              <h3 className="text-2xl font-black text-white uppercase tracking-tighter mb-3 italic">No active projects yet</h3>
               <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest max-w-xs mx-auto mb-10 leading-relaxed opacity-60">
                 Accept a creator proposal and your active production will appear here.
               </p>
