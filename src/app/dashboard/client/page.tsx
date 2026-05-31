@@ -124,9 +124,9 @@ export default function ClientDashboard() {
       <DashboardLayout title="Client Dashboard">
         {/* Header Subtitle */}
         <div className="mb-10">
-          <p className="text-gray-500 uppercase tracking-widest text-[10px] font-black mb-1 opacity-60">Control Center</p>
+          <p className="text-gray-500 uppercase tracking-widest text-[10px] font-black mb-1 opacity-60">Overview</p>
           <p className="text-sm text-gray-400 font-medium max-w-2xl">
-            Post projects, review proposals, and manage your active productions.
+            Post projects, review proposals, and manage active projects.
           </p>
         </div>
 

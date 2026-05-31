@@ -111,7 +111,7 @@ export default function ChatPage() {
 
   return (
     <PageWrapper>
-      <div className="h-[100dvh] pt-20 flex bg-black overflow-hidden relative">
+      <div className="h-[100dvh] pt-16 flex bg-black overflow-hidden relative">
         {/* Sidebar for Desktop */}
         <div className="hidden lg:block w-72 lg:w-96 border-r border-white/5 bg-black/40 backdrop-blur-2xl shrink-0">
           <ChatList />

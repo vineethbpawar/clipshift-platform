@@ -116,7 +116,7 @@ export default function CreatorDashboard() {
         <div className="mb-10">
           <p className="text-gray-500 uppercase tracking-widest text-[10px] font-black mb-1 opacity-60">Overview</p>
           <p className="text-sm text-gray-400 font-medium max-w-2xl">
-            Manage your projects, proposals, and professional profile in one place.
+            Manage your projects, proposals, and profile.
           </p>
         </div>
 

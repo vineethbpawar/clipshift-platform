@@ -69,9 +69,9 @@ export default function ExplorePage() {
 
   return (
     <PageWrapper>
-      <div className="h-[100dvh] pt-20 flex flex-col relative overflow-hidden bg-black">
+      <div className="h-[100dvh] pt-16 flex flex-col relative overflow-hidden bg-black">
         {/* Map UI Overlay: Header */}
-        <div className="absolute top-24 left-6 right-6 z-20 flex flex-col md:flex-row justify-between items-start gap-4 pointer-events-none">
+        <div className="absolute top-20 left-6 right-6 z-20 flex flex-col md:flex-row justify-between items-start gap-4 pointer-events-none">
           <div className="pointer-events-auto">
             <div className="glass p-6 rounded-[32px] border-white/10 bg-black/60 backdrop-blur-xl shadow-2xl">
                <div className="flex items-center gap-3 mb-2">

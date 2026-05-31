@@ -27,12 +27,14 @@ export const Navbar = () => {
 
   const { totalUnreadCount } = useChat();
 
+  const isDashboard = pathname.startsWith("/dashboard");
   const dashboardPath = user ? getDashboardPath(user.role) : "/dashboard/client";
 
   interface NavLink {
     name: string;
     href: string;
     badge?: number;
+    icon?: React.ElementType;
   }
 
   const publicLinks: NavLink[] = [
@@ -44,18 +46,14 @@ export const Navbar = () => {
 
   const authLinks: NavLink[] = [
     { name: "Dashboard", href: dashboardPath },
-    { name: "Explore", href: "/explore" },
-    { name: "Creators", href: "/marketplace" },
-    { name: "Projects", href: "/projects" },
-    { name: "Pricing", href: "/pricing" },
-    { name: "Messages", href: "/chat", badge: totalUnreadCount },
+    ...publicLinks,
   ];
 
-  const navLinks: NavLink[] = user ? authLinks : publicLinks;
+  const navLinks = user ? authLinks : publicLinks;
 
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/";
-    if (href === dashboardPath) return pathname.startsWith("/dashboard");
+    if (href === dashboardPath) return pathname === href;
     return pathname.startsWith(href);
   };
 
@@ -65,7 +63,7 @@ export const Navbar = () => {
       className="fixed top-0 left-0 right-0 z-50 border-b border-white/5 transition-colors"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-20 items-center">
+        <div className="flex justify-between h-16 items-center">
           {/* Logo */}
           <Link href="/" className="flex items-center group shrink-0">
             <Image
@@ -73,57 +71,72 @@ export const Navbar = () => {
               alt="ClipShift"
               width={140}
               height={40}
-              className="h-10 w-auto object-contain brightness-110"
+              className="h-9 w-auto object-contain brightness-110"
               priority
             />
           </Link>
 
-          {/* Desktop Nav */}
-          <div className="hidden md:flex items-center space-x-8 lg:space-x-10">
-            {navLinks.map((link) => (
-              <Link
-                key={link.name}
-                href={link.href}
-                className={`text-[10px] font-black uppercase tracking-[0.2em] transition-all relative group ${
-                  isActive(link.href) ? "text-neon-purple" : "text-gray-400 hover:text-white"
-                }`}
-              >
-                {link.name}
-                <div className={`absolute -bottom-1 left-0 h-0.5 bg-neon-purple transition-all duration-300 ${
-                  isActive(link.href) ? "w-full" : "w-0 group-hover:w-full"
-                }`} />
-                {link.badge && link.badge > 0 && (
-                  <span className="absolute -top-2 -right-3 w-4 h-4 bg-neon-purple text-white text-[8px] flex items-center justify-center rounded-full shadow-[0_0_10px_rgba(168,85,247,0.5)] border border-black">
-                    {link.badge}
-                  </span>
-                )}
-              </Link>
-            ))}
-          </div>
+          {/* Desktop Nav - Only for Public Pages */}
+          {!isDashboard && (
+            <div className="hidden md:flex items-center space-x-8 lg:space-x-10">
+              {navLinks.map((link) => (
+                <Link
+                  key={link.name}
+                  href={link.href}
+                  className={`text-[10px] font-black uppercase tracking-[0.2em] transition-all relative group ${
+                    isActive(link.href) ? "text-neon-purple" : "text-gray-400 hover:text-white"
+                  }`}
+                >
+                  {link.name}
+                  <div className={`absolute -bottom-1 left-0 h-0.5 bg-neon-purple transition-all duration-300 ${
+                    isActive(link.href) ? "w-full" : "w-0 group-hover:w-full"
+                  }`} />
+                  {link.badge && link.badge > 0 && (
+                    <span className="absolute -top-2 -right-3 w-4 h-4 bg-neon-purple text-white text-[8px] flex items-center justify-center rounded-full shadow-[0_0_10px_rgba(168,85,247,0.5)] border border-black">
+                      {link.badge}
+                    </span>
+                  )}
+                </Link>
+              ))}
+            </div>
+          )}
 
+          {/* Right Section */}
           <div className="hidden md:flex items-center">
-            <div className="flex items-center gap-2 border-l border-white/10 ml-4 pl-8 min-w-[150px] justify-end">
+            <div className={`flex items-center gap-2 ${!isDashboard ? "border-l border-white/10 ml-4 pl-8" : ""} min-w-[150px] justify-end`}>
               {loading ? (
                 <Loader2 className="animate-spin text-gray-600" size={18} />
               ) : user ? (
-                <div className="flex items-center gap-5">
-                  <Link href={dashboardPath}>
-                    <div className="flex flex-col items-end group cursor-pointer">
-                      <span className="text-white font-black text-[10px] uppercase tracking-widest group-hover:text-neon-purple transition-colors truncate max-w-[120px] italic">
+                <div className="flex items-center gap-6">
+                  {/* Dashboard-specific items: Messages */}
+                  {isDashboard && (
+                    <Link href="/chat" className="relative p-2.5 glass rounded-xl text-gray-400 hover:text-neon-purple transition-all border border-transparent group">
+                      <MessageSquare size={18} />
+                      {totalUnreadCount > 0 && (
+                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-neon-purple text-white text-[8px] flex items-center justify-center rounded-full shadow-[0_0_10px_rgba(168,85,247,0.5)] border border-black font-black">
+                          {totalUnreadCount}
+                        </span>
+                      )}
+                    </Link>
+                  )}
+
+                  <div className="flex items-center gap-5">
+                    <div className="flex flex-col items-end">
+                      <span className="text-white font-black text-[10px] uppercase tracking-widest truncate max-w-[120px] italic">
                         {user.name}
                       </span>
                       <span className="text-[8px] text-neon-blue font-black uppercase tracking-widest opacity-60">
                         {user.role}
                       </span>
                     </div>
-                  </Link>
-                  <button 
-                    onClick={() => signOut()} 
-                    className="p-2.5 glass rounded-xl text-gray-500 hover:text-red-500 hover:border-red-500/20 transition-all border border-transparent active:scale-90"
-                    title="Logout"
-                  >
-                    <LogOut size={18} />
-                  </button>
+                    <button 
+                      onClick={() => signOut()} 
+                      className="p-2.5 glass rounded-xl text-gray-500 hover:text-red-500 hover:border-red-500/20 transition-all border border-transparent active:scale-90"
+                      title="Logout"
+                    >
+                      <LogOut size={18} />
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div className="flex items-center gap-4">
@@ -144,7 +157,17 @@ export const Navbar = () => {
 
           {/* Mobile Toggle */}
           <div className="md:hidden flex items-center gap-4">
-            {!loading && user && (
+            {isDashboard && user && (
+               <Link href="/chat" className="relative p-2.5 glass rounded-xl text-gray-400">
+                 <MessageSquare size={18} />
+                 {totalUnreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-neon-purple text-white text-[7px] flex items-center justify-center rounded-full border border-black">
+                      {totalUnreadCount}
+                    </span>
+                 )}
+               </Link>
+            )}
+            {!loading && user && !isDashboard && (
                <div className="flex items-center gap-2 px-3 py-1 rounded-full border border-green-500/20 bg-green-500/5">
                  <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
                  <span className="text-[8px] font-black text-green-500 uppercase tracking-widest">Active</span>
@@ -178,26 +201,42 @@ export const Navbar = () => {
               className="absolute top-24 left-4 right-4 z-50 md:hidden glass p-6 rounded-[40px] border-white/10 shadow-[0_20px_100px_rgba(0,0,0,1)] flex flex-col gap-2 bg-black/80"
             >
               <div className="grid grid-cols-1 gap-2 mb-4">
-                {navLinks.map((link) => (
-                  <Link
-                    key={link.name}
-                    href={link.href}
-                    onClick={() => setIsOpen(false)}
-                    className={`flex items-center justify-between p-5 glass rounded-3xl gap-2 transition-all active:scale-95 ${
-                      isActive(link.href) ? "bg-neon-purple/10 border-neon-purple/20 text-white" : "bg-white/[0.02] border-white/5 text-gray-400 hover:text-white"
-                    }`}
-                  >
-                    <span className="text-[10px] font-black uppercase tracking-widest italic">{link.name}</span>
-                    <div className="flex items-center gap-2">
-                       {link.badge && link.badge > 0 && (
-                        <span className="text-[8px] px-2 py-0.5 bg-neon-purple text-white rounded-full">
-                          {link.badge}
-                        </span>
-                       )}
-                       <ChevronRight size={14} className={isActive(link.href) ? "text-neon-purple" : "text-gray-700"} />
-                    </div>
-                  </Link>
-                ))}
+                {/* On Dashboard, show dashboard links in mobile menu too? 
+                    The rules say "Menu includes dashboard links". 
+                    But Dashboard already has its own sidebar. 
+                    However, the top navbar menu is what the user clicks.
+                */}
+                {!isDashboard ? (
+                  navLinks.map((link) => (
+                    <Link
+                      key={link.name}
+                      href={link.href}
+                      onClick={() => setIsOpen(false)}
+                      className={`flex items-center justify-between p-5 glass rounded-3xl gap-2 transition-all active:scale-95 ${
+                        isActive(link.href) ? "bg-neon-purple/10 border-neon-purple/20 text-white" : "bg-white/[0.02] border-white/5 text-gray-400 hover:text-white"
+                      }`}
+                    >
+                      <span className="text-[10px] font-black uppercase tracking-widest italic">{link.name}</span>
+                      <div className="flex items-center gap-2">
+                        {link.badge && link.badge > 0 && (
+                          <span className="text-[8px] px-2 py-0.5 bg-neon-purple text-white rounded-full">
+                            {link.badge}
+                          </span>
+                        )}
+                        <ChevronRight size={14} className={isActive(link.href) ? "text-neon-purple" : "text-gray-700"} />
+                      </div>
+                    </Link>
+                  ))
+                ) : (
+                  /* Dashboard mobile menu could just be logout and profile since sidebar is drawer */
+                  <div className="space-y-2">
+                     <p className="text-[8px] text-gray-500 font-black uppercase tracking-[0.2em] mb-4 ml-4">Account</p>
+                     <Link href="/settings" onClick={() => setIsOpen(false)} className="flex items-center justify-between p-5 glass rounded-3xl bg-white/[0.02] border-white/5 text-gray-400">
+                        <span className="text-[10px] font-black uppercase tracking-widest italic">Settings</span>
+                        <ChevronRight size={14} />
+                     </Link>
+                  </div>
+                )}
               </div>
 
               <div className="pt-4 border-t border-white/5">

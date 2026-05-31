@@ -49,15 +49,15 @@ const DashboardSidebar = ({ onClose }: { isOpen: boolean, onClose: () => void })
 
   const getLinks = () => {
     const common = [
-      { href: dashboardPath, icon: LayoutDashboard, label: "Dashboard" },
+      { href: dashboardPath, icon: LayoutDashboard, label: "Overview" },
     ];
 
     if (role === "client") {
       return [
         ...common,
         { href: "/post-project", icon: Plus, label: "Post Project" },
-        { href: "/dashboard/client/active-projects", icon: Briefcase, label: "Active Projects" },
         { href: "/projects", icon: Layers, label: "My Projects" },
+        { href: "/dashboard/client/active-projects", icon: Briefcase, label: "Active Projects" },
         { href: "/dashboard/client/proposals", icon: Send, label: "Proposals" },
         { href: "/chat", icon: MessageSquare, label: "Messages" },
         { href: "/settings", icon: Settings, label: "Settings" },
@@ -71,9 +71,7 @@ const DashboardSidebar = ({ onClose }: { isOpen: boolean, onClose: () => void })
         { href: "/dashboard/creator/proposals", icon: Send, label: "My Proposals" },
         { href: `${dashboardPath}/portfolio`, icon: Briefcase, label: "Portfolio" },
         { href: `${dashboardPath}/earnings`, icon: DollarSign, label: "Earnings" },
-        { href: "/projects", icon: Layers, label: "Find Projects" },
         { href: "/chat", icon: MessageSquare, label: "Messages" },
-        { href: "/explore", icon: MapIcon, label: "Map" },
         { href: "/settings", icon: Settings, label: "Settings" },
       ];
     }
@@ -102,7 +100,6 @@ const DashboardSidebar = ({ onClose }: { isOpen: boolean, onClose: () => void })
       </div>
 
       <div className="flex-1 space-y-2 overflow-y-auto custom-scrollbar pr-2">
-         <p className="text-[8px] text-gray-600 font-black uppercase tracking-[0.2em] mb-4 ml-6 italic opacity-50">Navigation</p>
          <nav className="space-y-1">
            {links.map((link) => (
              <SidebarLink 
@@ -132,11 +129,6 @@ const DashboardSidebar = ({ onClose }: { isOpen: boolean, onClose: () => void })
           >
             <LogOut size={14} /> Logout
           </button>
-        </div>
-
-        <div className="flex items-center justify-center gap-2 px-4 py-2.5 bg-black/40 rounded-full border border-white/5 shadow-inner">
-          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
-          <span className="text-[8px] text-gray-500 font-bold uppercase tracking-widest">System Online</span>
         </div>
       </div>
     </div>

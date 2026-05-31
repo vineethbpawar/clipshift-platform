@@ -32,7 +32,7 @@ export default function ForgotPasswordPage() {
 
   return (
     <PageWrapper>
-      <div className="min-h-screen flex items-center justify-center pt-20 px-4 relative overflow-hidden">
+      <div className="min-h-screen flex items-center justify-center pt-16 px-4 relative overflow-hidden">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-neon-purple/5 rounded-full blur-[120px] -z-10" />
         
         <div className="w-full max-w-md">

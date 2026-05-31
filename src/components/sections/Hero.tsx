@@ -30,7 +30,7 @@ export const Hero = () => {
   }, []);
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center pt-20 overflow-hidden bg-black">
+    <section className="relative min-h-screen flex items-center justify-center pt-16 overflow-hidden bg-black">
       {/* Background Glows */}
       <div className="absolute top-1/4 -left-20 w-64 h-64 md:w-96 md:h-96 bg-neon-purple/20 rounded-full blur-[120px] animate-pulse" />
       <div className="absolute bottom-1/4 -right-20 w-64 h-64 md:w-96 md:h-96 bg-neon-blue/20 rounded-full blur-[120px] animate-pulse delay-700" />

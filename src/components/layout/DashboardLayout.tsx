@@ -17,7 +17,7 @@ export const DashboardLayout = ({
 
   return (
     <PageWrapper>
-      <div className="min-h-screen bg-black flex flex-col pt-20">
+      <div className="min-h-screen bg-black flex flex-col pt-16">
         <div className="flex flex-1 relative overflow-hidden">
           {/* Mobile Sidebar Overlay */}
           <AnimatePresence>
@@ -34,7 +34,7 @@ export const DashboardLayout = ({
 
           {/* Sidebar Wrapper */}
           <div className={`
-            fixed lg:sticky top-0 z-[70] lg:z-30 h-[calc(100vh-80px)] transition-transform duration-300 w-72 shrink-0
+            fixed lg:sticky top-0 z-[70] lg:z-30 h-[calc(100vh-64px)] transition-transform duration-300 w-72 shrink-0
             ${isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
           `}>
             <DashboardSidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />

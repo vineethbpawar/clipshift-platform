@@ -8,7 +8,7 @@ import { ChatList } from "@/components/chat/ChatList";
 export default function ChatLandingPage() {
   return (
     <PageWrapper>
-      <div className="h-[100dvh] pt-20 flex bg-black overflow-hidden relative">
+      <div className="h-[100dvh] pt-16 flex bg-black overflow-hidden relative">
         {/* Sidebar */}
         <div className="w-full lg:w-96 border-r border-white/5 bg-black/40 backdrop-blur-2xl shrink-0">
           <ChatList />
