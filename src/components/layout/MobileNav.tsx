@@ -23,8 +23,8 @@ export const MobileNav = () => {
       icon: LayoutDashboard 
     },
     { 
-      name: "Projects", 
-      href: "/projects", 
+      name: "Explore", 
+      href: "/explore", 
       icon: FolderOpen 
     },
     { 

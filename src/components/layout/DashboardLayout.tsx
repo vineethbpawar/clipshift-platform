@@ -18,7 +18,7 @@ export const DashboardLayout = ({
   return (
     <PageWrapper>
       <div className="min-h-screen bg-black flex flex-col pt-16">
-        <div className="flex flex-1 relative overflow-hidden">
+        <div className="flex flex-1 relative">
           {/* Mobile Sidebar Overlay */}
           <AnimatePresence>
             {isSidebarOpen && (
@@ -34,14 +34,14 @@ export const DashboardLayout = ({
 
           {/* Sidebar Wrapper */}
           <div className={`
-            fixed lg:sticky top-0 z-[70] lg:z-30 h-[calc(100vh-64px)] transition-transform duration-300 w-72 shrink-0
+            fixed lg:sticky top-16 z-[70] lg:z-30 h-[calc(100vh-64px)] transition-transform duration-300 w-72 shrink-0
             ${isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
           `}>
             <DashboardSidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
           </div>
 
           {/* Main Content Area */}
-          <main className="flex-1 min-w-0 overflow-y-auto custom-scrollbar relative px-6 lg:px-10 py-8 lg:py-12 pb-32">
+          <main className="flex-1 min-w-0 relative px-6 lg:px-10 py-8 lg:py-12 pb-32">
             {/* Mobile Header Toggle */}
             <div className="flex items-center justify-between mb-8 lg:hidden">
               <button 
@@ -55,7 +55,7 @@ export const DashboardLayout = ({
               </div>
             </div>
 
-            <div className="max-w-7xl mx-auto space-y-8 lg:space-y-12">
+            <div className="max-w-7xl mx-auto space-y-8 lg:space-y-10">
               <motion.div 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}

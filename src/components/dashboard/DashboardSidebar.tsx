@@ -41,9 +41,10 @@ const DashboardSidebar = ({ onClose }: { isOpen: boolean, onClose: () => void })
   const dashboardPath = getDashboardPath(role);
 
   const isActive = (href: string) => {
-    if (href === "/dashboard/client" || href === "/dashboard/creator") {
+    if (href === "/dashboard/client" || href === "/dashboard/creator" || href === "/dashboard/admin") {
       return pathname === href;
     }
+    if (href === "/chat") return pathname.startsWith("/chat") || pathname.startsWith("/messages");
     return pathname === href || pathname.startsWith(href + "/");
   };
 
@@ -72,6 +73,16 @@ const DashboardSidebar = ({ onClose }: { isOpen: boolean, onClose: () => void })
         { href: `${dashboardPath}/portfolio`, icon: Briefcase, label: "Portfolio" },
         { href: `${dashboardPath}/earnings`, icon: DollarSign, label: "Earnings" },
         { href: "/chat", icon: MessageSquare, label: "Messages" },
+        { href: "/settings", icon: Settings, label: "Settings" },
+      ];
+    }
+
+    if (role === "admin") {
+      return [
+        ...common,
+        { href: "/dashboard/admin/users", icon: User, label: "Users" },
+        { href: "/projects", icon: Layers, label: "Projects" },
+        { href: "/dashboard/admin/revenue", icon: DollarSign, label: "Payments" },
         { href: "/settings", icon: Settings, label: "Settings" },
       ];
     }
