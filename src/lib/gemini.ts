@@ -1,113 +1,39 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import { supabase } from "./supabase";
 import { Project } from "@/data/projects";
 import { Creator } from "@/data/creators";
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY || "");
-
-const getPromptHash = (prompt: string) => {
-  if (typeof window === "undefined") {
-    return Buffer.from(prompt).toString("base64");
-  } else {
-    return btoa(unescape(encodeURIComponent(prompt)));
-  }
-};
-
-export const getGeminiResponse = async (prompt: string, feature: string) => {
-  const promptHash = getPromptHash(prompt);
-  
-  // Try to get from cache first
-  const { data: cached } = await supabase
-    .from("ai_cache")
-    .select("response")
-    .eq("prompt_hash", promptHash)
-    .eq("feature", feature)
-    .single();
-
-  if (cached) {
-    return cached.response;
-  }
-
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-  const result = await model.generateContent(prompt);
-  const response = result.response.text();
-
-  // Save to cache
-  await supabase.from("ai_cache").insert({
-    prompt_hash: promptHash,
-    feature,
-    response,
-  });
-
-  return response;
-};
-
-export const matchCreators = async (projectData: Partial<Project>, creators: Creator[]) => {
-  const prompt = `
-    Match the top 5 creators for the following project:
-    Project: ${JSON.stringify(projectData)}
-    
-    Available Creators: ${JSON.stringify(creators)}
-    
-    Return a JSON array of objects with creator id, match score (0-100), and reasoning.
-  `;
-  const response = await getGeminiResponse(prompt, "creator-match");
+export const callAIFeature = async (feature: string, data: any) => {
   try {
-    return JSON.parse(response.replace(/```json|```/g, ""));
+    const response = await fetch("/api/ai/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ feature, data })
+    });
+
+    const result = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(result.error || "AI request failed");
+    }
+
+    return result;
   } catch (error) {
-    console.error("Failed to parse Gemini response", error);
-    return [];
+    console.error(`AI ${feature} error:`, error);
+    return { error: error instanceof Error ? error.message : "Could not generate AI suggestion. Please try again." };
   }
 };
 
-export const analyzeVideoQuality = async (videoDetails: Record<string, unknown>, portfolioHistory: Record<string, unknown>[]) => {
-  const prompt = `
-    Analyze the video quality based on these details:
-    Video: ${JSON.stringify(videoDetails)}
-    History: ${JSON.stringify(portfolioHistory)}
-    
-    Return scores (0-100) for Cinematography, Color, Pacing, Audio, and Overall, plus feedback.
-    Format as JSON.
-  `;
-  const response = await getGeminiResponse(prompt, "video-analysis");
-  try {
-    return JSON.parse(response.replace(/```json|```/g, ""));
-  } catch (error) {
-    console.error("Failed to parse Gemini response", error);
-    return null;
-  }
+export const estimateBudgetAI = async (projectData: Partial<Project>) => {
+  return await callAIFeature("budget-estimator", projectData);
 };
 
-export const estimatePrice = async (projectDetails: Partial<Project>) => {
-  const prompt = `
-    Estimate a fair price range for this project:
-    ${JSON.stringify(projectDetails)}
-    
-    Return a recommended budget, market comparison, and a badge value (Fair, Above, or Below Market).
-    Format as JSON.
-  `;
-  const response = await getGeminiResponse(prompt, "price-estimator");
-  try {
-    return JSON.parse(response.replace(/```json|```/g, ""));
-  } catch (error) {
-    console.error("Failed to parse Gemini response", error);
-    return null;
-  }
+export const getCreatorMatchScoreAI = async (project: Partial<Project>, creator: Creator) => {
+  return await callAIFeature("creator-match", { project, creator });
 };
 
-export const getPortfolioInsights = async (portfolioData: Record<string, unknown>[]) => {
-  const prompt = `
-    Analyze this portfolio and provide insights:
-    ${JSON.stringify(portfolioData)}
-    
-    Return trending styles, gaps, and improvement tips.
-    Format as JSON.
-  `;
-  const response = await getGeminiResponse(prompt, "portfolio-insights");
-  try {
-    return JSON.parse(response.replace(/```json|```/g, ""));
-  } catch (error) {
-    console.error("Failed to parse Gemini response", error);
-    return null;
-  }
+export const writeProposalAI = async (project: Partial<Project>, creator: Partial<Creator>) => {
+  return await callAIFeature("proposal-assistant", { project, creator });
+};
+
+export const getPortfolioTipsAI = async (portfolioData: any) => {
+  return await callAIFeature("portfolio-tips", portfolioData);
 };

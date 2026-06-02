@@ -10,13 +10,15 @@ import {
   User,
   ExternalLink,
   MessageSquare,
-  Target
+  Target,
+  Sparkles
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "react-hot-toast";
 import { RoleGuard } from "@/components/auth/RoleGuard";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
+import { getCreatorMatchScoreAI } from "@/lib/gemini";
 
 interface Proposal {
   id: string;
@@ -29,6 +31,7 @@ interface Proposal {
   project?: {
     id: string;
     title: string;
+    category: string;
     client_id: string;
     status: string;
   };
@@ -37,6 +40,7 @@ interface Proposal {
     avatar_url: string;
     specialization: string;
   };
+  matchData?: any;
 }
 
 export default function ClientProposalsPage() {
@@ -55,14 +59,36 @@ export default function ClientProposalsPage() {
         .from('proposals')
         .select(`
           *,
-          project:projects!inner(id, title, client_id, status),
+          project:projects!inner(id, title, category, client_id, status),
           creator:profiles!proposals_freelancer_id_fkey(full_name, avatar_url, specialization)
         `)
         .eq('project.client_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setProposals((data as unknown as Proposal[]) || []);
+      const initialProposals = (data as unknown as Proposal[]) || [];
+      setProposals(initialProposals);
+
+      // Fetch AI Match Scores for pending proposals
+      initialProposals.forEach(async (prop) => {
+        if (prop.status === 'pending' && prop.project) {
+          try {
+            const match = await getCreatorMatchScoreAI(prop.project as any, {
+              id: prop.freelancer_id,
+              name: prop.creator?.full_name,
+              category: prop.project.category,
+              specialization: prop.creator?.specialization
+            } as any);
+            
+            if (!match.error) {
+              setProposals(prev => prev.map(p => p.id === prop.id ? { ...p, matchData: match } : p));
+            }
+          } catch (e) {
+            console.error("AI Match failed for proposal", prop.id);
+          }
+        }
+      });
+
     } catch (err: unknown) {
       console.error("Error fetching client proposals:", err);
     } finally {
@@ -188,6 +214,21 @@ export default function ClientProposalsPage() {
                   transition={{ delay: idx * 0.05 }}
                   className="glass p-8 sm:p-10 rounded-[40px] border-white/5 flex flex-col lg:flex-row gap-10 relative overflow-hidden group hover:border-neon-purple/20 transition-all bg-white/[0.01]"
                 >
+                  {/* AI Match Overlay */}
+                  {prop.matchData && (
+                    <div className="absolute top-0 right-0 p-4 z-10">
+                      <div className="glass px-3 py-1.5 rounded-full border-neon-purple/30 bg-neon-purple/10 flex flex-col gap-0.5 shadow-[0_0_20px_rgba(168,85,247,0.3)]">
+                        <div className="flex items-center gap-2">
+                          <Sparkles size={10} className="text-neon-purple animate-pulse" />
+                          <span className="text-[10px] font-black text-white uppercase tracking-widest">{prop.matchData.score}% AI Match</span>
+                        </div>
+                        <p className="text-[7px] text-gray-400 font-bold uppercase tracking-tight max-w-[120px] leading-tight">
+                          {prop.matchData.explanation}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="lg:w-64 shrink-0 flex flex-col items-center text-center lg:items-start lg:text-left border-b lg:border-b-0 lg:border-r border-white/5 pb-8 lg:pb-0 lg:pr-10">
                     <div className="w-20 h-20 rounded-3xl overflow-hidden glass border-2 border-neon-blue/30 mb-4 shadow-xl">
                        <img src={prop.creator?.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80"} className="w-full h-full object-cover" alt="" />

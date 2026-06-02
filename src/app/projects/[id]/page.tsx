@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { PageWrapper } from "@/components/layout/PageWrapper";
 import { supabase, getStoredSession } from "@/lib/supabase";
 import { useParams, useRouter } from "next/navigation";
-import { Loader2, ArrowLeft, X, Paperclip, ExternalLink, Calendar, DollarSign, MapPin, CheckCircle2, ShieldCheck, Briefcase, MessageSquare, AlertCircle } from "lucide-react";
+import { Loader2, ArrowLeft, X, Paperclip, ExternalLink, Calendar, DollarSign, MapPin, CheckCircle2, ShieldCheck, Briefcase, MessageSquare, AlertCircle, Zap } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "react-hot-toast";
 import { sanitizeDescription } from "@/lib/sanitizer";
@@ -12,6 +12,7 @@ import { motion } from "framer-motion";
 import { loadRazorpayScript } from "@/lib/razorpay";
 import Link from "next/link";
 import { type Project } from "@/data/projects";
+import { writeProposalAI } from "@/lib/gemini";
 
 export default function ProjectDetailPage() {
   const params = useParams();
@@ -22,9 +23,32 @@ export default function ProjectDetailPage() {
   const [projectError, setProjectError] = useState<string | null>(null);
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [generating, setGenerating] = useState(false);
   const [messaging, setMessaging] = useState(false);
   const [showProposalModal, setShowProposalModal] = useState(false);
   const [proposalData, setProposalData] = useState({ coverLetter: "", budget: "", days: "" });
+
+  const handleWriteWithAI = async () => {
+    if (!project || !user) return;
+    setGenerating(true);
+    try {
+      const result = await writeProposalAI(project, user as any);
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        setProposalData({
+          coverLetter: result.message,
+          budget: result.suggestedBudget.toString(),
+          days: result.suggestedDays.toString()
+        });
+        toast.success("AI Proposal drafted!");
+      }
+    } catch (err) {
+      toast.error("Could not generate AI suggestion.");
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   const handleMessageClient = async () => {
     if (!user || !project) return;
@@ -411,9 +435,20 @@ export default function ProjectDetailPage() {
                 <X size={20}/>
               </button>
               
-              <div className="mb-10">
-                <h3 className="text-3xl font-black text-white uppercase tracking-tighter italic mb-2">Send Proposal</h3>
-                <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Professional cinematic pitch</p>
+              <div className="mb-10 flex justify-between items-end">
+                <div>
+                  <h3 className="text-3xl font-black text-white uppercase tracking-tighter italic mb-2">Send Proposal</h3>
+                  <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Professional cinematic pitch</p>
+                </div>
+                
+                <button 
+                  onClick={handleWriteWithAI}
+                  disabled={generating}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-neon-purple/10 border border-neon-purple/20 text-neon-purple text-[9px] font-black uppercase tracking-widest hover:bg-neon-purple/20 transition-all disabled:opacity-50 mb-1"
+                >
+                  {generating ? <Loader2 size={12} className="animate-spin" /> : <Zap size={12} />}
+                  Write with AI
+                </button>
               </div>
 
               <div className="space-y-6">
@@ -422,6 +457,7 @@ export default function ProjectDetailPage() {
                   <textarea 
                     placeholder="Describe your vision and why you are the best fit..." 
                     className="w-full h-40 bg-white/5 p-6 rounded-[32px] text-sm text-white outline-none focus:border-neon-purple transition-all resize-none border border-white/5" 
+                    value={proposalData.coverLetter}
                     onChange={e => setProposalData({...proposalData, coverLetter: e.target.value})}
                   />
                 </div>
@@ -433,6 +469,7 @@ export default function ProjectDetailPage() {
                       type="number" 
                       placeholder="Agreed Amount" 
                       className="w-full bg-white/5 p-5 rounded-2xl text-sm font-black text-white outline-none focus:border-neon-purple transition-all border border-white/5 italic" 
+                      value={proposalData.budget}
                       onChange={e => setProposalData({...proposalData, budget: e.target.value})}
                     />
                   </div>
@@ -442,6 +479,7 @@ export default function ProjectDetailPage() {
                       type="number" 
                       placeholder="Timeline" 
                       className="w-full bg-white/5 p-5 rounded-2xl text-sm font-black text-white outline-none focus:border-neon-purple transition-all border border-white/5 italic" 
+                      value={proposalData.days}
                       onChange={e => setProposalData({...proposalData, days: e.target.value})}
                     />
                   </div>

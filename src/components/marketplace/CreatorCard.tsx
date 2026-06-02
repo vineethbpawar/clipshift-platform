@@ -9,7 +9,15 @@ import { UnlockBadge } from "../monetization/UnlockBadge";
 import { useRouter } from "next/navigation";
 import { type Creator } from "@/data/creators";
 
-export const CreatorCard = ({ creator }: { creator: Creator }) => {
+export const CreatorCard = ({ 
+  creator,
+  matchScore,
+  matchExplanation
+}: { 
+  creator: Creator;
+  matchScore?: number;
+  matchExplanation?: string;
+}) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -62,6 +70,20 @@ export const CreatorCard = ({ creator }: { creator: Creator }) => {
       >
         {/* Badges Overlay */}
         <div className="absolute top-4 left-4 z-20 flex flex-col gap-2">
+          {matchScore !== undefined && (
+            <div className="glass px-3 py-1.5 rounded-full border-neon-purple/40 bg-neon-purple/10 flex flex-col gap-0.5 shadow-[0_0_20px_rgba(168,85,247,0.3)]">
+              <div className="flex items-center gap-2">
+                <Sparkles size={10} className="text-neon-purple animate-pulse" />
+                <span className="text-[10px] font-black text-white uppercase tracking-widest">{matchScore}% Match</span>
+              </div>
+              {matchExplanation && (
+                <p className="text-[7px] text-gray-400 font-bold uppercase tracking-tight max-w-[100px] leading-tight">
+                  {matchExplanation}
+                </p>
+              )}
+            </div>
+          )}
+
           <div className="glass px-3 py-1.5 rounded-full border-neon-blue/30 flex items-center gap-2 shadow-[0_0_15px_rgba(59,130,246,0.2)]">
             <Zap size={12} className="text-neon-blue fill-neon-blue" />
             <span className="text-[10px] font-black text-white uppercase tracking-widest">Rank: {creator.rank_score || 0}</span>

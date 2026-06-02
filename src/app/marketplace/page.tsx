@@ -13,10 +13,15 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase";
 import { type Creator } from "@/data/creators";
+import { type Project } from "@/data/projects";
+import { useAuth } from "@/context/AuthContext";
+import { getCreatorMatchScoreAI } from "@/lib/gemini";
 
 export default function MarketplacePage() {
-  const [creators, setCreators] = useState<Creator[]>([]);
+  const { user } = useAuth();
+  const [creators, setCreators] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userProject, setUserProject] = useState<Project | null>(null);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [filters, setFilters] = useState({
     search: '',
@@ -24,6 +29,23 @@ export default function MarketplacePage() {
     sortBy: 'popular',
     verifiedOnly: false
   });
+
+  useEffect(() => {
+    const fetchUserProject = async () => {
+      if (user?.role === 'client') {
+        const { data } = await supabase
+          .from('projects')
+          .select('*')
+          .eq('client_id', user.id)
+          .eq('status', 'open')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (data) setUserProject(data as Project);
+      }
+    };
+    fetchUserProject();
+  }, [user]);
 
   useEffect(() => {
     const fetchCreators = async () => {
@@ -82,7 +104,21 @@ export default function MarketplacePage() {
             mapped.sort((a, b) => (b.completed_projects * b.rating) - (a.completed_projects * a.rating));
           }
 
-          setCreators(mapped as Creator[]);
+          setCreators(mapped);
+
+          // If we have a user project, fetch match scores for visible creators
+          if (userProject) {
+            mapped.slice(0, 6).forEach(async (creator) => {
+              try {
+                const match = await getCreatorMatchScoreAI(userProject, creator as any);
+                if (!match.error) {
+                  setCreators(prev => prev.map(c => c.id === creator.id ? { ...c, matchScore: match.score, matchExplanation: match.explanation } : c));
+                }
+              } catch (e) {
+                console.error("Match fetch failed for creator", creator.id);
+              }
+            });
+          }
         }
       } catch (err) {
         console.error("Marketplace fetch failed:", err);
@@ -92,7 +128,7 @@ export default function MarketplacePage() {
     };
 
     fetchCreators();
-  }, [filters]);
+  }, [filters, userProject]);
 
   return (
     <PageWrapper>
@@ -135,7 +171,7 @@ export default function MarketplacePage() {
 
           {/* Main Grid */}
           <div className="lg:col-span-3">
-            {loading ? (
+            {loading && creators.length === 0 ? (
               <div className="py-40 flex flex-col items-center gap-8">
                 <div className="relative">
                   <div className="w-20 h-20 rounded-full border-2 border-white/5 border-t-neon-purple animate-spin" />
@@ -159,7 +195,12 @@ export default function MarketplacePage() {
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
                 <AnimatePresence mode="popLayout">
                   {creators.map((creator) => (
-                    <CreatorCard key={creator.id} creator={creator} />
+                    <CreatorCard 
+                      key={creator.id} 
+                      creator={creator} 
+                      matchScore={creator.matchScore}
+                      matchExplanation={creator.matchExplanation}
+                    />
                   ))}
                 </AnimatePresence>
               </div>

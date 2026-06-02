@@ -15,26 +15,31 @@ import {
   Upload, 
   Loader2, 
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Zap
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "react-hot-toast";
 import { useRouter } from "next/navigation";
+import { estimateBudgetAI } from "@/lib/gemini";
 
 export const ProjectPostForm = () => {
   const { user } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [estimating, setEstimating] = useState(false);
+  const [aiEstimate, setAiEstimate] = useState<any>(null);
+  
   const [formData, setFormData] = useState({
     title: "",
     description: "",
     category: "Social Media",
     budget: "",
     deadline: "",
-    service_type: "editing_only",
-    location_mode: "anywhere_india",
+    service_type: "editing_only" as "editing_only" | "editing_and_shoot",
+    location_mode: "anywhere_india" as "anywhere_india" | "preferred_location",
     location: "",
     file_url: "",
     file_name: "",
@@ -81,6 +86,38 @@ export const ProjectPostForm = () => {
     } finally {
       setUploading(false);
     }
+  };
+
+  const handleEstimateBudget = async () => {
+    if (!formData.title || !formData.description) {
+      toast.error("Please provide title and description first.");
+      return;
+    }
+    
+    setEstimating(true);
+    setAiEstimate(null);
+    try {
+      const result = await estimateBudgetAI(formData);
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        setAiEstimate(result);
+        toast.success("AI Estimate generated!");
+      }
+    } catch (err) {
+      toast.error("Could not generate AI suggestion. Please try again.");
+    } finally {
+      setEstimating(false);
+    }
+  };
+
+  const applyAiEstimate = () => {
+    if (!aiEstimate) return;
+    setFormData({
+      ...formData,
+      budget: aiEstimate.minBudget.toString()
+    });
+    setAiEstimate(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -192,10 +229,49 @@ export const ProjectPostForm = () => {
 
       {/* Budget & Timeline */}
       <div className="glass p-8 sm:p-10 rounded-[40px] border-white/5 bg-white/[0.01] space-y-8">
-        <div className="flex items-center gap-3 mb-2 px-2">
-           <DollarSign size={18} className="text-neon-blue" />
-           <h3 className="text-xs font-black text-white uppercase tracking-[0.2em]">Budget & Timeline</h3>
+        <div className="flex items-center justify-between gap-3 mb-2 px-2">
+           <div className="flex items-center gap-3">
+             <DollarSign size={18} className="text-neon-blue" />
+             <h3 className="text-xs font-black text-white uppercase tracking-[0.2em]">Budget & Timeline</h3>
+           </div>
+           
+           <button 
+            type="button"
+            onClick={handleEstimateBudget}
+            disabled={estimating}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-neon-purple/10 border border-neon-purple/20 text-neon-purple text-[9px] font-black uppercase tracking-widest hover:bg-neon-purple/20 transition-all disabled:opacity-50"
+           >
+             {estimating ? <Loader2 size={12} className="animate-spin" /> : <Zap size={12} />}
+             Estimate Budget with AI
+           </button>
         </div>
+
+        {aiEstimate && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="p-6 rounded-3xl bg-neon-purple/5 border border-neon-purple/20 space-y-4"
+          >
+             <div className="flex justify-between items-start">
+               <div>
+                 <p className="text-[9px] text-neon-purple font-black uppercase tracking-widest mb-1">AI Suggestion</p>
+                 <h4 className="text-lg font-black text-white italic">₹{aiEstimate.minBudget} - ₹{aiEstimate.maxBudget}</h4>
+               </div>
+               <div className="text-right">
+                 <p className="text-[9px] text-gray-500 font-black uppercase tracking-widest mb-1">Recommended Time</p>
+                 <p className="text-xs font-bold text-white uppercase">{aiEstimate.deliveryTimeline}</p>
+               </div>
+             </div>
+             <p className="text-[10px] text-gray-400 font-medium leading-relaxed italic">&quot;{aiEstimate.explanation}&quot;</p>
+             <button 
+              type="button"
+              onClick={applyAiEstimate}
+              className="w-full py-3 rounded-xl bg-white/5 border border-white/10 text-white text-[9px] font-black uppercase tracking-widest hover:bg-white/10 transition-all"
+             >
+               Apply Suggestion
+             </button>
+          </motion.div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <div className="space-y-2">
@@ -245,7 +321,7 @@ export const ProjectPostForm = () => {
                 <button
                   key={mode.id}
                   type="button"
-                  onClick={() => setFormData({...formData, location_mode: mode.id})}
+                  onClick={() => setFormData({...formData, location_mode: mode.id as "anywhere_india" | "preferred_location"})}
                   className={`px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border ${
                     formData.location_mode === mode.id 
                     ? 'bg-green-500/10 border-green-500 text-green-500 shadow-lg' 
