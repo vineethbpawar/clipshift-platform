@@ -53,7 +53,7 @@ export default function MarketplacePage() {
         if (error) throw error;
 
         if (data) {
-          const mapped = data.map((c: any) => ({
+          const mapped = (data as any[]).map((c) => ({
             id: c.id,
             name: c.profiles.full_name,
             image: c.profiles.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80",

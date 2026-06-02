@@ -19,11 +19,12 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     console.log("CREATE ORDER BODY:", body);
-    const { amount, planType, actionType } = body;
-    console.log("CREATE ORDER TYPE:", { planType, actionType, amount });
+    const { amount, planType, actionType, userId, payload } = body;
+    console.log("CREATE ORDER TYPE:", { planType, actionType, amount, userId });
 
     // Validate input
     if (!amount) return NextResponse.json({ error: "Missing amount" }, { status: 400 });
+    if (!userId) return NextResponse.json({ error: "Missing userId" }, { status: 400 });
 
     // Validate plan/action
     const validCreatorPlans: Record<string, number> = { 
@@ -65,7 +66,13 @@ export async function POST(req: Request) {
     const options = {
       amount: amountInPaise,
       currency: 'INR',
-      receipt: `receipt_${planType}_${Date.now()}`,
+      receipt: `receipt_${planType || actionType}_${Date.now()}`,
+      notes: {
+        userId,
+        planType: planType || '',
+        actionType: actionType || '',
+        payload: JSON.stringify(payload || {})
+      }
     };
 
     const order = await razorpay.orders.create(options);

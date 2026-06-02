@@ -5,12 +5,22 @@ import { Creator } from "@/data/creators";
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY || "");
 
+const getPromptHash = (prompt: string) => {
+  if (typeof window === "undefined") {
+    return Buffer.from(prompt).toString("base64");
+  } else {
+    return btoa(unescape(encodeURIComponent(prompt)));
+  }
+};
+
 export const getGeminiResponse = async (prompt: string, feature: string) => {
+  const promptHash = getPromptHash(prompt);
+  
   // Try to get from cache first
   const { data: cached } = await supabase
     .from("ai_cache")
     .select("response")
-    .eq("prompt_hash", Buffer.from(prompt).toString("base64"))
+    .eq("prompt_hash", promptHash)
     .eq("feature", feature)
     .single();
 
@@ -24,7 +34,7 @@ export const getGeminiResponse = async (prompt: string, feature: string) => {
 
   // Save to cache
   await supabase.from("ai_cache").insert({
-    prompt_hash: Buffer.from(prompt).toString("base64"),
+    prompt_hash: promptHash,
     feature,
     response,
   });

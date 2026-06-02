@@ -131,7 +131,12 @@ export default function PricingPage() {
       const orderRes = await fetch("/api/razorpay/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount, actionType: planId })
+        body: JSON.stringify({ 
+          amount, 
+          actionType: isAction ? planId : undefined,
+          planType: !isAction ? planId : undefined,
+          userId: user.id
+        })
       });
       const orderData = await orderRes.json();
       if (orderData.error) throw new Error(orderData.error);

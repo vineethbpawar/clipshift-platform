@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { StatCard } from "@/components/dashboard/StatCard";
+import { PriceEstimator } from "@/components/ai/PriceEstimator";
 import { Wallet, Briefcase, Heart, Plus, Users, Map as MapIcon, ChevronRight, Layers, Zap, Send } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { motion } from "framer-motion";
@@ -156,6 +157,23 @@ export default function ClientDashboard() {
               <Briefcase size={18} /> Active Projects
             </button>
           </Link>
+        </div>
+
+        {/* AI Price Estimator */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 mb-12">
+          <PriceEstimator />
+          <div className="glass p-10 rounded-[50px] border-white/5 bg-gradient-to-br from-neon-purple/5 to-transparent flex flex-col justify-center">
+            <h3 className="text-xl font-black text-white uppercase tracking-tighter mb-4 italic">Visual Neural Engine</h3>
+            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-relaxed mb-8 opacity-60">
+              Optimize your production budget with real-time market data analysis. Our AI ensures fair pricing for cinematic excellence.
+            </p>
+            <div className="flex items-center gap-4">
+               <div className="w-12 h-12 rounded-2xl bg-neon-purple/10 flex items-center justify-center text-neon-purple shadow-[0_0_20px_rgba(168,85,247,0.2)]">
+                  <Zap size={24} />
+               </div>
+               <span className="text-[10px] font-black text-white uppercase tracking-[0.2em]">Platform Intelligence Active</span>
+            </div>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">

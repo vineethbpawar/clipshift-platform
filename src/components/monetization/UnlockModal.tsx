@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { loadRazorpayScript } from "@/lib/razorpay";
 import { toast } from "react-hot-toast";
 import { type Creator } from "@/data/creators";
+import Image from "next/image";
 
 interface UnlockModalProps {
   creator: Creator;
@@ -47,6 +48,7 @@ export const UnlockModal = ({ creator, isOpen, onClose }: UnlockModalProps) => {
         body: JSON.stringify({
           amount: finalFee,
           actionType: 'unlock_creator_chat',
+          userId: user.id,
           payload: { creator_id: creator.id }
         })
       });
@@ -191,11 +193,12 @@ export const UnlockModal = ({ creator, isOpen, onClose }: UnlockModalProps) => {
             <div className="space-y-6 mb-12">
               <div className="flex items-center justify-between p-6 glass rounded-3xl border-white/5 bg-black/40">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl overflow-hidden glass border border-white/10">
-                    <img src={creator.image} className="w-full h-full object-cover" alt="" />
+                  <div className="relative w-12 h-12 rounded-xl overflow-hidden glass border border-white/10">
+                    <Image src={creator.image || ""} fill className="object-cover" alt={creator.name} />
                   </div>
                   <div>
-                    <h4 className="text-sm font-black text-white uppercase tracking-widest">{creator.name}</h4>                    <p className="text-[9px] text-neon-blue font-bold uppercase tracking-widest">{creator.specialty?.[0] || "Visual Creator"}</p>
+                    <h4 className="text-sm font-black text-white uppercase tracking-widest">{creator.name}</h4>
+                    <p className="text-[9px] text-neon-blue font-bold uppercase tracking-widest">{creator.specialty?.[0] || "Visual Creator"}</p>
                   </div>
                 </div>
                 <div className="text-right">

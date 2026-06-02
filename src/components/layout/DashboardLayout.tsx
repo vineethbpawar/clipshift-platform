@@ -21,10 +21,10 @@ export const DashboardLayout = ({
     const savedState = localStorage.getItem("clipshift_sidebar_open");
     const isMobile = window.innerWidth < 1024;
     
+    // We update state inside the effect to avoid hydration mismatch
     if (savedState !== null) {
       setIsSidebarOpen(savedState === "true");
     } else {
-      // Default behavior
       setIsSidebarOpen(!isMobile);
     }
   }, []);

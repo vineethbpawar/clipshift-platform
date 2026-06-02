@@ -20,6 +20,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { motion } from "framer-motion";
 import { VideoAnalyzer } from "@/components/ai/VideoAnalyzer";
 import { PortfolioUpload } from "@/components/dashboard/PortfolioUpload";
+import { PortfolioInsights } from "@/components/ai/PortfolioInsights";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { RoleGuard } from "@/components/auth/RoleGuard";
@@ -277,6 +278,11 @@ export default function CreatorDashboard() {
               </Link>
             </div>
           )}
+        </div>
+
+        {/* AI Portfolio Insights */}
+        <div className="mt-12">
+          <PortfolioInsights />
         </div>
       </DashboardLayout>
     </RoleGuard>

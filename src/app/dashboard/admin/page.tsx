@@ -66,7 +66,7 @@ export default function AdminDashboard() {
         });
 
         if (queue) {
-          setVerificationQueue(queue.map((q: any) => ({
+          setVerificationQueue((queue as any[]).map((q) => ({
             id: q.id,
             name: q.profiles?.full_name || "Unknown",
             category: q.category,

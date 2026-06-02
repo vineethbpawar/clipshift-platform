@@ -21,12 +21,21 @@ import { useAuth } from "@/context/AuthContext";
 import { UnlockModal } from "@/components/monetization/UnlockModal";
 import { motion, AnimatePresence } from "framer-motion";
 import { type Creator } from "@/data/creators";
+import Image from "next/image";
+
+interface ExtendedCreator extends Creator {
+  completed_projects?: number;
+  instagram?: string;
+  portfolio_link?: string;
+  bio?: string;
+  price: string;
+}
 
 export default function CreatorDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { user, unlockedCreators } = useAuth();
-  const [creator, setCreator] = useState<Creator | null>(null);
+  const [creator, setCreator] = useState<ExtendedCreator | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -61,7 +70,11 @@ export default function CreatorDetailPage() {
             lat: data.location_lat,
             lng: data.location_lng,
             city: data.profiles.city
-          }
+          },
+          bio: data.profiles.bio,
+          instagram: data.profiles.instagram,
+          portfolio_link: data.profiles.portfolio_link,
+          completed_projects: data.completed_projects || 0
         });
       }
       setLoading(false);
@@ -90,11 +103,16 @@ export default function CreatorDetailPage() {
           <div className="lg:col-span-1 space-y-8">
             <div className="glass p-10 rounded-[50px] border-white/5 bg-white/[0.01] relative overflow-hidden text-center">
               <div className="relative inline-block mb-8">
-                 <div className="w-40 h-40 rounded-[50px] overflow-hidden glass border-2 border-neon-purple/30 shadow-[0_0_50px_rgba(168,85,247,0.2)]">
-                   <img src={creator.image || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80"} className="w-full h-full object-cover" alt="" />
+                 <div className="relative w-40 h-40 rounded-[50px] overflow-hidden glass border-2 border-neon-purple/30 shadow-[0_0_50px_rgba(168,85,247,0.2)]">
+                   <Image 
+                     src={creator.image || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80"} 
+                     fill
+                     className="object-cover" 
+                     alt={creator.name} 
+                   />
                  </div>
                  {creator.verified && (
-                   <div className="absolute -bottom-2 -right-2 p-3 bg-neon-blue rounded-2xl shadow-xl border-4 border-black">
+                   <div className="absolute -bottom-2 -right-2 p-3 bg-neon-blue rounded-2xl shadow-xl border-4 border-black z-10">
                      <ShieldCheck size={24} className="text-white" />
                    </div>
                  )}
@@ -116,7 +134,7 @@ export default function CreatorDetailPage() {
                     <p className="text-[8px] text-gray-500 uppercase font-black tracking-widest">Global Rating</p>
                  </div>
                  <div className="p-5 glass rounded-3xl border-white/5 bg-black/20">
-                    <p className="text-sm font-black text-white mb-1 italic">{(creator as any).completed_projects || 0}</p>
+                    <p className="text-sm font-black text-white mb-1 italic">{creator.completed_projects}</p>
                     <p className="text-[8px] text-gray-500 uppercase font-black tracking-widest">Projects Done</p>
                  </div>
               </div>
@@ -135,8 +153,8 @@ export default function CreatorDetailPage() {
             <div className="glass p-8 rounded-[40px] border-white/5 space-y-6">
                <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest px-2 italic">Connect</h3>
                <div className="space-y-3">
-                  {(creator as any).instagram && (
-                    <a href={`https://instagram.com/${(creator as any).instagram}`} target="_blank" className="flex items-center justify-between p-4 glass rounded-2xl border-white/5 hover:bg-white/5 transition-all group">
+                  {creator.instagram && (
+                    <a href={`https://instagram.com/${creator.instagram}`} target="_blank" className="flex items-center justify-between p-4 glass rounded-2xl border-white/5 hover:bg-white/5 transition-all group">
                        <div className="flex items-center gap-3">
                           <Camera size={18} className="text-pink-500" />
                           <span className="text-[10px] font-black text-white uppercase tracking-widest">Instagram</span>
@@ -144,8 +162,8 @@ export default function CreatorDetailPage() {
                        <ExternalLink size={14} className="text-gray-700 group-hover:text-white transition-colors" />
                     </a>
                   )}
-                  {(creator as any).portfolio_link && (
-                    <a href={(creator as any).portfolio_link} target="_blank" className="flex items-center justify-between p-4 glass rounded-2xl border-white/5 hover:bg-white/5 transition-all group">
+                  {creator.portfolio_link && (
+                    <a href={creator.portfolio_link} target="_blank" className="flex items-center justify-between p-4 glass rounded-2xl border-white/5 hover:bg-white/5 transition-all group">
                        <div className="flex items-center gap-3">
                           <Briefcase size={18} className="text-neon-blue" />
                           <span className="text-[10px] font-black text-white uppercase tracking-widest">External Portfolio</span>
@@ -164,7 +182,7 @@ export default function CreatorDetailPage() {
                  <Globe size={18} className="text-neon-purple" /> Professional Biography
                </h2>
                <p className="text-gray-300 text-lg leading-relaxed uppercase tracking-wider font-medium opacity-80 mb-10 italic">
-                 &quot;{(creator as any).bio || "No professional biography provided yet. This creator is verified for visual excellence."}&quot;
+                 &quot;{creator.bio || "No professional biography provided yet. This creator is verified for visual excellence."}&quot;
                </p>
                <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 pt-10 border-t border-white/5">
                   <div className="space-y-1">

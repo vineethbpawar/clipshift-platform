@@ -21,6 +21,7 @@ import { toast } from "react-hot-toast";
 import { RoleGuard } from "@/components/auth/RoleGuard";
 import { motion } from "framer-motion";
 import { type Project } from "@/data/projects";
+import Image from "next/image";
 
 export default function ClientActiveProjectsPage() {
   const { user } = useAuth();
@@ -58,14 +59,14 @@ export default function ClientActiveProjectsPage() {
       console.log("CLIENT ACTIVE PROJECTS USER ID", userId);
 
       // 2. Fetch projects directly
-      const { data: projects, error } = await supabase
+      const { data: projectsData, error } = await supabase
         .from("projects")
         .select("*")
         .eq("client_id", userId)
         .in("status", ["in_progress", "delivered", "completed"])
         .order("created_at", { ascending: false });
 
-      console.log("CLIENT ACTIVE PROJECTS RESULT", { projects, error });
+      console.log("CLIENT ACTIVE PROJECTS RESULT", { projectsData, error });
 
       if (error) {
         console.error("CLIENT ACTIVE PROJECTS FETCH ERROR", {
@@ -77,7 +78,7 @@ export default function ClientActiveProjectsPage() {
         throw error;
       }
       
-      const initialProjects = projects || [];
+      const initialProjects = (projectsData || []) as Project[];
       setProjects(initialProjects);
       
       // 3. Fetch details separately to avoid join issues
@@ -102,13 +103,14 @@ export default function ClientActiveProjectsPage() {
         }
       }
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("ACTIVE PROJECTS FETCH ERROR", err);
+      const message = err instanceof Error ? err.message : "Unknown error";
       setFetchError("Could not load active projects. Please refresh.");
       
       // Show debug text only in development
       if (process.env.NODE_ENV === 'development') {
-        setFetchError(`Could not load active projects. Please refresh. (${err.message})`);
+        setFetchError(`Could not load active projects. Please refresh. (${message})`);
       }
     } finally {
       setLoading(false);
@@ -192,8 +194,8 @@ export default function ClientActiveProjectsPage() {
                   {/* Thumbnail */}
                   <div className="lg:w-64 shrink-0">
                     {project.file_url && project.file_type?.startsWith('image') ? (
-                      <div className="aspect-video lg:aspect-square rounded-[32px] overflow-hidden glass border border-white/10 group-hover:scale-[1.02] transition-transform duration-700">
-                        <img src={project.file_url} className="w-full h-full object-cover" alt="" />
+                      <div className="relative aspect-video lg:aspect-square rounded-[32px] overflow-hidden glass border border-white/10 group-hover:scale-[1.02] transition-transform duration-700">
+                        <Image src={project.file_url} fill className="object-cover" alt={project.title} />
                       </div>
                     ) : (
                       <div className="aspect-video lg:aspect-square rounded-[32px] glass border border-white/5 flex flex-col items-center justify-center gap-3 text-gray-700 bg-white/5">
