@@ -10,7 +10,8 @@ import { useAuth, getDashboardPath } from "@/context/AuthContext";
 import { useChat } from "@/context/ChatContext";
 
 export const Navbar = () => {
-  const { user, signOut, loading } = useAuth();
+  const { user, signOut, loading: authLoading } = useAuth();
+  const [loading, setLoading] = React.useState(true);
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const { scrollY } = useScroll();
@@ -26,6 +27,24 @@ export const Navbar = () => {
   );
 
   const { totalUnreadCount } = useChat();
+
+  // Handle auth loading timeout
+  React.useEffect(() => {
+    console.log("NAVBAR AUTH STATE", { authLoading, user: !!user, role: user?.role });
+    
+    if (!authLoading) {
+      setLoading(false);
+      return;
+    }
+
+    // Safety timeout: stop showing spinner after 2 seconds
+    const timer = setTimeout(() => {
+      console.warn("NAVBAR AUTH TIMEOUT: Forcing loading state to false");
+      setLoading(false);
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, [authLoading, user]);
 
   const dashboardPath = user ? getDashboardPath(user.role) : "/dashboard/client";
 

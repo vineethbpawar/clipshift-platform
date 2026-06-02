@@ -163,9 +163,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             setActivePlan(getActivePlan(profile));
             fetchUnlocks(userId);
           } else {
-            console.warn("AUTH INIT: Profile not found for", userId);
-            setUser(null);
-            setRole(null);
+            console.warn("AUTH INIT: Profile not found for", userId, "Falling back to client role.");
+            setUser({
+              id: userId,
+              role: "client",
+              name: session.user.email?.split('@')[0] || "User",
+              email: session.user.email || "",
+            });
+            setRole("client");
+            setActivePlan("free");
           }
         }
       } catch (error) {
@@ -199,31 +205,43 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             .eq("id", session.user.id)
             .maybeSingle();
 
-          if (mounted && profile) {
-            const userRole = profile.role as Role;
-            const userData: User = {
-              id: session.user.id,
-              role: userRole,
-              name: profile.full_name,
-              email: profile.email,
-              mobile: profile.mobile,
-              city: profile.city,
-              area: profile.area,
-              pincode: profile.pincode,
-              address: profile.address,
-              instagram: profile.instagram,
-              portfolio: profile.portfolio_link,
-              languages: profile.languages,
-              bio: profile.bio,
-              profileImage: profile.avatar_url,
-              specialization: profile.specialization,
-              plan_type: profile.plan_type,
-              plan_expires_at: profile.plan_expires_at
-            };
-            setUser(userData);
-            setRole(userRole);
-            setActivePlan(getActivePlan(profile));
-            if (event === 'SIGNED_IN') fetchUnlocks(session.user.id);
+          if (mounted) {
+            if (profile) {
+              const userRole = profile.role as Role;
+              const userData: User = {
+                id: session.user.id,
+                role: userRole,
+                name: profile.full_name,
+                email: profile.email,
+                mobile: profile.mobile,
+                city: profile.city,
+                area: profile.area,
+                pincode: profile.pincode,
+                address: profile.address,
+                instagram: profile.instagram,
+                portfolio: profile.portfolio_link,
+                languages: profile.languages,
+                bio: profile.bio,
+                profileImage: profile.avatar_url,
+                specialization: profile.specialization,
+                plan_type: profile.plan_type,
+                plan_expires_at: profile.plan_expires_at
+              };
+              setUser(userData);
+              setRole(userRole);
+              setActivePlan(getActivePlan(profile));
+              if (event === 'SIGNED_IN') fetchUnlocks(session.user.id);
+            } else {
+              console.warn("AUTH STATE CHANGE: Profile not found for", session.user.id, "Falling back.");
+              setUser({
+                id: session.user.id,
+                role: "client",
+                name: session.user.email?.split('@')[0] || "User",
+                email: session.user.email || "",
+              });
+              setRole("client");
+              setActivePlan("free");
+            }
           }
         }
         if (mounted) setLoading(false);
