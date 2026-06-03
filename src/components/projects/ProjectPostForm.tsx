@@ -90,22 +90,37 @@ export const ProjectPostForm = () => {
 
   const handleEstimateBudget = async () => {
     if (!formData.title || !formData.description) {
-      toast.error("Please provide title and description first.");
+      toast.error("Please enter project title and description first.");
       return;
     }
     
     setEstimating(true);
     setAiEstimate(null);
+    
+    const payload = {
+      title: formData.title,
+      description: formData.description,
+      category: formData.category,
+      serviceType: formData.service_type,
+      deadline: formData.deadline,
+      budget: formData.budget
+    };
+
+    console.log("AI BUDGET REQUEST", payload);
+    
     try {
-      const result = await estimateBudgetAI(formData);
+      const result = await estimateBudgetAI(payload as any);
+      console.log("AI BUDGET RESPONSE", result);
+      
       if (result.error) {
-        toast.error(result.error);
+        toast.error("AI suggestion failed. You can still enter budget manually.");
       } else {
         setAiEstimate(result);
         toast.success("AI Estimate generated!");
       }
     } catch (err) {
-      toast.error("Could not generate AI suggestion. Please try again.");
+      console.error("AI BUDGET ERROR", err);
+      toast.error("AI suggestion failed. You can still enter budget manually.");
     } finally {
       setEstimating(false);
     }
@@ -258,11 +273,14 @@ export const ProjectPostForm = () => {
                  <h4 className="text-lg font-black text-white italic">₹{aiEstimate.minBudget} - ₹{aiEstimate.maxBudget}</h4>
                </div>
                <div className="text-right">
-                 <p className="text-[9px] text-gray-500 font-black uppercase tracking-widest mb-1">Recommended Time</p>
-                 <p className="text-xs font-bold text-white uppercase">{aiEstimate.deliveryTimeline}</p>
+                 <p className="text-[9px] text-gray-500 font-black uppercase tracking-widest mb-1">Recommended Timeline</p>
+                 <p className="text-xs font-bold text-white uppercase">{aiEstimate.timeline}</p>
                </div>
              </div>
-             <p className="text-[10px] text-gray-400 font-medium leading-relaxed italic">&quot;{aiEstimate.explanation}&quot;</p>
+             <div className="space-y-1">
+               <p className="text-[8px] text-gray-500 uppercase font-black tracking-widest">Why this estimate?</p>
+               <p className="text-[10px] text-gray-400 font-medium leading-relaxed italic">&quot;{aiEstimate.explanation}&quot;</p>
+             </div>
              <button 
               type="button"
               onClick={applyAiEstimate}

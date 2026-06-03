@@ -71,7 +71,7 @@ export const PriceEstimator = () => {
              <p className="text-[10px] text-gray-400 font-medium leading-relaxed italic">&quot;{aiResult.explanation}&quot;</p>
              <div className="flex items-center gap-2 text-[9px] font-black text-white uppercase tracking-widest bg-white/5 p-3 rounded-xl border border-white/5">
                 <Zap size={12} className="text-neon-purple" />
-                Timeline: {aiResult.deliveryTimeline}
+                Timeline: {aiResult.timeline}
              </div>
           </motion.div>
         ) : (
