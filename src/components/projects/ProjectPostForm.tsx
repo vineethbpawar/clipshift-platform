@@ -16,13 +16,14 @@ import {
   Loader2, 
   CheckCircle2,
   AlertCircle,
-  Zap
+  Zap,
+  Sparkles
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "react-hot-toast";
 import { useRouter } from "next/navigation";
-import { estimateBudgetAI } from "@/lib/gemini";
+import { estimateBudgetAI, improveDescriptionAI, suggestTitlesAI } from "@/lib/gemini";
 
 export const ProjectPostForm = () => {
   const { user } = useAuth();
@@ -30,7 +31,11 @@ export const ProjectPostForm = () => {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [estimating, setEstimating] = useState(false);
+  const [improving, setImproving] = useState(false);
+  const [suggestingTitles, setSuggestingTitles] = useState(false);
   const [aiEstimate, setAiEstimate] = useState<any>(null);
+  const [aiDescription, setAiDescription] = useState<any>(null);
+  const [aiTitles, setAiTitles] = useState<string[]>([]);
   
   const [formData, setFormData] = useState({
     title: "",
@@ -112,7 +117,13 @@ export const ProjectPostForm = () => {
       const result = await estimateBudgetAI(payload as any);
       console.log("AI BUDGET RESPONSE", result);
       
-      if (result.error) {
+      if (result.fallback) {
+        setAiEstimate({
+          ...result.fallback,
+          isFallback: true
+        });
+        toast.success("AI limit reached, showing estimated suggestion.");
+      } else if (result.error) {
         toast.error("AI suggestion failed. You can still enter budget manually.");
       } else {
         setAiEstimate(result);
@@ -126,6 +137,55 @@ export const ProjectPostForm = () => {
     }
   };
 
+  const handleImproveDescription = async () => {
+    if (!formData.description) {
+      toast.error("Please enter a basic description first.");
+      return;
+    }
+    setImproving(true);
+    try {
+      const result = await improveDescriptionAI({
+        title: formData.title,
+        description: formData.description,
+        category: formData.category,
+        serviceType: formData.service_type
+      });
+      if (result.fallback) {
+        setAiDescription({ ...result.fallback, isFallback: true });
+        toast.success("AI limit reached, showing fallback improvement.");
+      } else if (!result.error) {
+        setAiDescription(result);
+        toast.success("Description improved!");
+      }
+    } catch (e) {
+      toast.error("Could not improve description.");
+    } finally {
+      setImproving(false);
+    }
+  };
+
+  const handleSuggestTitles = async () => {
+    setSuggestingTitles(true);
+    try {
+      const result = await suggestTitlesAI({
+        title: formData.title,
+        category: formData.category,
+        serviceType: formData.service_type
+      });
+      if (result.fallback) {
+        setAiTitles(result.fallback.titles);
+        toast.success("AI limit reached, showing standard titles.");
+      } else if (!result.error) {
+        setAiTitles(result.titles);
+        toast.success("Title suggestions ready!");
+      }
+    } catch (e) {
+      toast.error("Could not suggest titles.");
+    } finally {
+      setSuggestingTitles(false);
+    }
+  };
+
   const applyAiEstimate = () => {
     if (!aiEstimate) return;
     setFormData({
@@ -133,6 +193,23 @@ export const ProjectPostForm = () => {
       budget: aiEstimate.minBudget.toString()
     });
     setAiEstimate(null);
+  };
+
+  const applyImprovedDescription = () => {
+    if (!aiDescription) return;
+    setFormData({
+      ...formData,
+      description: aiDescription.improvedDescription
+    });
+    setAiDescription(null);
+  };
+
+  const applyTitle = (title: string) => {
+    setFormData({
+      ...formData,
+      title
+    });
+    setAiTitles([]);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -186,7 +263,18 @@ export const ProjectPostForm = () => {
         
         <div className="space-y-6">
           <div className="space-y-2">
-            <label className="text-[10px] text-gray-500 font-black uppercase tracking-widest ml-4">Project Title</label>
+            <div className="flex justify-between items-center mb-1">
+              <label className="text-[10px] text-gray-500 font-black uppercase tracking-widest ml-4">Project Title</label>
+              <button 
+                type="button"
+                onClick={handleSuggestTitles}
+                disabled={suggestingTitles}
+                className="text-[8px] text-neon-blue font-black uppercase tracking-widest flex items-center gap-1 hover:underline disabled:opacity-50"
+              >
+                {suggestingTitles ? <Loader2 size={8} className="animate-spin" /> : <Zap size={8} />}
+                Suggest Title
+              </button>
+            </div>
             <input 
               required
               type="text" 
@@ -195,10 +283,35 @@ export const ProjectPostForm = () => {
               value={formData.title}
               onChange={(e) => setFormData({...formData, title: e.target.value})}
             />
+            {aiTitles.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-3 px-2">
+                {aiTitles.map((t, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => applyTitle(t)}
+                    className="px-4 py-2 rounded-xl glass border border-white/10 text-[9px] text-gray-400 hover:text-white hover:border-neon-blue transition-all font-bold italic"
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">
-            <label className="text-[10px] text-gray-500 font-black uppercase tracking-widest ml-4">Detailed Description</label>
+            <div className="flex justify-between items-center mb-1">
+              <label className="text-[10px] text-gray-500 font-black uppercase tracking-widest ml-4">Detailed Description</label>
+              <button 
+                type="button"
+                onClick={handleImproveDescription}
+                disabled={improving}
+                className="text-[8px] text-neon-purple font-black uppercase tracking-widest flex items-center gap-1 hover:underline disabled:opacity-50"
+              >
+                {improving ? <Loader2 size={8} className="animate-spin" /> : <Sparkles size={8} />}
+                Improve with AI
+              </button>
+            </div>
             <textarea 
               required
               placeholder="Describe your vision, specific requirements, and desired mood..."
@@ -206,6 +319,18 @@ export const ProjectPostForm = () => {
               value={formData.description}
               onChange={(e) => setFormData({...formData, description: e.target.value})}
             />
+            {aiDescription && (
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-5 rounded-3xl bg-neon-purple/5 border border-neon-purple/20 mt-4">
+                 <p className="text-[10px] text-gray-400 font-medium italic mb-4">
+                   {aiDescription.isFallback ? "AI limit reached, showing basic improvement:" : "AI Improved Description:"}
+                 </p>
+                 <p className="text-[11px] text-white leading-relaxed mb-6 italic opacity-80 line-clamp-3">&quot;{aiDescription.improvedDescription}&quot;</p>
+                 <div className="flex gap-3">
+                   <button type="button" onClick={() => setAiDescription(null)} className="flex-1 py-3 rounded-xl glass text-[9px] font-black uppercase tracking-widest text-gray-500 hover:text-white">Cancel</button>
+                   <button type="button" onClick={applyImprovedDescription} className="flex-1 py-3 rounded-xl bg-neon-purple text-white text-[9px] font-black uppercase tracking-widest shadow-lg">Apply Improvement</button>
+                 </div>
+              </motion.div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -269,7 +394,9 @@ export const ProjectPostForm = () => {
           >
              <div className="flex justify-between items-start">
                <div>
-                 <p className="text-[9px] text-neon-purple font-black uppercase tracking-widest mb-1">AI Suggestion</p>
+                 <p className="text-[9px] text-neon-purple font-black uppercase tracking-widest mb-1">
+                   {aiEstimate.isFallback ? "AI limit reached, showing estimated suggestion" : "AI Suggestion"}
+                 </p>
                  <h4 className="text-lg font-black text-white italic">₹{aiEstimate.minBudget} - ₹{aiEstimate.maxBudget}</h4>
                </div>
                <div className="text-right">

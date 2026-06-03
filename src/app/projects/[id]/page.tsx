@@ -33,7 +33,15 @@ export default function ProjectDetailPage() {
     setGenerating(true);
     try {
       const result = await writeProposalAI(project, user as any);
-      if (result.error) {
+      
+      if (result.fallback) {
+        setProposalData({
+          coverLetter: result.fallback.message,
+          budget: result.fallback.suggestedBudget.toString(),
+          days: result.fallback.suggestedDays.toString()
+        });
+        toast.success("AI limit reached, showing fallback proposal.");
+      } else if (result.error) {
         toast.error(result.error);
       } else {
         setProposalData({

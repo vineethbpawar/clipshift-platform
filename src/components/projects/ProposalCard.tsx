@@ -24,7 +24,12 @@ export const ProposalCard = ({ proposal, project }: { proposal: ProjectProposal,
             price: (proposal.amount || proposal.price).replace('₹', '')
           } as any);
           
-          if (!result.error) {
+          if (result.fallback) {
+            setMatchData({
+              ...result.fallback,
+              isFallback: true
+            });
+          } else if (!result.error) {
             setMatchData(result);
           }
         } catch (e) {
@@ -46,9 +51,11 @@ export const ProposalCard = ({ proposal, project }: { proposal: ProjectProposal,
       {/* AI Match Overlay */}
       {matchData && (
         <div className="absolute top-0 right-0 p-2 z-10">
-          <div className="glass px-3 py-1 rounded-full border-neon-purple/30 bg-neon-purple/10 flex items-center gap-2 shadow-[0_0_15px_rgba(168,85,247,0.2)]">
-            <Sparkles size={10} className="text-neon-purple animate-pulse" />
-            <span className="text-[9px] font-black text-white uppercase tracking-widest">{matchData.score}% AI Match</span>
+          <div className={`glass px-3 py-1 rounded-full border-neon-purple/30 flex items-center gap-2 shadow-[0_0_15px_rgba(168,85,247,0.2)] ${matchData.isFallback ? 'bg-white/5' : 'bg-neon-purple/10'}`}>
+            <Sparkles size={10} className={`${matchData.isFallback ? 'text-gray-500' : 'text-neon-purple animate-pulse'}`} />
+            <span className="text-[9px] font-black text-white uppercase tracking-widest">
+              {matchData.isFallback ? "Est. Match" : `${matchData.score}% AI Match`}
+            </span>
           </div>
         </div>
       )}

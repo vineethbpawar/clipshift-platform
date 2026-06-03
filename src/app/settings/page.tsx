@@ -15,17 +15,28 @@ import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { toast } from "react-hot-toast";
 import { useRouter } from "next/navigation";
+import { generateCreatorBioAI, suggestCreatorPricingAI } from "@/lib/gemini";
+import { Sparkles, DollarSign, Zap } from "lucide-react";
+import { motion } from "framer-motion";
 
 export default function SettingsPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [generatingBio, setGeneratingBio] = useState(false);
+  const [suggestingPricing, setSuggestingPricing] = useState(false);
+  const [pricingSuggestion, setPricingSuggestion] = useState<any>(null);
+
   const [profileData, setProfileData] = useState({
     name: "",
     bio: "",
     instagram: "",
     portfolio: "",
-    profileImage: ""
+    profileImage: "",
+    specialization: "",
+    experience: "",
+    startingPrice: "",
+    chatUnlockFee: ""
   });
 
   const [locationData, setLocationData] = useState({
@@ -51,7 +62,11 @@ export default function SettingsPage() {
         bio: user.bio || "",
         instagram: user.instagram || "",
         portfolio: user.portfolio || "",
-        profileImage: user.profileImage || ""
+        profileImage: user.profileImage || "",
+        specialization: (user as any).specialization || "",
+        experience: (user as any).experience || "",
+        startingPrice: (user as any).price || "",
+        chatUnlockFee: (user as any).chat_unlock_fee || ""
       });
 
       setLocationData({
@@ -67,6 +82,61 @@ export default function SettingsPage() {
     }
   }, [user, authLoading, router]);
 
+  const handleGenerateBio = async () => {
+    setGeneratingBio(true);
+    try {
+      const result = await generateCreatorBioAI({
+        name: profileData.name,
+        specialization: profileData.specialization,
+        city: locationData.city,
+        experience: profileData.experience
+      });
+      if (result.fallback) {
+        setProfileData({ ...profileData, bio: result.fallback.bio });
+        toast.success("AI limit reached, using fallback bio.");
+      } else if (!result.error) {
+        setProfileData({ ...profileData, bio: result.bio });
+        toast.success("Bio generated!");
+      }
+    } catch (e) {
+      toast.error("Could not generate bio.");
+    } finally {
+      setGeneratingBio(false);
+    }
+  };
+
+  const handleSuggestPricing = async () => {
+    setSuggestingPricing(true);
+    try {
+      const result = await suggestCreatorPricingAI({
+        specialization: profileData.specialization,
+        experience: profileData.experience,
+        location: locationData.city
+      });
+      if (result.fallback) {
+        setPricingSuggestion({ ...result.fallback, isFallback: true });
+        toast.success("AI limit reached, showing standard pricing.");
+      } else if (!result.error) {
+        setPricingSuggestion(result);
+        toast.success("Pricing suggestion ready!");
+      }
+    } catch (e) {
+      toast.error("Could not suggest pricing.");
+    } finally {
+      setSuggestingPricing(false);
+    }
+  };
+
+  const applyPricing = () => {
+    if (!pricingSuggestion) return;
+    setProfileData({
+      ...profileData,
+      startingPrice: pricingSuggestion.startingPrice.toString(),
+      chatUnlockFee: pricingSuggestion.chatUnlockFee.toString()
+    });
+    setPricingSuggestion(null);
+  };
+
   const handleProfileSave = async () => {
     if (!user) return;
     setLoading(true);
@@ -78,7 +148,11 @@ export default function SettingsPage() {
           bio: profileData.bio,
           instagram: profileData.instagram,
           portfolio_link: profileData.portfolio,
-          avatar_url: profileData.profileImage
+          avatar_url: profileData.profileImage,
+          specialization: profileData.specialization,
+          experience: profileData.experience,
+          price: Number(profileData.startingPrice),
+          chat_unlock_fee: Number(profileData.chatUnlockFee)
         })
         .eq("id", user.id);
 
@@ -199,8 +273,39 @@ export default function SettingsPage() {
                           />
                        </div>
                     </div>
+                    <div className="space-y-2">
+                       <label className="text-[10px] text-gray-500 font-black uppercase tracking-widest ml-4 opacity-60">Specialization</label>
+                       <input 
+                         type="text" 
+                         className="w-full bg-white/5 border border-white/10 rounded-2xl py-5 px-8 text-sm text-white outline-none focus:border-neon-purple transition-all italic bg-black/20"
+                         placeholder="e.g. Cinematic Colorist"
+                         value={profileData.specialization}
+                         onChange={(e) => setProfileData({...profileData, specialization: e.target.value})}
+                       />
+                    </div>
+                    <div className="space-y-2">
+                       <label className="text-[10px] text-gray-500 font-black uppercase tracking-widest ml-4 opacity-60">Experience</label>
+                       <input 
+                         type="text" 
+                         className="w-full bg-white/5 border border-white/10 rounded-2xl py-5 px-8 text-sm text-white outline-none focus:border-neon-purple transition-all italic bg-black/20"
+                         placeholder="e.g. 5 Years"
+                         value={profileData.experience}
+                         onChange={(e) => setProfileData({...profileData, experience: e.target.value})}
+                       />
+                    </div>
                     <div className="md:col-span-2 space-y-2">
-                       <label className="text-[10px] text-gray-500 font-black uppercase tracking-widest ml-4 opacity-60">Professional Bio</label>
+                       <div className="flex justify-between items-center mb-1">
+                          <label className="text-[10px] text-gray-500 font-black uppercase tracking-widest ml-4 opacity-60">Professional Bio</label>
+                          <button 
+                            type="button"
+                            onClick={handleGenerateBio}
+                            disabled={generatingBio}
+                            className="text-[8px] text-neon-purple font-black uppercase tracking-widest flex items-center gap-1 hover:underline disabled:opacity-50"
+                          >
+                            {generatingBio ? <Loader2 size={8} className="animate-spin" /> : <Sparkles size={8} />}
+                            Generate with AI
+                          </button>
+                       </div>
                        <textarea 
                          className="w-full h-32 bg-white/5 border border-white/10 rounded-[32px] py-6 px-8 text-sm text-white outline-none focus:border-neon-purple transition-all resize-none italic bg-black/20"
                          placeholder="Tell the collective about your vision..."
@@ -257,6 +362,69 @@ export default function SettingsPage() {
                    {loading ? <Loader2 className="animate-spin" size={18} /> : <>Update Location Hub</>}
                  </button>
               </div>
+
+              {/* Pricing Section (Creators Only) */}
+              {user?.role === 'creator' && (
+                <div className="glass p-8 sm:p-12 rounded-[50px] border-white/5 bg-white/[0.01] space-y-8">
+                   <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-2xl bg-neon-purple/10 flex items-center justify-center text-neon-purple border border-neon-purple/20">
+                           <DollarSign size={18} />
+                        </div>
+                        <h3 className="text-sm font-black text-white uppercase tracking-[0.2em] italic">Service Pricing</h3>
+                      </div>
+                      <button 
+                        type="button"
+                        onClick={handleSuggestPricing}
+                        disabled={suggestingPricing}
+                        className="px-4 py-2 rounded-xl bg-neon-purple/10 border border-neon-purple/20 text-neon-purple text-[8px] font-black uppercase tracking-widest hover:bg-neon-purple/20 transition-all disabled:opacity-50 flex items-center gap-2"
+                      >
+                        {suggestingPricing ? <Loader2 size={10} className="animate-spin" /> : <Zap size={10} />}
+                        Suggest Pricing
+                      </button>
+                   </div>
+
+                   {pricingSuggestion && (
+                      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="p-6 rounded-3xl bg-neon-purple/5 border border-neon-purple/20 space-y-4">
+                         <div className="flex justify-between items-start">
+                            <div>
+                               <p className="text-[8px] text-neon-purple font-black uppercase tracking-widest mb-1">{pricingSuggestion.isFallback ? "Est. Pricing" : "AI Suggested Pricing"}</p>
+                               <h4 className="text-xl font-black text-white italic">₹{pricingSuggestion.startingPrice}<span className="text-[10px] text-gray-500 ml-2">Starting</span></h4>
+                            </div>
+                            <div className="text-right">
+                               <p className="text-[8px] text-gray-500 uppercase font-black tracking-widest mb-1">Chat Unlock</p>
+                               <p className="text-xs font-bold text-white uppercase">₹{pricingSuggestion.chatUnlockFee}</p>
+                            </div>
+                         </div>
+                         <p className="text-[10px] text-gray-400 font-medium italic opacity-70">&quot;{pricingSuggestion.pricingNote}&quot;</p>
+                         <button type="button" onClick={applyPricing} className="w-full py-3 rounded-xl bg-white/5 border border-white/10 text-white text-[9px] font-black uppercase tracking-widest hover:bg-white/10 transition-all mt-2">Apply Suggestion</button>
+                      </motion.div>
+                   )}
+
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <div className="space-y-2">
+                         <label className="text-[10px] text-gray-500 font-black uppercase tracking-widest ml-4 opacity-60">Starting Price (₹)</label>
+                         <input 
+                           type="number" 
+                           className="w-full bg-white/5 border border-white/10 rounded-2xl py-5 px-8 text-sm text-white outline-none focus:border-neon-purple transition-all italic bg-black/20"
+                           placeholder="999"
+                           value={profileData.startingPrice}
+                           onChange={(e) => setProfileData({...profileData, startingPrice: e.target.value})}
+                         />
+                      </div>
+                      <div className="space-y-2">
+                         <label className="text-[10px] text-gray-500 font-black uppercase tracking-widest ml-4 opacity-60">Chat Unlock Fee (₹)</label>
+                         <input 
+                           type="number" 
+                           className="w-full bg-white/5 border border-white/10 rounded-2xl py-5 px-8 text-sm text-white outline-none focus:border-neon-purple transition-all italic bg-black/20"
+                           placeholder="49"
+                           value={profileData.chatUnlockFee}
+                           onChange={(e) => setProfileData({...profileData, chatUnlockFee: e.target.value})}
+                         />
+                      </div>
+                   </div>
+                </div>
+              )}
 
            </div>
         </div>

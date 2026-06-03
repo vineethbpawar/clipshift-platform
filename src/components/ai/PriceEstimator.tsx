@@ -20,7 +20,13 @@ export const PriceEstimator = () => {
         service_type: quality === 1 ? 'editing_only' : 'editing_and_shoot',
         category: 'Professional Video'
       } as any);
-      if (!result.error) {
+      
+      if (result.fallback) {
+        setAiResult({
+          ...result.fallback,
+          isFallback: true
+        });
+      } else if (!result.error) {
         setAiResult(result);
       }
     } catch (e) {
@@ -63,7 +69,9 @@ export const PriceEstimator = () => {
           >
              <div className="flex justify-between items-start">
                <div>
-                 <p className="text-[8px] text-neon-purple font-black uppercase tracking-widest mb-1">AI Suggestion</p>
+                 <p className="text-[8px] text-neon-purple font-black uppercase tracking-widest mb-1">
+                   {aiResult.isFallback ? "AI limit reached, showing estimated suggestion" : "AI Suggestion"}
+                 </p>
                  <h4 className="text-xl font-black text-white italic">₹{aiResult.minBudget} - ₹{aiResult.maxBudget}</h4>
                </div>
                <button onClick={() => setAiResult(null)} className="text-[8px] text-gray-500 uppercase font-black hover:text-white transition-colors">Reset</button>
