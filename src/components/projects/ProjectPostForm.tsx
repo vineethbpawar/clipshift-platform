@@ -44,6 +44,8 @@ export const ProjectPostForm = () => {
   const [suggestingTitles, setSuggestingTitles] = useState(false);
   const [searching, setSearching] = useState(false);
   const [detecting, setDetecting] = useState(false);
+  const [detectedLocation, setDetectedLocation] = useState<any>(null);
+  const [showConfirmLocation, setShowConfirmLocation] = useState(false);
   const [locationQuery, setLocationQuery] = useState("");
   const [locationResults, setLocationResults] = useState<any[]>([]);
   const [mapCenter, setMapCenter] = useState<[number, number] | undefined>(undefined);
@@ -262,17 +264,12 @@ export const ProjectPostForm = () => {
 
   const handleDetectLocation = async () => {
     setDetecting(true);
+    setDetectedLocation(null);
+    setShowConfirmLocation(false);
     try {
       const locationData = await detectLocation();
-      const city = locationData.city || "Current Location";
-      
-      setFormData({
-        ...formData,
-        location: city,
-        city: city,
-        latitude: locationData.lat,
-        longitude: locationData.lng
-      });
+      setDetectedLocation(locationData);
+      setShowConfirmLocation(true);
       setMapCenter([locationData.lat, locationData.lng]);
       toast.success("Location detected!");
     } catch (err: any) {
@@ -281,6 +278,28 @@ export const ProjectPostForm = () => {
     } finally {
       setDetecting(false);
     }
+  };
+
+  const handleConfirmLocation = () => {
+    if (!detectedLocation) return;
+    
+    const city = detectedLocation.city || "Current Location";
+    setFormData({
+      ...formData,
+      location: city,
+      city: city,
+      latitude: detectedLocation.lat,
+      longitude: detectedLocation.lng
+    });
+    setShowConfirmLocation(false);
+    setDetectedLocation(null);
+    toast.success("Location confirmed!");
+  };
+
+  const handleCancelDetection = () => {
+    setShowConfirmLocation(false);
+    setDetectedLocation(null);
+    setLocationQuery("");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -617,21 +636,88 @@ export const ProjectPostForm = () => {
                       )}
                     </AnimatePresence>
                   </div>
+
+                  {showConfirmLocation && detectedLocation && (
+                    <motion.div 
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="p-6 rounded-[32px] bg-green-500/5 border border-green-500/20 space-y-4 shadow-2xl"
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="text-[9px] text-green-500 font-black uppercase tracking-widest mb-1">Detected Location</p>
+                          <h4 className="text-lg font-black text-white italic">
+                            {detectedLocation.city || "Unknown City"}, {detectedLocation.country || "Unknown Country"}
+                          </h4>
+                        </div>
+                        <div className="p-3 rounded-full bg-green-500/10 text-green-500">
+                          <MapPin size={24} />
+                        </div>
+                      </div>
+
+                      {detectedLocation.country !== "India" && (
+                        <div className="flex items-center gap-3 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-500">
+                          <AlertCircle size={18} className="shrink-0" />
+                          <p className="text-[10px] font-bold uppercase tracking-widest leading-relaxed italic">
+                            This location looks outside India. Please confirm or search manually.
+                          </p>
+                        </div>
+                      )}
+
+                      <div className="flex gap-3">
+                        <button 
+                          type="button" 
+                          onClick={handleCancelDetection} 
+                          className="flex-1 py-4 rounded-2xl glass text-[9px] font-black uppercase tracking-widest text-gray-500 hover:text-white transition-all"
+                        >
+                          Search Manually
+                        </button>
+                        <button 
+                          type="button" 
+                          onClick={handleConfirmLocation} 
+                          className="flex-1 py-4 rounded-2xl bg-green-500 text-black text-[9px] font-black uppercase tracking-widest shadow-lg hover:bg-green-400 transition-all"
+                        >
+                          Use This Location
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
                 </div>
 
                 <div className="space-y-4">
                   <ProjectLocationPicker 
-                    position={formData.latitude && formData.longitude ? [formData.latitude, formData.longitude] : null}
+                    position={formData.latitude && formData.longitude ? [formData.latitude, formData.longitude] : (detectedLocation ? [detectedLocation.lat, detectedLocation.lng] : null)}
                     setPosition={(lat, lng) => setFormData({ ...formData, latitude: lat, longitude: lng })}
                     center={mapCenter}
                   />
                   
-                  {formData.location && (
-                    <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-green-500/10 border border-green-500/20 text-green-500">
-                      <CheckCircle2 size={14} />
-                      <span className="text-[10px] font-black uppercase tracking-widest">Selected: {formData.location}</span>
+                  <div className="flex flex-col gap-4">
+                    {formData.location && (
+                      <div className="flex items-center justify-between gap-4 px-6 py-4 rounded-2xl bg-green-500/10 border border-green-500/20 text-green-500 shadow-inner">
+                        <div className="flex items-center gap-3">
+                          <CheckCircle2 size={16} />
+                          <div className="flex flex-col">
+                            <span className="text-[8px] font-black uppercase tracking-widest opacity-60">Confirmed Location</span>
+                            <span className="text-[11px] font-black uppercase tracking-widest italic">{formData.location}</span>
+                          </div>
+                        </div>
+                        <button 
+                          type="button" 
+                          onClick={() => setFormData({...formData, location: "", city: "", latitude: null, longitude: null})}
+                          className="text-[9px] font-black uppercase tracking-widest hover:underline"
+                        >
+                          Clear
+                        </button>
+                      </div>
+                    )}
+
+                    <div className="px-6 py-4 rounded-2xl bg-white/[0.02] border border-white/5">
+                      <p className="text-[9px] text-gray-600 font-bold leading-relaxed uppercase tracking-widest italic">
+                        <AlertCircle size={10} className="inline mr-1 mb-0.5" />
+                        Note: Automatic location may be inaccurate on laptops, VPNs, or desktop browsers.
+                      </p>
                     </div>
-                  )}
+                  </div>
                 </div>
               </motion.div>
            )}

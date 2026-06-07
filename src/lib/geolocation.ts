@@ -2,6 +2,8 @@ export interface GeolocationData {
   lat: number;
   lng: number;
   city?: string;
+  state?: string;
+  country?: string;
   area?: string;
   pincode?: string;
   address?: string;
@@ -39,7 +41,9 @@ export const detectLocation = (): Promise<GeolocationData> => {
           resolve({
             lat: latitude,
             lng: longitude,
-            city: address.city || address.town || address.village || address.suburb,
+            city: address.city || address.town || address.village || address.municipality || address.suburb || address.county,
+            state: address.state,
+            country: address.country,
             area: address.suburb || address.neighbourhood || address.road,
             pincode: address.postcode,
             address: data.display_name
