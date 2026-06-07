@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
 import { FloatingInput } from "../ui/FloatingInput";
 import { NeonButton } from "../ui/NeonButton";
@@ -17,13 +18,21 @@ import {
   CheckCircle2,
   AlertCircle,
   Zap,
-  Sparkles
+  Sparkles,
+  Search,
+  Target
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import { estimateBudgetAI, improveDescriptionAI, suggestTitlesAI } from "@/lib/gemini";
+import { searchLocation } from "@/lib/geolocation";
+
+const ProjectLocationPicker = dynamic(() => import("../map/ProjectLocationPicker"), { 
+  ssr: false,
+  loading: () => <div className="w-full h-[300px] rounded-[32px] bg-white/5 animate-pulse flex items-center justify-center text-gray-500 uppercase tracking-widest text-[10px] font-black">Loading Map...</div>
+});
 
 export const ProjectPostForm = () => {
   const { user } = useAuth();
@@ -33,6 +42,10 @@ export const ProjectPostForm = () => {
   const [estimating, setEstimating] = useState(false);
   const [improving, setImproving] = useState(false);
   const [suggestingTitles, setSuggestingTitles] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [locationQuery, setLocationQuery] = useState("");
+  const [locationResults, setLocationResults] = useState<any[]>([]);
+  const [mapCenter, setMapCenter] = useState<[number, number] | undefined>(undefined);
   const [aiEstimate, setAiEstimate] = useState<any>(null);
   const [aiDescription, setAiDescription] = useState<any>(null);
   const [aiTitles, setAiTitles] = useState<string[]>([]);
@@ -46,6 +59,9 @@ export const ProjectPostForm = () => {
     service_type: "editing_only" as "editing_only" | "editing_and_shoot",
     location_mode: "anywhere_india" as "anywhere_india" | "preferred_location",
     location: "",
+    city: "",
+    latitude: null as number | null,
+    longitude: null as number | null,
     file_url: "",
     file_name: "",
     file_type: "",
@@ -212,6 +228,37 @@ export const ProjectPostForm = () => {
     setAiTitles([]);
   };
 
+  const handleLocationSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!locationQuery.trim()) return;
+    
+    setSearching(true);
+    try {
+      const results = await searchLocation(locationQuery);
+      setLocationResults(results);
+      if (results.length > 0) {
+        setMapCenter([results[0].lat, results[0].lng]);
+      }
+    } catch (err) {
+      toast.error("Location search failed.");
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const handleSelectLocation = (loc: any) => {
+    setFormData({
+      ...formData,
+      location: loc.city || loc.address.split(',')[0],
+      city: loc.city || loc.address.split(',')[0],
+      latitude: loc.lat,
+      longitude: loc.lng
+    });
+    setMapCenter([loc.lat, loc.lng]);
+    setLocationResults([]);
+    setLocationQuery("");
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
@@ -233,6 +280,9 @@ export const ProjectPostForm = () => {
         service_type: formData.service_type,
         location_mode: formData.location_mode,
         location: formData.location,
+        city: formData.city,
+        latitude: formData.latitude,
+        longitude: formData.longitude,
         file_url: formData.file_url,
         file_name: formData.file_name,
         file_type: formData.file_type,
@@ -466,7 +516,12 @@ export const ProjectPostForm = () => {
                 <button
                   key={mode.id}
                   type="button"
-                  onClick={() => setFormData({...formData, location_mode: mode.id as "anywhere_india" | "preferred_location"})}
+                  onClick={() => {
+                    setFormData({...formData, location_mode: mode.id as "anywhere_india" | "preferred_location"});
+                    if (mode.id === 'anywhere_india') {
+                      setFormData(prev => ({ ...prev, location: "", city: "", latitude: null, longitude: null }));
+                    }
+                  }}
                   className={`px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border ${
                     formData.location_mode === mode.id 
                     ? 'bg-green-500/10 border-green-500 text-green-500 shadow-lg' 
@@ -479,15 +534,72 @@ export const ProjectPostForm = () => {
            </div>
 
            {formData.location_mode === 'preferred_location' && (
-              <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="space-y-2">
-                <label className="text-[10px] text-gray-500 font-black uppercase tracking-widest ml-4">Target City</label>
-                <input 
-                  type="text" 
-                  placeholder="e.g. Mumbai, Delhi, Bangalore"
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl py-5 px-8 text-sm text-white outline-none focus:border-green-500 transition-all italic shadow-inner"
-                  value={formData.location}
-                  onChange={(e) => setFormData({...formData, location: e.target.value})}
-                />
+              <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-[10px] text-gray-500 font-black uppercase tracking-widest ml-4">Search & Select City</label>
+                  </div>
+                  
+                  <div className="relative">
+                    <form onSubmit={handleLocationSearch} className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-600" size={18} />
+                        <input 
+                          type="text" 
+                          placeholder="Search for a city (e.g. Mumbai, Bangalore...)"
+                          className="w-full bg-white/5 border border-white/10 rounded-2xl py-5 pl-14 pr-8 text-sm text-white outline-none focus:border-green-500 transition-all italic shadow-inner"
+                          value={locationQuery}
+                          onChange={(e) => setLocationQuery(e.target.value)}
+                        />
+                      </div>
+                      <button 
+                        type="submit"
+                        disabled={searching}
+                        className="px-8 rounded-2xl bg-green-500 text-black text-[10px] font-black uppercase tracking-widest hover:bg-green-400 transition-all disabled:opacity-50"
+                      >
+                        {searching ? <Loader2 size={16} className="animate-spin mx-auto" /> : "Search"}
+                      </button>
+                    </form>
+
+                    <AnimatePresence>
+                      {locationResults.length > 0 && (
+                        <motion.div 
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 10 }}
+                          className="absolute z-50 top-full left-0 right-0 mt-2 glass border border-white/10 rounded-3xl overflow-hidden shadow-2xl"
+                        >
+                          {locationResults.map((result, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => handleSelectLocation(result)}
+                              className="w-full text-left px-6 py-4 text-xs text-gray-400 hover:bg-white/5 hover:text-white border-b border-white/5 last:border-0 transition-all flex items-center gap-3"
+                            >
+                              <MapPin size={14} className="text-green-500" />
+                              <span className="font-bold italic">{result.address}</span>
+                            </button>
+                          ))}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <ProjectLocationPicker 
+                    position={formData.latitude && formData.longitude ? [formData.latitude, formData.longitude] : null}
+                    setPosition={(lat, lng) => setFormData({ ...formData, latitude: lat, longitude: lng })}
+                    center={mapCenter}
+                  />
+                  
+                  {formData.location && (
+                    <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-green-500/10 border border-green-500/20 text-green-500">
+                      <CheckCircle2 size={14} />
+                      <span className="text-[10px] font-black uppercase tracking-widest">Selected: {formData.location}</span>
+                    </div>
+                  )}
+                </div>
               </motion.div>
            )}
         </div>
