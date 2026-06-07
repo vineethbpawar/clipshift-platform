@@ -223,7 +223,7 @@ export default function SettingsPage() {
            <div className="lg:col-span-2 space-y-10 pb-32">
               
               {/* Profile Section */}
-              <div className="glass p-8 sm:p-12 rounded-[50px] border-white/5 bg-white/[0.01] space-y-10">
+              <div className="glass p-6 sm:p-12 rounded-[32px] sm:rounded-[50px] border-white/5 bg-white/[0.01] space-y-10">
                  <div className="flex items-center gap-4 mb-2">
                     <div className="w-10 h-10 rounded-2xl bg-neon-purple/10 flex items-center justify-center text-neon-purple border border-neon-purple/20">
                        <User size={18} />
@@ -325,7 +325,7 @@ export default function SettingsPage() {
               </div>
 
               {/* Location Section */}
-              <div className="glass p-8 sm:p-12 rounded-[50px] border-white/5 bg-white/[0.01] space-y-8">
+              <div className="glass p-6 sm:p-12 rounded-[32px] sm:rounded-[50px] border-white/5 bg-white/[0.01] space-y-8">
                  <div className="flex items-center gap-4 mb-2">
                     <div className="w-10 h-10 rounded-2xl bg-neon-blue/10 flex items-center justify-center text-neon-blue border border-neon-blue/20">
                        <MapPin size={18} />
@@ -365,7 +365,7 @@ export default function SettingsPage() {
 
               {/* Pricing Section (Creators Only) */}
               {user?.role === 'creator' && (
-                <div className="glass p-8 sm:p-12 rounded-[50px] border-white/5 bg-white/[0.01] space-y-8">
+                <div className="glass p-6 sm:p-12 rounded-[32px] sm:rounded-[50px] border-white/5 bg-white/[0.01] space-y-8">
                    <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-4">
                         <div className="w-10 h-10 rounded-2xl bg-neon-purple/10 flex items-center justify-center text-neon-purple border border-neon-purple/20">

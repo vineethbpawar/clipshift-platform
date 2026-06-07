@@ -194,7 +194,7 @@ export const Navbar = () => {
               initial={{ opacity: 0, y: -20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -20, scale: 0.95 }}
-              className="absolute top-20 left-4 right-4 z-50 md:hidden glass p-6 rounded-[40px] border-white/10 shadow-[0_20px_100px_rgba(0,0,0,1)] flex flex-col gap-2 bg-black/80"
+              className="absolute top-20 left-4 right-4 z-50 md:hidden glass p-5 sm:p-6 rounded-[32px] sm:rounded-[40px] border-white/10 shadow-[0_20px_100px_rgba(0,0,0,1)] flex flex-col gap-2 bg-black/80"
             >
               <div className="grid grid-cols-1 gap-2 mb-4">
                 {navLinks.map((link) => (

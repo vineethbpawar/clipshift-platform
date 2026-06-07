@@ -48,7 +48,7 @@ export const Hero = () => {
             <Zap size={14} className="fill-neon-purple" /> Professional Visual Platform
           </div>
           
-          <h1 className="text-4xl sm:text-6xl md:text-8xl font-black tracking-tighter text-white mb-8 leading-[1] md:leading-[0.85] italic">
+          <h1 className="text-3xl sm:text-6xl md:text-8xl font-black tracking-tighter text-white mb-8 leading-[1] md:leading-[0.85] italic">
             HIRE ELITE <br />
             <span className="text-gradient">VISUAL CREATORS</span>
           </h1>

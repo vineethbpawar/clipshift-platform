@@ -90,7 +90,7 @@ export default function ProjectsPage() {
               </div>
               <h1 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em]">Open Projects</h1>
             </div>
-            <h2 className="text-4xl md:text-6xl font-black text-white uppercase tracking-tighter leading-[0.9]">
+            <h2 className="text-3xl sm:text-5xl md:text-6xl font-black text-white uppercase tracking-tighter leading-[0.9]">
               Explore <span className="text-neon-purple">Open Projects</span>
             </h2>
           </div>

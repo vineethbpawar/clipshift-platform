@@ -74,7 +74,7 @@ export const DashboardLayout = ({
           </div>
 
           {/* Main Content Area */}
-          <main className="flex-1 min-w-0 relative px-6 lg:px-10 py-8 lg:py-12 pb-32 transition-all duration-300">
+          <main className="flex-1 min-w-0 relative px-4 sm:px-6 lg:px-10 py-8 lg:py-12 pb-32 transition-all duration-300">
             {/* Sidebar Toggle & Header */}
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-4">

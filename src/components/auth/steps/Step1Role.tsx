@@ -40,10 +40,10 @@ export const Step1Role = ({ onNext }: { onNext: () => void }) => {
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mt-12 p-8 glass rounded-3xl border-neon-purple/20 max-w-2xl mx-auto"
+          className="mt-12 p-6 sm:p-8 glass rounded-3xl border-neon-purple/20 max-w-2xl mx-auto"
         >
           <h3 className="text-sm font-black text-white uppercase tracking-widest mb-6 text-center">Primary Specialization</h3>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {["editing", "videography", "both"].map((spec) => (
               <button
                 key={spec}

@@ -142,7 +142,7 @@ export default function MarketplacePage() {
               </div>
               <h1 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em]">Professional Creators</h1>
             </div>
-            <h2 className="text-4xl md:text-7xl font-black text-white uppercase tracking-tighter leading-[0.9] mb-8">
+            <h2 className="text-3xl sm:text-5xl md:text-7xl font-black text-white uppercase tracking-tighter leading-[0.9] mb-8">
               Hire Elite <span className="text-neon-purple italic">Creators</span>
             </h2>
             <p className="text-gray-500 uppercase tracking-widest text-[10px] font-bold leading-relaxed max-w-md opacity-60">
@@ -192,7 +192,7 @@ export default function MarketplacePage() {
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
                 <AnimatePresence mode="popLayout">
                   {creators.map((creator) => (
                     <CreatorCard 
@@ -225,7 +225,7 @@ export default function MarketplacePage() {
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed inset-y-0 right-0 w-full max-w-sm glass z-[110] border-l border-white/10 p-8 flex flex-col"
+              className="fixed inset-y-0 right-0 w-full max-w-sm glass z-[110] border-l border-white/10 p-6 flex flex-col"
             >
               <FilterSidebar 
                 filters={filters} 

@@ -68,7 +68,7 @@ export const ProjectCard = ({ project }: { project: Project }) => {
                   </span>
                 )}
               </div>
-              <h2 className="text-2xl lg:text-3xl font-black text-white uppercase tracking-tighter leading-tight mb-3 truncate group-hover:text-neon-purple transition-colors italic">
+              <h2 className="text-xl sm:text-2xl lg:text-3xl font-black text-white uppercase tracking-tighter leading-tight mb-3 truncate group-hover:text-neon-purple transition-colors italic">
                 {project.title}
               </h2>
               <div className="flex items-center gap-4 text-[10px] text-gray-500 font-bold uppercase tracking-widest">
