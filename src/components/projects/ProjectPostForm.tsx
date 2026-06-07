@@ -27,7 +27,7 @@ import { useAuth } from "@/context/AuthContext";
 import { toast } from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import { estimateBudgetAI, improveDescriptionAI, suggestTitlesAI } from "@/lib/gemini";
-import { searchLocation } from "@/lib/geolocation";
+import { searchLocation, detectLocation } from "@/lib/geolocation";
 
 const ProjectLocationPicker = dynamic(() => import("../map/ProjectLocationPicker"), { 
   ssr: false,
@@ -43,6 +43,7 @@ export const ProjectPostForm = () => {
   const [improving, setImproving] = useState(false);
   const [suggestingTitles, setSuggestingTitles] = useState(false);
   const [searching, setSearching] = useState(false);
+  const [detecting, setDetecting] = useState(false);
   const [locationQuery, setLocationQuery] = useState("");
   const [locationResults, setLocationResults] = useState<any[]>([]);
   const [mapCenter, setMapCenter] = useState<[number, number] | undefined>(undefined);
@@ -257,6 +258,29 @@ export const ProjectPostForm = () => {
     setMapCenter([loc.lat, loc.lng]);
     setLocationResults([]);
     setLocationQuery("");
+  };
+
+  const handleDetectLocation = async () => {
+    setDetecting(true);
+    try {
+      const locationData = await detectLocation();
+      const city = locationData.city || "Current Location";
+      
+      setFormData({
+        ...formData,
+        location: city,
+        city: city,
+        latitude: locationData.lat,
+        longitude: locationData.lng
+      });
+      setMapCenter([locationData.lat, locationData.lng]);
+      toast.success("Location detected!");
+    } catch (err: any) {
+      console.error("DETECTION ERROR", err);
+      toast.error(err.message || "Could not detect location.");
+    } finally {
+      setDetecting(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -538,6 +562,15 @@ export const ProjectPostForm = () => {
                 <div className="space-y-4">
                   <div className="flex justify-between items-center mb-1">
                     <label className="text-[10px] text-gray-500 font-black uppercase tracking-widest ml-4">Search & Select City</label>
+                    <button 
+                      type="button"
+                      onClick={handleDetectLocation}
+                      disabled={detecting}
+                      className="text-[8px] text-green-500 font-black uppercase tracking-widest flex items-center gap-1 hover:underline disabled:opacity-50"
+                    >
+                      {detecting ? <Loader2 size={8} className="animate-spin" /> : <Target size={8} />}
+                      {detecting ? "Detecting location..." : "Use My Current Location"}
+                    </button>
                   </div>
                   
                   <div className="relative">
